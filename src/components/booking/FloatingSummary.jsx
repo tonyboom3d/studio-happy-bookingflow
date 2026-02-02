@@ -1,7 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, TreeDeciduous, Package, Calendar, CreditCard } from 'lucide-react';
+import { Users, TreeDeciduous, Package, Calendar, CreditCard, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const PRICING = {
   1: 300,
@@ -15,8 +21,28 @@ export default function FloatingSummary({
   cart, 
   selectedSlots,
   totalMeetings,
-  activeSection 
+  activeSection,
+  timerActive 
 }) {
+  const [timeLeft, setTimeLeft] = useState(8 * 60);
+  
+  useEffect(() => {
+    if (timerActive && timeLeft > 0) {
+      const timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    } else if (timerActive && timeLeft === 0) {
+      window.location.reload();
+    }
+  }, [timerActive, timeLeft]);
+  
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const basePrice = PRICING[participants] || 300;
   const productsPrice = cart.reduce((sum, p) => sum + p.price, 0);
   const woodExtra = woodType === 'new' ? (productsPrice * 0.2) : 0;
@@ -62,6 +88,26 @@ export default function FloatingSummary({
       className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:w-72 z-50"
     >
       <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-[#e8e8e8] overflow-hidden">
+        {/* טיימר מעל הכותרת */}
+        {timerActive && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className={cn(
+                  "px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium cursor-help",
+                  timeLeft < 60 ? "bg-red-100 text-red-700" : "bg-[#ADC178]/20 text-[#6B584C]"
+                )}>
+                  <Clock className="w-3.5 h-3.5" />
+                  <span className="font-mono">{formatTime(timeLeft)}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>בסיום הזמן הדף יתרענן להצגת מידע מעודכן</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        
         {/* כותרת */}
         <div className="bg-[#6B584C] text-white px-4 py-2.5 flex items-center justify-between">
           <span className="font-medium text-sm">סיכום הזמנה</span>

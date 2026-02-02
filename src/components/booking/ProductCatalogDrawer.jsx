@@ -5,8 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { 
   X, Filter, Check, Info, Package, Calendar, CreditCard,
-  Baby, Smile, Meh, Frown, Skull
+  Baby, Smile, Meh, Frown, Skull, TreeDeciduous
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import {
@@ -51,8 +52,9 @@ function getDifficultyLabel(difficulty) {
   return 'מאתגר מאוד';
 }
 
-function ProductGridCard({ product, isSelected, onClick, meetings }) {
+function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPrices }) {
   const [showDimensions, setShowDimensions] = useState(false);
+  const displayPrice = showNewWoodPrices ? Math.round(product.price * 1.2) : product.price;
 
   return (
     <motion.div
@@ -133,7 +135,7 @@ function ProductGridCard({ product, isSelected, onClick, meetings }) {
           </div>
           
           <div className="flex items-center justify-between pt-2 border-t border-[#e8e8e8]">
-            <span className="text-lg font-bold text-[#ADC178]">₪{product.price}</span>
+            <span className="text-lg font-bold text-[#ADC178]">₪{displayPrice}</span>
           </div>
         </div>
       </button>
@@ -146,11 +148,13 @@ export default function ProductCatalogDrawer({
   onClose, 
   cart, 
   setCart,
-  getMeetings 
+  getMeetings,
+  woodType 
 }) {
   const [difficultyFilter, setDifficultyFilter] = useState([1, 5]);
   const [priceFilter, setPriceFilter] = useState([0, 1000]);
   const [showFilters, setShowFilters] = useState(false);
+  const [showNewWoodPrices, setShowNewWoodPrices] = useState(woodType === 'new');
 
   const filteredProducts = useMemo(() => {
     return SAMPLE_PRODUCTS.filter(product => {
@@ -182,7 +186,7 @@ export default function ProductCatalogDrawer({
         className="w-full sm:max-w-xl p-0 bg-white/95 backdrop-blur-xl"
       >
         <SheetHeader className="p-4 border-b border-[#e8e8e8] sticky top-0 bg-white/95 backdrop-blur-xl z-10">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <SheetTitle className="text-xl font-semibold text-[#6B584C]">קטלוג מוצרים</SheetTitle>
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -194,6 +198,18 @@ export default function ProductCatalogDrawer({
               <Filter className="w-4 h-4 text-[#6B584C]" />
               <span className="text-sm text-[#464646]">סינון</span>
             </button>
+          </div>
+          
+          {/* מחירים לפי סוג עץ */}
+          <div className="flex items-center justify-between p-3 bg-[#fafafa] rounded-lg">
+            <div className="flex items-center gap-2">
+              <TreeDeciduous className="w-4 h-4 text-[#6B584C]" />
+              <span className="text-sm text-[#464646]">הצג מחירים עם עץ חדש</span>
+            </div>
+            <Switch 
+              checked={showNewWoodPrices} 
+              onCheckedChange={setShowNewWoodPrices}
+            />
           </div>
 
           {/* פילטרים */}
@@ -246,7 +262,7 @@ export default function ProductCatalogDrawer({
         </SheetHeader>
 
         {/* גריד מוצרים */}
-        <div className="flex-1 overflow-y-auto p-4 pb-32">
+        <div className="flex-1 overflow-y-auto p-4 pb-32 h-[calc(100vh-300px)]">
           <div className="grid grid-cols-2 gap-4">
             {filteredProducts.map(product => (
               <ProductGridCard
@@ -255,6 +271,7 @@ export default function ProductCatalogDrawer({
                 isSelected={cart.some(p => p.id === product.id)}
                 onClick={() => toggleProduct(product)}
                 meetings={getMeetings(product)}
+                showNewWoodPrices={showNewWoodPrices}
               />
             ))}
           </div>

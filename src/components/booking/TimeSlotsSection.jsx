@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { format, addDays } from 'date-fns';
@@ -32,11 +32,12 @@ export default function TimeSlotsSection({
   selectedSlots, 
   setSelectedSlots, 
   totalMeetings, 
-  onContinue 
+  onContinue,
+  timerActive,
+  setTimerActive 
 }) {
   const [slots] = useState(generateSampleSlots());
   const [timeLeft, setTimeLeft] = useState(8 * 60); // 8 דקות בשניות
-  const [timerActive, setTimerActive] = useState(false);
 
   // טיימר
   useEffect(() => {
@@ -45,15 +46,10 @@ export default function TimeSlotsSection({
         setTimeLeft(prev => prev - 1);
       }, 1000);
       return () => clearInterval(timer);
+    } else if (timerActive && timeLeft === 0) {
+      window.location.reload();
     }
   }, [timerActive, timeLeft]);
-
-  // הפעלת טיימר בבחירה ראשונה
-  useEffect(() => {
-    if (selectedSlots.length === 1 && !timerActive) {
-      setTimerActive(true);
-    }
-  }, [selectedSlots, timerActive]);
 
   const toggleSlot = (slot) => {
     const isSelected = selectedSlots.some(s => s.id === slot.id);
@@ -86,28 +82,21 @@ export default function TimeSlotsSection({
 
   return (
     <div className="py-4">
-      {/* כותרת עם טיימר */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-[#6B584C]" />
-          <span className="text-lg font-medium text-[#6B584C]">
-            בחרו {totalMeetings} מפגשים
-          </span>
+      {/* כותרת */}
+      <div className="flex items-center justify-center gap-2 mb-2">
+        <Calendar className="w-5 h-5 text-[#6B584C]" />
+        <span className="text-lg font-medium text-[#6B584C]">
+          בחרו {totalMeetings} מפגשים
+        </span>
+      </div>
+      
+      {/* הערה חשובה */}
+      <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+        <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+        <div className="text-sm text-blue-900">
+          <p className="font-medium">יש לבחור {totalMeetings} מפגשים</p>
+          <p className="text-xs text-blue-700 mt-1">ניתן לשנות את המפגשים 48 שעות לפני באזור האישי</p>
         </div>
-        
-        {timerActive && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-full",
-              timeLeft < 60 ? "bg-red-100 text-red-600" : "bg-[#ADC178]/20 text-[#6B584C]"
-            )}
-          >
-            <Clock className="w-4 h-4" />
-            <span className="font-mono font-medium">{formatTime(timeLeft)}</span>
-          </motion.div>
-        )}
       </div>
 
       {/* סטטוס בחירה */}

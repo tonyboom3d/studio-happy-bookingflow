@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ShoppingBag, Wrench, HelpCircle, Sparkles } from 'lucide-react';
+import { ShoppingBag, Wrench, HelpCircle, Sparkles, X, Baby, Smile, Meh, Frown, Skull } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import ProductCatalogDrawer from './ProductCatalogDrawer';
@@ -114,30 +114,54 @@ export default function ProductSelectionSection({
           className="mb-6"
         >
           <h4 className="font-medium text-[#6B584C] mb-3">המוצרים שנבחרו:</h4>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {cart.map(product => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="relative group"
-              >
-                <div className="aspect-square rounded-lg overflow-hidden bg-[#f5f5f5] border border-[#e8e8e8]">
-                  <img
-                    src={product.image || "https://images.unsplash.com/photo-1588117472556-1ddf8c5c3c68?w=200"}
-                    alt={product.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <button
-                  onClick={() => removeProduct(product.id)}
-                  className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+          <div className="space-y-2">
+            {cart.map(product => {
+              const DifficultyIcon = product.difficulty <= 1.5 ? Baby : 
+                                     product.difficulty <= 2.5 ? Smile : 
+                                     product.difficulty <= 3.5 ? Meh : 
+                                     product.difficulty <= 4.5 ? Frown : Skull;
+              const difficultyColor = product.difficulty <= 1.5 ? 'text-green-500' : 
+                                     product.difficulty <= 2.5 ? 'text-lime-500' : 
+                                     product.difficulty <= 3.5 ? 'text-yellow-500' : 
+                                     product.difficulty <= 4.5 ? 'text-orange-500' : 'text-red-500';
+              
+              return (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="bg-white p-3 rounded-lg border border-[#e8e8e8] flex items-center justify-between hover:border-[#ADC178]/50 transition-colors"
                 >
-                  <span className="text-xs">🗑️</span>
-                </button>
-              </motion.div>
-            ))}
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#f5f5f5]">
+                      <img
+                        src={product.image || "https://images.unsplash.com/photo-1588117472556-1ddf8c5c3c68?w=100"}
+                        alt={product.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-[#6B584C] text-sm">{product.title}</h5>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <DifficultyIcon className={`w-3.5 h-3.5 ${difficultyColor}`} />
+                        <span className="text-xs text-[#464646]/70">•</span>
+                        <span className="text-xs text-[#464646]/70">{product.meetings} מפגשים</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-[#ADC178]">₪{product.price}</span>
+                    <button
+                      onClick={() => removeProduct(product.id)}
+                      className="w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </motion.div>
       )}
@@ -161,6 +185,7 @@ export default function ProductSelectionSection({
         cart={cart}
         setCart={setCart}
         getMeetings={getMeetings}
+        woodType={woodType}
       />
       <CustomBuildModal 
         isOpen={showCustomBuild} 

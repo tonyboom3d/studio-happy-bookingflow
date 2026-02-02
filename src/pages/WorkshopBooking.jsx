@@ -27,6 +27,7 @@ export default function WorkshopBooking() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [booking, setBooking] = useState(null);
+  const [timerActive, setTimerActive] = useState(false);
 
   // חישוב סה"כ מפגשים
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || 3), 0);
@@ -37,6 +38,11 @@ export default function WorkshopBooking() {
       setCompletedSections([...completedSections, sectionNum]);
     }
     setActiveSection(sectionNum + 1);
+    
+    // הפעלת טיימר בכניסה לסקשן התאריכים
+    if (sectionNum === 3 && !timerActive) {
+      setTimerActive(true);
+    }
   };
 
   // פתיחת סקשן
@@ -191,6 +197,8 @@ export default function WorkshopBooking() {
                     setSelectedSlots={setSelectedSlots}
                     totalMeetings={totalMeetings || 1}
                     onContinue={() => completeSection(4)}
+                    timerActive={timerActive}
+                    setTimerActive={setTimerActive}
                   />
                 )}
                 {section.id === 5 && (
@@ -215,6 +223,7 @@ export default function WorkshopBooking() {
         selectedSlots={selectedSlots}
         totalMeetings={totalMeetings}
         activeSection={activeSection}
+        timerActive={timerActive}
       />
 
       {/* Footer */}
