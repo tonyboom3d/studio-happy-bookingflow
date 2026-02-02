@@ -59,7 +59,7 @@ export default function ConsultationModal({ isOpen, onClose }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" dir="rtl">
         <AnimatePresence mode="wait">
           {isSuccess ? (
             <motion.div
@@ -93,7 +93,7 @@ export default function ConsultationModal({ isOpen, onClose }) {
                 <DialogTitle className="text-[#6B584C]">אשמח להתייעץ</DialogTitle>
               </DialogHeader>
               
-              <form onSubmit={handleSubmit} className="space-y-4 mt-4" dir="rtl">
+              <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                 <div>
                   <Label htmlFor="full_name">שם מלא *</Label>
                   <Input
@@ -113,8 +113,7 @@ export default function ConsultationModal({ isOpen, onClose }) {
                     value={formData.phone}
                     onChange={(e) => setFormData({...formData, phone: e.target.value})}
                     required
-                    className="mt-1"
-                    dir="ltr"
+                    className="mt-1 text-left"
                   />
                 </div>
                 
@@ -126,8 +125,7 @@ export default function ConsultationModal({ isOpen, onClose }) {
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                     required
-                    className="mt-1"
-                    dir="ltr"
+                    className="mt-1 text-left"
                   />
                 </div>
                 
