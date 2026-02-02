@@ -21,7 +21,7 @@ export default function PersonalDetailsSection({
   const isValid = userDetails.full_name && userDetails.email && userDetails.phone && termsAccepted;
 
   return (
-    <div className="py-4">
+    <div className="py-4" dir="rtl">
       <div className="space-y-4">
         {/* שם מלא */}
         <div>
