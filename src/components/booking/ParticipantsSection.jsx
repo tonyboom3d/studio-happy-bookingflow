@@ -16,7 +16,7 @@ export default function ParticipantsSection({ participants, setParticipants, onC
     <div className="flex flex-col items-center py-6">
       <div className="flex items-center justify-center gap-2 mb-6 text-[#6B584C]">
         <Users className="w-6 h-6" />
-        <span className="text-lg">כמה נגרים מצטרפים?</span>
+        <span className="text-lg">כמה תהיו?</span>
       </div>
       
       <div className="flex items-center gap-6">

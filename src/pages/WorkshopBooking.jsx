@@ -4,7 +4,8 @@ import { Loader2 } from 'lucide-react';
 import AccordionSection from '../components/booking/AccordionSection';
 import ParticipantsSection from '../components/booking/ParticipantsSection';
 import WoodTypeSection from '../components/booking/WoodTypeSection';
-import ProductsSection from '../components/booking/ProductsSection';
+import ProductSelectionSection from '../components/booking/ProductSelectionSection';
+import FloatingSummary from '../components/booking/FloatingSummary';
 import TimeSlotsSection from '../components/booking/TimeSlotsSection';
 import PersonalDetailsSection from '../components/booking/PersonalDetailsSection';
 import ThankYouScreen from '../components/booking/ThankYouScreen';
@@ -176,7 +177,7 @@ export default function WorkshopBooking() {
                   />
                 )}
                 {section.id === 3 && (
-                  <ProductsSection
+                  <ProductSelectionSection
                     cart={cart}
                     setCart={setCart}
                     participants={participants}
@@ -206,8 +207,18 @@ export default function WorkshopBooking() {
         </div>
       </main>
 
+      {/* סיכום צף */}
+      <FloatingSummary
+        participants={participants}
+        woodType={woodType}
+        cart={cart}
+        selectedSlots={selectedSlots}
+        totalMeetings={totalMeetings}
+        activeSection={activeSection}
+      />
+
       {/* Footer */}
-      <footer className="py-6 text-center text-sm text-[#464646]/60">
+      <footer className="py-6 pb-32 md:pb-6 text-center text-sm text-[#464646]/60">
         © 2024 הנגריה הפתוחה. כל הזכויות שמורות.
       </footer>
     </div>
