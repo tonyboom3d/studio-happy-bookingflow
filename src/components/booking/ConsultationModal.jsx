@@ -93,7 +93,7 @@ export default function ConsultationModal({ isOpen, onClose }) {
                 <DialogTitle className="text-[#6B584C]">אשמח להתייעץ</DialogTitle>
               </DialogHeader>
               
-              <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+              <form onSubmit={handleSubmit} className="space-y-4 mt-4" dir="rtl">
                 <div>
                   <Label htmlFor="full_name">שם מלא *</Label>
                   <Input

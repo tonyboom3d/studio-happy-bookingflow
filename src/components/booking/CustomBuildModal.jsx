@@ -98,7 +98,7 @@ export default function CustomBuildModal({ isOpen, onClose }) {
                 <DialogTitle className="text-[#6B584C]">אני רוצה לבנות משהו משלי</DialogTitle>
               </DialogHeader>
               
-              <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+              <form onSubmit={handleSubmit} className="space-y-4 mt-4" dir="rtl">
                 <div>
                   <Label htmlFor="full_name">שם מלא *</Label>
                   <Input

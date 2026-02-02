@@ -17,6 +17,7 @@ export default function ProductSelectionSection({
   const [showCatalog, setShowCatalog] = useState(false);
   const [showCustomBuild, setShowCustomBuild] = useState(false);
   const [showConsultation, setShowConsultation] = useState(false);
+  const [selectedOption, setSelectedOption] = useState(null);
 
   const getMeetings = (product) => {
     const isCouple = participants >= 2;
@@ -28,33 +29,41 @@ export default function ProductSelectionSection({
     return product.meetings_single_new || 4;
   };
 
+  const handleOptionClick = (optionId) => {
+    setSelectedOption(optionId);
+    if (optionId === 'catalog') setShowCatalog(true);
+    if (optionId === 'custom') setShowCustomBuild(true);
+    if (optionId === 'help') setShowConsultation(true);
+  };
+
   const options = [
     {
       id: 'catalog',
       title: 'בחירה מהקטלוג',
       description: 'בחרו מתוך מגוון מוצרים מוכנים',
       icon: ShoppingBag,
-      recommended: true,
-      onClick: () => setShowCatalog(true)
+      recommended: true
     },
     {
       id: 'custom',
       title: 'לבנות משהו משלי',
       description: 'יש לכם רעיון משלכם? ספרו לנו!',
-      icon: Wrench,
-      onClick: () => setShowCustomBuild(true)
+      icon: Wrench
     },
     {
       id: 'help',
       title: 'לא יודע/ת מה לבנות',
       description: 'נשמח לעזור לכם לבחור',
-      icon: HelpCircle,
-      onClick: () => setShowConsultation(true)
+      icon: HelpCircle
     }
   ];
 
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)), 0);
   const totalPrice = cart.reduce((sum, p) => sum + p.price, 0);
+  
+  const removeProduct = (productId) => {
+    setCart(cart.filter(p => p.id !== productId));
+  };
 
   return (
     <div className="py-4">
@@ -62,15 +71,18 @@ export default function ProductSelectionSection({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {options.map((option) => {
           const Icon = option.icon;
+          const isSelected = selectedOption === option.id;
           return (
             <motion.button
               key={option.id}
               whileHover={{ y: -4 }}
               whileTap={{ scale: 0.98 }}
-              onClick={option.onClick}
+              onClick={() => handleOptionClick(option.id)}
               className={cn(
                 "relative p-5 rounded-xl border-2 text-right transition-all duration-300",
-                "border-[#e8e8e8] hover:border-[#ADC178] bg-white hover:shadow-lg"
+                isSelected 
+                  ? "border-[#ADC178] bg-[#ADC178]/5 shadow-lg" 
+                  : "border-[#e8e8e8] hover:border-[#ADC178] bg-white hover:shadow-lg"
               )}
             >
               {option.recommended && (
@@ -94,27 +106,38 @@ export default function ProductSelectionSection({
         })}
       </div>
 
-      {/* סיכום מוצרים נבחרים */}
+      {/* מוצרים נבחרים */}
       {cart.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 bg-[#ADC178]/10 rounded-xl border border-[#ADC178]/30"
+          className="mb-6"
         >
           <h4 className="font-medium text-[#6B584C] mb-3">המוצרים שנבחרו:</h4>
-          <div className="space-y-2 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {cart.map(product => (
-              <div key={product.id} className="flex items-center justify-between text-sm">
-                <span className="text-[#464646]">{product.title}</span>
-                <span className="text-[#6B584C] font-medium">₪{product.price}</span>
-              </div>
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="relative group"
+              >
+                <div className="aspect-square rounded-lg overflow-hidden bg-[#f5f5f5] border border-[#e8e8e8]">
+                  <img
+                    src={product.image || "https://images.unsplash.com/photo-1588117472556-1ddf8c5c3c68?w=200"}
+                    alt={product.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <button
+                  onClick={() => removeProduct(product.id)}
+                  className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <span className="text-xs">🗑️</span>
+                </button>
+              </motion.div>
             ))}
-          </div>
-          <div className="pt-3 border-t border-[#ADC178]/30 flex justify-between items-center">
-            <div className="text-sm text-[#464646]">
-              {cart.length} מוצרים • {totalMeetings} מפגשים
-            </div>
-            <div className="text-lg font-bold text-[#ADC178]">₪{totalPrice}</div>
           </div>
         </motion.div>
       )}
