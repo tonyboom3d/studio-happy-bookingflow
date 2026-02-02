@@ -42,6 +42,8 @@ export default function FloatingSummary({
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+  
+  const progressPercentage = ((8 * 60 - timeLeft) / (8 * 60)) * 100;
 
   const basePrice = PRICING[participants] || 300;
   const productsPrice = cart.reduce((sum, p) => sum + p.price, 0);
@@ -90,13 +92,24 @@ export default function FloatingSummary({
       <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-[#e8e8e8] overflow-hidden">
         {/* טיימר מעל הכותרת */}
         {timerActive && (
-          <div className={cn(
-            "px-4 py-2 flex items-center justify-center gap-2 text-xs cursor-default",
-            timeLeft < 60 ? "bg-red-100 text-red-700" : "bg-[#ADC178]/20 text-[#6B584C]"
-          )}>
-            <Clock className="w-3.5 h-3.5" />
-            <span>עוד <span className="font-mono font-medium">{formatTime(timeLeft)}</span> עד שהדף יתרענן</span>
-          </div>
+          <>
+            <div className={cn(
+              "px-4 py-2 flex items-center justify-center gap-2 text-xs cursor-default",
+              timeLeft < 60 ? "bg-red-100 text-red-700" : "bg-[#ADC178]/20 text-[#6B584C]"
+            )}>
+              <Clock className="w-3.5 h-3.5" />
+              <span>עוד <span className="font-mono font-medium">{formatTime(timeLeft)}</span> עד שהדף יתרענן</span>
+            </div>
+            {/* פס טעינה */}
+            <div className="h-0.5 bg-[#e8e8e8] relative overflow-hidden">
+              <motion.div 
+                className="h-full bg-orange-500"
+                initial={{ width: '0%' }}
+                animate={{ width: `${progressPercentage}%` }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+          </>
         )}
         
         {/* כותרת */}

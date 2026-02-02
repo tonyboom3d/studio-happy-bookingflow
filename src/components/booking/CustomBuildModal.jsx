@@ -98,6 +98,17 @@ export default function CustomBuildModal({ isOpen, onClose }) {
                 <DialogTitle className="text-[#6B584C]">אני רוצה לבנות משהו משלי</DialogTitle>
               </DialogHeader>
               
+              {/* הסבר על התהליך */}
+              <div className="mt-4 p-3 bg-[#ADC178]/10 border border-[#ADC178]/30 rounded-lg">
+                <h4 className="font-medium text-[#6B584C] text-sm mb-2">התהליך:</h4>
+                <ol className="text-xs text-[#464646] space-y-1.5 mr-4" style={{ listStyleType: 'decimal' }}>
+                  <li>מלאו את הפרטים בטופס</li>
+                  <li>נבדוק את הבקשה ונתאים מסלול אישי (במידת האפשר)</li>
+                  <li>נשלח לכם קישור לבחירת תאריך + מחיר וכמות מפגשים</li>
+                  <li>תוכלו לשלם ולהתחיל ליצור!</li>
+                </ol>
+              </div>
+              
               <form onSubmit={handleSubmit} className="space-y-4 mt-4" dir="rtl">
                 <div>
                   <Label htmlFor="full_name">שם מלא *</Label>

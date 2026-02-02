@@ -52,7 +52,7 @@ export default function ProductSelectionSection({
     },
     {
       id: 'help',
-      title: 'לא יודע/ת מה לבנות',
+      title: 'אשמח להתייעץ לפני',
       description: 'נשמח לעזור לכם לבחור',
       icon: HelpCircle
     }
