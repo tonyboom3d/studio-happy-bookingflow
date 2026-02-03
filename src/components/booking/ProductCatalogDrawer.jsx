@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import {
   X, Filter, Check, Info, Package, Calendar, CreditCard,
-  Baby, Smile, Meh, Frown, Skull, TreeDeciduous
+  TreeDeciduous, Minus
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,15 +22,40 @@ const FALLBACK_PRODUCTS = [
   { id: 'fallback-1', title: 'טוען מוצרים...', price: 0, difficulty: 1, image: null, meetings_single_recycled: 1, meetings_couple_recycled: 1, meetings_single_new: 1, meetings_couple_new: 1 }
 ];
 
-function DifficultyIcon({ difficulty }) {
-  if (difficulty <= 1.5) return <Baby className="w-5 h-5 text-green-500" />;
-  if (difficulty <= 2.5) return <Smile className="w-5 h-5 text-lime-500" />;
-  if (difficulty <= 3.5) return <Meh className="w-5 h-5 text-yellow-500" />;
-  if (difficulty <= 4.5) return <Frown className="w-5 h-5 text-orange-500" />;
-  return <Skull className="w-5 h-5 text-red-500" />;
+// אייקון רמת קושי עם פסים עולים
+function DifficultyBars({ difficulty }) {
+  if (!difficulty && difficulty !== 0) {
+    return <span className="text-sm text-[#464646]/70">-</span>;
+  }
+
+  const level = Math.round(difficulty);
+  const bars = Math.min(Math.max(level, 1), 5);
+
+  // צבעים לפי רמת קושי
+  const getColor = () => {
+    if (bars <= 1) return 'bg-green-500';
+    if (bars <= 2) return 'bg-lime-500';
+    if (bars <= 3) return 'bg-yellow-500';
+    if (bars <= 4) return 'bg-orange-500';
+    return 'bg-red-500';
+  };
+
+  return (
+    <div className="flex items-end gap-0.5 h-4">
+      {[1, 2, 3, 4, 5].map((bar) => (
+        <div
+          key={bar}
+          className={`w-1.5 rounded-sm transition-all ${bar <= bars ? getColor() : 'bg-gray-200'
+            }`}
+          style={{ height: `${bar * 3 + 4}px` }}
+        />
+      ))}
+    </div>
+  );
 }
 
 function getDifficultyLabel(difficulty) {
+  if (!difficulty && difficulty !== 0) return '-';
   if (difficulty <= 1.5) return 'קל מאוד';
   if (difficulty <= 2.5) return 'קל';
   if (difficulty <= 3.5) return 'בינוני';
@@ -88,11 +113,11 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
       </TooltipProvider>
 
       <button onClick={onClick} className="w-full text-right">
-        <div className="aspect-[4/3] overflow-hidden bg-[#f5f5f5]">
+        <div className="aspect-[4/3] overflow-hidden bg-[#FEFAE0] flex items-center justify-center">
           <img
             src={product.image || "https://images.unsplash.com/photo-1588117472556-1ddf8c5c3c68?w=400"}
             alt={product.title}
-            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+            className="w-full h-full object-contain transition-transform duration-300 hover:scale-105"
           />
         </div>
 
@@ -104,7 +129,7 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="flex items-center gap-1.5">
-                    <DifficultyIcon difficulty={product.difficulty || 3} />
+                    <DifficultyBars difficulty={product.difficulty} />
                     <span className="text-xs text-[#464646]/70">{getDifficultyLabel(product.difficulty)}</span>
                   </div>
                 </TooltipTrigger>
@@ -158,11 +183,13 @@ export default function ProductCatalogDrawer({
   }, [products, difficultyFilter, priceFilter]);
 
   const toggleProduct = (product) => {
-    const isSelected = cart.some(p => p.id === product.id);
+    // תמיכה גם ב-id וגם ב-_id מ-Wix CMS
+    const productId = product._id || product.id;
+    const isSelected = cart.some(p => (p._id || p.id) === productId);
     if (isSelected) {
-      setCart(cart.filter(p => p.id !== product.id));
+      setCart(cart.filter(p => (p._id || p.id) !== productId));
     } else {
-      setCart([...cart, { ...product, meetings: getMeetings(product) }]);
+      setCart([...cart, { ...product, id: productId, meetings: getMeetings(product) }]);
     }
   };
 
@@ -254,16 +281,19 @@ export default function ProductCatalogDrawer({
         {/* גריד מוצרים */}
         <div className="flex-1 overflow-y-auto p-4 pb-32 h-[calc(100vh-300px)]">
           <div className="grid grid-cols-2 gap-4">
-            {filteredProducts.map(product => (
-              <ProductGridCard
-                key={product.id}
-                product={product}
-                isSelected={cart.some(p => p.id === product.id)}
-                onClick={() => toggleProduct(product)}
-                meetings={getMeetings(product)}
-                showNewWoodPrices={showNewWoodPrices}
-              />
-            ))}
+            {filteredProducts.map(product => {
+              const productId = product._id || product.id;
+              return (
+                <ProductGridCard
+                  key={productId}
+                  product={product}
+                  isSelected={cart.some(p => (p._id || p.id) === productId)}
+                  onClick={() => toggleProduct(product)}
+                  meetings={getMeetings(product)}
+                  showNewWoodPrices={showNewWoodPrices}
+                />
+              );
+            })}
           </div>
           {filteredProducts.length === 0 && (
             <div className="text-center py-12 text-[#464646]/70">
@@ -292,9 +322,13 @@ export default function ProductCatalogDrawer({
           </div>
           <Button
             onClick={onClose}
-            className="w-full bg-[#ADC178] hover:bg-[#9ab569] text-white"
+            disabled={cart.length === 0}
+            className={`w-full text-white transition-all ${cart.length > 0
+                ? 'bg-[#ADC178] hover:bg-[#9ab569]'
+                : 'bg-gray-300 cursor-not-allowed'
+              }`}
           >
-            אישור בחירה
+            {cart.length > 0 ? `אישור בחירה (${cart.length} מוצרים)` : 'בחר לפחות מוצר אחד'}
           </Button>
         </div>
       </SheetContent>
