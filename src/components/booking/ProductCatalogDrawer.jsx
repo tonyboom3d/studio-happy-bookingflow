@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import {
   X, Filter, Check, Info, Package, Calendar, CreditCard,
-  TreeDeciduous, Minus, ZoomIn
+  TreeDeciduous, Minus, ZoomIn, Recycle
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from '@/components/ui/switch';
@@ -131,19 +131,35 @@ export default function ProductCatalogDrawer({
   setCart,
   getMeetings,
   woodType,
+  participants,
   wixProducts // קבלת מוצרים מ-Wix!
 }) {
   const [difficultyFilter, setDifficultyFilter] = useState([1, 5]);
   const [priceFilter, setPriceFilter] = useState([0, 1000]);
   const [showFilters, setShowFilters] = useState(false);
-  const [showNewWoodPrices, setShowNewWoodPrices] = useState(woodType === 'new');
+  const [selectedWoodType, setSelectedWoodType] = useState(woodType || 'recycled');
   const [enlargedImage, setEnlargedImage] = useState(null);
+
+  // חישוב כמות מפגשים לפי סוג עץ נבחר ב-Drawer
+  const getLocalMeetings = (product) => {
+    const isCouple = participants >= 2;
+    const isRecycled = selectedWoodType === 'recycled';
+
+    if (isCouple && isRecycled) return parseInt(product.meetings_couple_recycled) || 0;
+    if (isCouple && !isRecycled) return parseInt(product.meetings_couple_new) || 0;
+    if (!isCouple && isRecycled) return parseInt(product.meetings_single_recycled) || 0;
+    return parseInt(product.meetings_single_new) || 0;
+  };
 
   // שימוש במוצרים מ-Wix, אם אין - fallback
   const products = wixProducts && wixProducts.length > 0 ? wixProducts : FALLBACK_PRODUCTS;
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
+      // סינון מוצרים שאין להם מפגשים עבור המצב הנוכחי
+      const meetings = getLocalMeetings(product);
+      if (meetings === 0) return false;
+
       return (
         (product.difficulty || 3) >= difficultyFilter[0] &&
         (product.difficulty || 3) <= difficultyFilter[1] &&
@@ -151,7 +167,7 @@ export default function ProductCatalogDrawer({
         (product.price || 0) <= priceFilter[1]
       );
     });
-  }, [products, difficultyFilter, priceFilter]);
+  }, [products, difficultyFilter, priceFilter, selectedWoodType, participants]);
 
   const toggleProduct = (product) => {
     // תמיכה גם ב-id וגם ב-_id מ-Wix CMS
@@ -188,17 +204,36 @@ export default function ProductCatalogDrawer({
             </button>
           </div>
 
-          {/* מחירים לפי סוג עץ */}
-          <div className="flex items-center justify-between p-3 bg-[#fafafa] rounded-lg">
-            <div className="flex items-center gap-2">
-              <TreeDeciduous className="w-4 h-4 text-[#6B584C]" />
-              <span className="text-sm text-[#464646]">הצג מחירים עם עץ חדש</span>
-            </div>
-            <div dir="ltr">
-              <Switch
-                checked={showNewWoodPrices}
-                onCheckedChange={setShowNewWoodPrices}
-              />
+          {/* סוג עץ Selection Tags */}
+          <div className="p-3 bg-[#fafafa] rounded-lg">
+            <p className="text-sm text-[#464646] mb-2">הצג מחירים וכמות מפגשים עבור סוג עץ:</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSelectedWoodType('recycled')}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all duration-200",
+                  selectedWoodType === 'recycled'
+                    ? "border-[#ADC178] bg-[#ADC178]/10 text-[#6B584C]"
+                    : "border-[#e8e8e8] bg-white text-[#464646] hover:border-[#ADC178]/50"
+                )}
+              >
+                <Recycle className="w-4 h-4" />
+                <span className="text-sm font-medium">עץ ממוחזר</span>
+                {selectedWoodType === 'recycled' && <Check className="w-4 h-4 text-[#ADC178]" />}
+              </button>
+              <button
+                onClick={() => setSelectedWoodType('new')}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all duration-200",
+                  selectedWoodType === 'new'
+                    ? "border-[#ADC178] bg-[#ADC178]/10 text-[#6B584C]"
+                    : "border-[#e8e8e8] bg-white text-[#464646] hover:border-[#ADC178]/50"
+                )}
+              >
+                <TreeDeciduous className="w-4 h-4" />
+                <span className="text-sm font-medium">עץ חדש</span>
+                {selectedWoodType === 'new' && <Check className="w-4 h-4 text-[#ADC178]" />}
+              </button>
             </div>
           </div>
 
@@ -262,8 +297,8 @@ export default function ProductCatalogDrawer({
                   product={product}
                   isSelected={cart.some(p => (p._id || p.id) === productId)}
                   onClick={() => toggleProduct(product)}
-                  meetings={getMeetings(product)}
-                  showNewWoodPrices={showNewWoodPrices}
+                  meetings={getLocalMeetings(product)}
+                  showNewWoodPrices={selectedWoodType === 'new'}
                   onZoom={setEnlargedImage}
                 />
               );

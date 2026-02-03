@@ -204,6 +204,7 @@ export default function ProductSelectionSection({
         setCart={setCart}
         getMeetings={getMeetings}
         woodType={woodType}
+        participants={participants}
         wixProducts={wixProducts}
       />
       <CustomBuildModal
