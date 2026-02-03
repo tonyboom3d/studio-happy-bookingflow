@@ -98,40 +98,39 @@ export default function FloatingSummary({
               className="overflow-hidden md:!h-auto md:!opacity-100"
             >
               <div className="p-3 space-y-2">
-          <AnimatePresence>
-            {items.map((item, idx) => {
-              const Icon = item.icon;
-              return (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 10 }}
-                  className={cn(
-                    "flex items-center justify-between text-sm p-2 rounded-lg transition-colors",
-                    item.active ? "bg-[#ADC178]/20" : "bg-[#fafafa]"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon className={cn(
-                      "w-4 h-4",
-                      item.active ? "text-[#ADC178]" : "text-[#6B584C]"
-                    )} />
-                    <span className="text-[#464646]">{item.label}</span>
-                  </div>
-                  {item.value && (
-                    <span className="font-medium text-[#6B584C]">{item.value}</span>
-                  )}
-                </motion.div>
-              );
-            })}
-            </AnimatePresence>
-                </div>
-              </motion.div>
-            )}
-            </AnimatePresence>
-            </div>
+                <AnimatePresence>
+                  {items.map((item, idx) => {
+                    const Icon = item.icon;
+                    return (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        className={cn(
+                          "flex items-center justify-between text-sm p-2 rounded-lg transition-colors",
+                          item.active ? "bg-[#ADC178]/20" : "bg-[#fafafa]"
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Icon className={cn(
+                            "w-4 h-4",
+                            item.active ? "text-[#ADC178]" : "text-[#6B584C]"
+                          )} />
+                          <span className="text-[#464646]">{item.label}</span>
+                        </div>
+                        {item.value && (
+                          <span className="font-medium text-[#6B584C]">{item.value}</span>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
             </motion.div>
-            );
-            }
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
 }
