@@ -14,7 +14,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClientInstance}>
-      <Router>
+      <Router basename="/Kan-bonim-booking-flow">
         <Routes>
           <Route path="*" element={<WorkshopBooking />} />
         </Routes>
