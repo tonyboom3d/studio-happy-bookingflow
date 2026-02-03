@@ -24,10 +24,11 @@ export default function ProductSelectionSection({
     const isCouple = participants >= 2;
     const isRecycled = woodType === 'recycled';
 
-    if (isCouple && isRecycled) return product.meetings_couple_recycled || 2;
-    if (isCouple && !isRecycled) return product.meetings_couple_new || 3;
-    if (!isCouple && isRecycled) return product.meetings_single_recycled || 3;
-    return product.meetings_single_new || 4;
+    // שימוש בשדות החדשים מ-Wix CMS
+    if (isCouple && isRecycled) return parseInt(product.meetings_couple_recycled) || 2;
+    if (isCouple && !isRecycled) return parseInt(product.meetings_couple_new) || 3;
+    if (!isCouple && isRecycled) return parseInt(product.meetings_single_recycled) || 3;
+    return parseInt(product.meetings_single_new) || 4;
   };
 
   const handleOptionClick = (optionId) => {

@@ -104,9 +104,18 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
           <TooltipContent side="bottom" className="bg-white border border-[#e8e8e8] p-3">
             <div className="text-sm text-[#464646]">
               <p className="font-medium mb-1">מידות:</p>
-              <p>אורך: {product.dimensions?.length || product.length || '-'} ס״מ</p>
-              <p>רוחב: {product.dimensions?.width || product.width || '-'} ס״מ</p>
-              <p>עומק/גובה: {product.dimensions?.depth || product.depth || '-'} ס״מ</p>
+              {(product.width || product.dimensions?.width) && (
+                <p>רוחב: {product.width || product.dimensions?.width} ס״מ</p>
+              )}
+              {(product.depth || product.dimensions?.depth) && (
+                <p>עומק: {product.depth || product.dimensions?.depth} ס״מ</p>
+              )}
+              {(product.height || product.dimensions?.height) && (
+                <p>גובה: {product.height || product.dimensions?.height} ס״מ</p>
+              )}
+              {!product.width && !product.depth && !product.height && !product.dimensions && (
+                <p>אין מידע על מידות</p>
+              )}
             </div>
           </TooltipContent>
         </Tooltip>
@@ -324,8 +333,8 @@ export default function ProductCatalogDrawer({
             onClick={onClose}
             disabled={cart.length === 0}
             className={`w-full text-white transition-all ${cart.length > 0
-                ? 'bg-[#ADC178] hover:bg-[#9ab569]'
-                : 'bg-gray-300 cursor-not-allowed'
+              ? 'bg-[#ADC178] hover:bg-[#9ab569]'
+              : 'bg-gray-300 cursor-not-allowed'
               }`}
           >
             {cart.length > 0 ? `אישור בחירה (${cart.length} מוצרים)` : 'בחר לפחות מוצר אחד'}
