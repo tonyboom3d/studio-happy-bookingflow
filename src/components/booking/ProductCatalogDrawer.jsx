@@ -5,8 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import {
   X, Filter, Check, Info, Package, Calendar, CreditCard,
-  TreeDeciduous, Minus
+  TreeDeciduous, Minus, ZoomIn
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from '@/components/ui/switch';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -22,48 +23,9 @@ const FALLBACK_PRODUCTS = [
   { id: 'fallback-1', title: 'טוען מוצרים...', price: 0, difficulty: 1, image: null, meetings_single_recycled: 1, meetings_couple_recycled: 1, meetings_single_new: 1, meetings_couple_new: 1 }
 ];
 
-// אייקון רמת קושי עם פסים עולים
-function DifficultyBars({ difficulty }) {
-  if (!difficulty && difficulty !== 0) {
-    return <span className="text-sm text-[#464646]/70">-</span>;
-  }
+// Difficulty functions removed as requested
 
-  const level = Math.round(difficulty);
-  const bars = Math.min(Math.max(level, 1), 5);
-
-  // צבעים לפי רמת קושי
-  const getColor = () => {
-    if (bars <= 1) return 'bg-green-500';
-    if (bars <= 2) return 'bg-lime-500';
-    if (bars <= 3) return 'bg-yellow-500';
-    if (bars <= 4) return 'bg-orange-500';
-    return 'bg-red-500';
-  };
-
-  return (
-    <div className="flex items-end gap-0.5 h-4">
-      {[1, 2, 3, 4, 5].map((bar) => (
-        <div
-          key={bar}
-          className={`w-1.5 rounded-sm transition-all ${bar <= bars ? getColor() : 'bg-gray-200'
-            }`}
-          style={{ height: `${bar * 3 + 4}px` }}
-        />
-      ))}
-    </div>
-  );
-}
-
-function getDifficultyLabel(difficulty) {
-  if (!difficulty && difficulty !== 0) return '-';
-  if (difficulty <= 1.5) return 'קל מאוד';
-  if (difficulty <= 2.5) return 'קל';
-  if (difficulty <= 3.5) return 'בינוני';
-  if (difficulty <= 4.5) return 'מאתגר';
-  return 'מאתגר מאוד';
-}
-
-function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPrices }) {
+function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPrices, onZoom }) {
   const [showDimensions, setShowDimensions] = useState(false);
   const displayPrice = showNewWoodPrices ? Math.round(product.price * 1.2) : product.price;
 
@@ -122,36 +84,35 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
       </TooltipProvider>
 
       <button onClick={onClick} className="w-full text-right">
-        <div className="aspect-[4/3] overflow-hidden bg-[#FEFAE0] flex items-center justify-center">
+        <div className="aspect-[4/3] overflow-hidden bg-[#FEFAE0] flex items-center justify-center relative group">
           <img
             src={product.image || "https://images.unsplash.com/photo-1588117472556-1ddf8c5c3c68?w=400"}
             alt={product.title}
             className="w-full h-full object-contain transition-transform duration-300 hover:scale-105"
           />
+
+          {/* כפתור הגדלה */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onZoom(product.image || "https://images.unsplash.com/photo-1588117472556-1ddf8c5c3c68?w=400");
+            }}
+            className="absolute bottom-2 left-2 p-1.5 bg-white/80 rounded-full hover:bg-white transition-colors opacity-0 group-hover:opacity-100"
+          >
+            <ZoomIn className="w-4 h-4 text-[#6B584C]" />
+          </button>
         </div>
 
         <div className="p-4">
           <h3 className="font-semibold text-[#6B584C] text-base mb-2">{product.title}</h3>
 
           <div className="flex items-center justify-between mb-3">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5">
-                    <DifficultyBars difficulty={product.difficulty} />
-                    <span className="text-xs text-[#464646]/70">{getDifficultyLabel(product.difficulty)}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>רמת קושי: {product.difficulty}/5</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
             <div className="flex items-center gap-1 text-xs text-[#464646]/70">
               <Calendar className="w-3.5 h-3.5" />
               <span>{meetings} מפגשים</span>
             </div>
+
+            {/* הוסר רמת קושי כבקשת המשתמש */}
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-[#e8e8e8]">
@@ -176,6 +137,7 @@ export default function ProductCatalogDrawer({
   const [priceFilter, setPriceFilter] = useState([0, 1000]);
   const [showFilters, setShowFilters] = useState(false);
   const [showNewWoodPrices, setShowNewWoodPrices] = useState(woodType === 'new');
+  const [enlargedImage, setEnlargedImage] = useState(null);
 
   // שימוש במוצרים מ-Wix, אם אין - fallback
   const products = wixProducts && wixProducts.length > 0 ? wixProducts : FALLBACK_PRODUCTS;
@@ -232,10 +194,12 @@ export default function ProductCatalogDrawer({
               <TreeDeciduous className="w-4 h-4 text-[#6B584C]" />
               <span className="text-sm text-[#464646]">הצג מחירים עם עץ חדש</span>
             </div>
-            <Switch
-              checked={showNewWoodPrices}
-              onCheckedChange={setShowNewWoodPrices}
-            />
+            <div dir="ltr">
+              <Switch
+                checked={showNewWoodPrices}
+                onCheckedChange={setShowNewWoodPrices}
+              />
+            </div>
           </div>
 
           {/* פילטרים */}
@@ -300,6 +264,7 @@ export default function ProductCatalogDrawer({
                   onClick={() => toggleProduct(product)}
                   meetings={getMeetings(product)}
                   showNewWoodPrices={showNewWoodPrices}
+                  onZoom={setEnlargedImage}
                 />
               );
             })}
@@ -329,18 +294,42 @@ export default function ProductCatalogDrawer({
               <span className="text-xl font-bold text-[#ADC178]">₪{totalPrice}</span>
             </div>
           </div>
-          <Button
-            onClick={onClose}
-            disabled={cart.length === 0}
-            className={`w-full text-white transition-all ${cart.length > 0
-              ? 'bg-[#ADC178] hover:bg-[#9ab569]'
-              : 'bg-gray-300 cursor-not-allowed'
-              }`}
+          <motion.div
+            animate={cart.length > 0 ? { scale: [1, 1.02, 1] } : {}}
+            transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
           >
-            {cart.length > 0 ? `אישור בחירה (${cart.length} מוצרים)` : 'בחר לפחות מוצר אחד'}
-          </Button>
+            <Button
+              onClick={onClose}
+              disabled={cart.length === 0}
+              className={`w-full text-white transition-all h-12 text-lg font-medium shadow-md ${cart.length > 0
+                ? 'bg-[#ADC178] hover:bg-[#9ab569]'
+                : 'bg-gray-300 cursor-not-allowed'
+                }`}
+            >
+              המשך
+            </Button>
+          </motion.div>
         </div>
       </SheetContent>
+
+      {/* מודל להגדלת תמונה */}
+      <Dialog open={!!enlargedImage} onOpenChange={() => setEnlargedImage(null)}>
+        <DialogContent className="max-w-3xl bg-transparent border-none p-0 shadow-none">
+          <div className="relative w-full h-full flex items-center justify-center">
+            <button
+              onClick={() => setEnlargedImage(null)}
+              className="absolute -top-10 right-0 bg-white/20 hover:bg-white/40 rounded-full p-2 text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img
+              src={enlargedImage}
+              alt="Enlarged product"
+              className="max-h-[80vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   );
 }
