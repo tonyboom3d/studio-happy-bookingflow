@@ -32,6 +32,15 @@ export default function WorkshopBooking() {
   const [isComplete, setIsComplete] = useState(false);
   const [booking, setBooking] = useState(null);
   const [timerActive, setTimerActive] = useState(true);
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+
+  // טיימר מינימום 3 שניות לטעינה
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinTimeElapsed(true);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // האזנה לנתונים מ-Wix
   useEffect(() => {
@@ -123,6 +132,39 @@ export default function WorkshopBooking() {
       }
     }, 10000);
   };
+
+  // מסך טעינה ראשוני
+  if (!minTimeElapsed || !wixProducts) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white" dir="rtl">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="flex flex-col items-center"
+        >
+          <div className="relative mb-6">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="w-20 h-20 border-4 border-[#e8e8e8] border-t-[#ADC178] rounded-full"
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 text-[#ADC178] animate-pulse" />
+            </div>
+          </div>
+          <motion.h2
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="text-2xl font-bold text-[#6B584C]"
+          >
+            הנגריה הפתוחה
+          </motion.h2>
+          <p className="text-[#464646]/70 mt-2">טוען נתונים...</p>
+        </motion.div>
+      </div>
+    );
+  }
 
   // אם ההזמנה הושלמה
   if (isComplete) {
