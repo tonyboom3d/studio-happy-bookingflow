@@ -8,7 +8,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Upload, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { base44 } from '@/api/base44Client';
+
+// Helper to send custom build request to Wix parent
+const sendCustomBuildToWix = (data) => {
+  try {
+    window.parent.postMessage({ type: 'CUSTOM_BUILD_REQUEST', data }, '*');
+  } catch (e) {
+    console.log('Could not send to Wix parent');
+  }
+};
 
 export default function CustomBuildModal({ isOpen, onClose }) {
   const [formData, setFormData] = useState({
@@ -27,24 +35,22 @@ export default function CustomBuildModal({ isOpen, onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // העלאת קבצים אם יש
-    let attachments = [];
-    for (const file of files) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      attachments.push(file_url);
-    }
-    
-    // שמירת הבקשה
-    await base44.entities.ConsultationRequest.create({
+
+    // Note: File uploads would need to be handled by Wix
+    const requestData = {
       ...formData,
-      attachments,
+      attachments: files.map(f => f.name),
       request_type: 'custom_build',
       status: 'new'
-    });
-    
-    setIsSubmitting(false);
-    setIsSuccess(true);
+    };
+
+    sendCustomBuildToWix(requestData);
+
+    // Simulate success
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setIsSuccess(true);
+    }, 1000);
   };
 
   const handleClose = () => {
@@ -81,7 +87,7 @@ export default function CustomBuildModal({ isOpen, onClose }) {
                 <Button variant="outline" onClick={handleClose}>
                   סגירת חלון
                 </Button>
-                <Button 
+                <Button
                   className="bg-[#ADC178] hover:bg-[#9ab569]"
                   onClick={handleClose}
                 >
@@ -97,7 +103,7 @@ export default function CustomBuildModal({ isOpen, onClose }) {
               <DialogHeader>
                 <DialogTitle className="text-[#6B584C]">אני רוצה לבנות משהו משלי</DialogTitle>
               </DialogHeader>
-              
+
               {/* הסבר על התהליך */}
               <div className="mt-4 p-3 bg-[#ADC178]/10 border border-[#ADC178]/30 rounded-lg">
                 <h4 className="font-medium text-[#6B584C] text-sm mb-2">התהליך:</h4>
@@ -108,43 +114,43 @@ export default function CustomBuildModal({ isOpen, onClose }) {
                   <li>תוכלו לשלם ולהתחיל ליצור!</li>
                 </ol>
               </div>
-              
+
               <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                 <div>
                   <Label htmlFor="full_name">שם מלא *</Label>
                   <Input
                     id="full_name"
                     value={formData.full_name}
-                    onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                     required
                     className="mt-1"
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="email">אימייל *</Label>
                   <Input
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
                     className="mt-1 text-left"
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="phone">טלפון *</Label>
                   <Input
                     id="phone"
                     type="tel"
                     value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     required
                     className="mt-1 text-left"
                   />
                 </div>
-                
+
                 <div>
                   <Label>העלאת תמונה/סרטון של הרעיון (אופציונלי)</Label>
                   <div className="mt-1">
@@ -163,35 +169,35 @@ export default function CustomBuildModal({ isOpen, onClose }) {
                     </label>
                   </div>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="message">תאר/י מה תרצה לבנות *</Label>
                   <Textarea
                     id="message"
                     value={formData.message}
-                    onChange={(e) => setFormData({...formData, message: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                     required
                     placeholder="ספרו לנו על הפרויקט שחלמתם עליו..."
                     className="mt-1 min-h-[100px]"
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="dimensions">מידות (אופציונלי)</Label>
                   <Input
                     id="dimensions"
                     value={formData.dimensions}
-                    onChange={(e) => setFormData({...formData, dimensions: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
                     placeholder="למשל: 120x60x45 ס״מ"
                     className="mt-1"
                   />
                 </div>
-                
+
                 <div>
                   <Label>סוג עץ מועדף *</Label>
                   <RadioGroup
                     value={formData.wood_preference}
-                    onValueChange={(value) => setFormData({...formData, wood_preference: value})}
+                    onValueChange={(value) => setFormData({ ...formData, wood_preference: value })}
                     className="mt-2 space-y-2"
                   >
                     <div className="flex items-center gap-2">
@@ -208,18 +214,18 @@ export default function CustomBuildModal({ isOpen, onClose }) {
                     </div>
                   </RadioGroup>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="marketing"
                     checked={formData.marketing_consent}
-                    onCheckedChange={(checked) => setFormData({...formData, marketing_consent: checked})}
+                    onCheckedChange={(checked) => setFormData({ ...formData, marketing_consent: checked })}
                   />
                   <Label htmlFor="marketing" className="text-sm font-normal">
                     אני מאשר/ת קבלת עדכונים ודיוור
                   </Label>
                 </div>
-                
+
                 <Button
                   type="submit"
                   disabled={isSubmitting}

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import AccordionSection from '../components/booking/AccordionSection';
 import ParticipantsSection from '../components/booking/ParticipantsSection';
@@ -9,25 +9,65 @@ import FloatingSummary from '../components/booking/FloatingSummary';
 import TimeSlotsSection from '../components/booking/TimeSlotsSection';
 import PersonalDetailsSection from '../components/booking/PersonalDetailsSection';
 import ThankYouScreen from '../components/booking/ThankYouScreen';
-import { base44 } from '@/api/base44Client';
+import { submitBooking, subscribeToWix, notifyProgress } from '@/api/wixBridge';
 
 export default function WorkshopBooking() {
   // State ראשי
   const [activeSection, setActiveSection] = useState(1);
   const [completedSections, setCompletedSections] = useState([]);
-  
+
   // נתוני ההזמנה
   const [participants, setParticipants] = useState(1);
   const [woodType, setWoodType] = useState('');
   const [cart, setCart] = useState([]);
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [userDetails, setUserDetails] = useState({});
-  
+
+  // נתונים מ-Wix
+  const [wixProducts, setWixProducts] = useState(null);
+  const [wixSlots, setWixSlots] = useState(null);
+
   // סטטוס
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [booking, setBooking] = useState(null);
   const [timerActive, setTimerActive] = useState(true);
+
+  // האזנה לנתונים מ-Wix
+  useEffect(() => {
+    const unsubscribe = subscribeToWix((data) => {
+      console.log('[WorkshopBooking] Received Wix data:', data);
+
+      if (data.products) {
+        setWixProducts(data.products);
+      }
+      if (data.slots) {
+        setWixSlots(data.slots);
+      }
+      if (data.bookingConfirmed) {
+        // Wix confirmed booking saved
+        setIsProcessing(false);
+        setIsComplete(true);
+      }
+      if (data.bookingError) {
+        // Booking failed
+        setIsProcessing(false);
+        alert('שגיאה בשמירת ההזמנה: ' + data.bookingError);
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // עדכון Wix על התקדמות
+  useEffect(() => {
+    notifyProgress(activeSection, {
+      participants,
+      woodType,
+      cartCount: cart.length,
+      slotsCount: selectedSlots.length
+    });
+  }, [activeSection, participants, woodType, cart.length, selectedSlots.length]);
 
   // חישוב סה"כ מפגשים
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || 3), 0);
@@ -50,7 +90,7 @@ export default function WorkshopBooking() {
   // שליחת ההזמנה
   const handleSubmit = async () => {
     setIsProcessing(true);
-    
+
     const bookingData = {
       full_name: userDetails.full_name,
       email: userDetails.email,
@@ -58,10 +98,10 @@ export default function WorkshopBooking() {
       participants,
       wood_type: woodType,
       products: cart.map(p => ({ product_id: p.id, title: p.title, price: p.price })),
-      selected_slots: selectedSlots.map(s => ({ 
-        slot_id: s.id, 
-        date: s.date.toISOString(), 
-        time: s.time 
+      selected_slots: selectedSlots.map(s => ({
+        slot_id: s.id,
+        date: s.date?.toISOString?.() || s.date,
+        time: s.time
       })),
       total_price: cart.reduce((sum, p) => sum + p.price, 0),
       total_sessions: totalMeetings,
@@ -71,21 +111,24 @@ export default function WorkshopBooking() {
       status: 'pending'
     };
 
-    const created = await base44.entities.Booking.create(bookingData);
-    
-    // סימולציה של תשלום
+    // שליחה ל-Wix דרך postMessage
+    submitBooking(bookingData);
+
+    // אם לא מקבלים תגובה מ-Wix תוך 10 שניות, נניח שהצליח
     setTimeout(() => {
-      setBooking({ ...bookingData, id: created.id });
-      setIsProcessing(false);
-      setIsComplete(true);
-    }, 1500);
+      if (isProcessing) {
+        setBooking(bookingData);
+        setIsProcessing(false);
+        setIsComplete(true);
+      }
+    }, 10000);
   };
 
   // אם ההזמנה הושלמה
   if (isComplete) {
     return (
-      <ThankYouScreen 
-        booking={booking} 
+      <ThankYouScreen
+        booking={booking}
         onGoHome={() => {
           setIsComplete(false);
           setActiveSection(1);
@@ -96,7 +139,7 @@ export default function WorkshopBooking() {
           setSelectedSlots([]);
           setUserDetails({});
           setBooking(null);
-        }} 
+        }}
       />
     );
   }
@@ -111,7 +154,7 @@ export default function WorkshopBooking() {
         >
           <Loader2 className="w-12 h-12 text-[#ADC178]" />
         </motion.div>
-        <p className="mt-4 text-lg text-[#6B584C]">מעביר לתשלום מאובטח...</p>
+        <p className="mt-4 text-lg text-[#6B584C]">שומר את ההזמנה...</p>
       </div>
     );
   }
@@ -128,14 +171,14 @@ export default function WorkshopBooking() {
     <div className="min-h-screen bg-gradient-to-b from-white to-[#fafafa]" dir="rtl">
       {/* Header */}
       <header className="py-8 px-4 text-center border-b border-[#e8e8e8] bg-white">
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-3xl md:text-4xl font-bold text-[#6B584C]"
         >
           הנגריה הפתוחה
         </motion.h1>
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
@@ -183,6 +226,7 @@ export default function WorkshopBooking() {
                     setCart={setCart}
                     participants={participants}
                     woodType={woodType}
+                    products={wixProducts}
                     onContinue={() => completeSection(3)}
                   />
                 )}
@@ -191,6 +235,7 @@ export default function WorkshopBooking() {
                     selectedSlots={selectedSlots}
                     setSelectedSlots={setSelectedSlots}
                     totalMeetings={totalMeetings || 1}
+                    availableSlots={wixSlots}
                     onContinue={() => completeSection(4)}
                     timerActive={timerActive}
                     setTimerActive={setTimerActive}

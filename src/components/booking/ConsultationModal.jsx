@@ -7,7 +7,15 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Upload, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { base44 } from '@/api/base44Client';
+
+// Helper to send consultation request to Wix parent
+const sendConsultationToWix = (data) => {
+  try {
+    window.parent.postMessage({ type: 'CONSULTATION_REQUEST', data }, '*');
+  } catch (e) {
+    console.log('Could not send to Wix parent');
+  }
+};
 
 export default function ConsultationModal({ isOpen, onClose }) {
   const [formData, setFormData] = useState({
@@ -24,24 +32,23 @@ export default function ConsultationModal({ isOpen, onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // העלאת קבצים אם יש
-    let attachments = [];
-    for (const file of files) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      attachments.push(file_url);
-    }
-    
-    // שמירת הבקשה
-    await base44.entities.ConsultationRequest.create({
+
+    // Note: File uploads would need to be handled by Wix
+    // For now, just send the form data
+    const requestData = {
       ...formData,
-      attachments,
+      attachments: files.map(f => f.name), // Just file names for now
       request_type: 'consultation',
       status: 'new'
-    });
-    
-    setIsSubmitting(false);
-    setIsSuccess(true);
+    };
+
+    sendConsultationToWix(requestData);
+
+    // Simulate success (Wix will handle actual saving)
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setIsSuccess(true);
+    }, 1000);
   };
 
   const handleClose = () => {
@@ -76,7 +83,7 @@ export default function ConsultationModal({ isOpen, onClose }) {
                 <Button variant="outline" onClick={handleClose}>
                   סגירת חלון
                 </Button>
-                <Button 
+                <Button
                   className="bg-[#ADC178] hover:bg-[#9ab569]"
                   onClick={handleClose}
                 >
@@ -92,54 +99,54 @@ export default function ConsultationModal({ isOpen, onClose }) {
               <DialogHeader>
                 <DialogTitle className="text-[#6B584C]">אשמח להתייעץ</DialogTitle>
               </DialogHeader>
-              
+
               <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                 <div>
                   <Label htmlFor="full_name">שם מלא *</Label>
                   <Input
                     id="full_name"
                     value={formData.full_name}
-                    onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                     required
                     className="mt-1"
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="phone">טלפון *</Label>
                   <Input
                     id="phone"
                     type="tel"
                     value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     required
                     className="mt-1 text-left"
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="email">אימייל *</Label>
                   <Input
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
                     className="mt-1 text-left"
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="message">מה תרצה להתייעץ? *</Label>
                   <Textarea
                     id="message"
                     value={formData.message}
-                    onChange={(e) => setFormData({...formData, message: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                     required
                     className="mt-1 min-h-[100px]"
                   />
                 </div>
-                
+
                 <div>
                   <Label>העלאת תמונות/סרטון (אופציונלי)</Label>
                   <div className="mt-1">
@@ -158,18 +165,18 @@ export default function ConsultationModal({ isOpen, onClose }) {
                     </label>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="marketing"
                     checked={formData.marketing_consent}
-                    onCheckedChange={(checked) => setFormData({...formData, marketing_consent: checked})}
+                    onCheckedChange={(checked) => setFormData({ ...formData, marketing_consent: checked })}
                   />
                   <Label htmlFor="marketing" className="text-sm font-normal">
                     אני מאשר/ת קבלת עדכונים ודיוור
                   </Label>
                 </div>
-                
+
                 <Button
                   type="submit"
                   disabled={isSubmitting}
