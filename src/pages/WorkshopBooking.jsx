@@ -218,7 +218,6 @@ export default function WorkshopBooking() {
         selectedSlots={selectedSlots}
         totalMeetings={totalMeetings}
         activeSection={activeSection}
-        timerActive={timerActive}
       />
 
       {/* Footer */}
