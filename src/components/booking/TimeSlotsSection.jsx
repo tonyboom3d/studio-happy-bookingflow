@@ -230,21 +230,32 @@ export default function TimeSlotsSection({
 
       {/* כפתור המשך */}
       <div className="flex justify-center mt-6">
-        <Button
-          onClick={() => {
-            setSelectedSlots(selectedDates.filter(Boolean).map((date, i) => ({
-              id: `slot-${i}`,
-              date: date,
-              time: '10:00'
-            })));
-            onContinue();
+        <motion.div
+          animate={selectedDates.filter(Boolean).length === totalMeetings ? {
+            scale: [1, 1.05, 1],
+          } : {}}
+          transition={{
+            duration: 2,
+            repeat: selectedDates.filter(Boolean).length === totalMeetings ? Infinity : 0,
+            repeatDelay: 1
           }}
-          disabled={selectedDates.filter(Boolean).length !== totalMeetings}
-          className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
-                     transition-all duration-200 text-lg disabled:opacity-50"
         >
-          המשך לפרטים אישיים
-        </Button>
+          <Button
+            onClick={() => {
+              setSelectedSlots(selectedDates.filter(Boolean).map((date, i) => ({
+                id: `slot-${i}`,
+                date: date,
+                time: '10:00'
+              })));
+              onContinue();
+            }}
+            disabled={selectedDates.filter(Boolean).length !== totalMeetings}
+            className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
+                       transition-all duration-200 text-lg disabled:opacity-50"
+          >
+            המשך לפרטים אישיים
+          </Button>
+        </motion.div>
       </div>
     </div>
   );

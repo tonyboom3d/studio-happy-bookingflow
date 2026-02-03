@@ -21,29 +21,8 @@ export default function FloatingSummary({
   cart, 
   selectedSlots,
   totalMeetings,
-  activeSection,
-  timerActive 
+  activeSection
 }) {
-  const [timeLeft, setTimeLeft] = useState(8 * 60);
-  
-  useEffect(() => {
-    if (timerActive && timeLeft > 0) {
-      const timer = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
-      return () => clearInterval(timer);
-    } else if (timerActive && timeLeft === 0) {
-      window.location.reload();
-    }
-  }, [timerActive, timeLeft]);
-  
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-  
-  const progressPercentage = ((8 * 60 - timeLeft) / (8 * 60)) * 100;
 
   const basePrice = PRICING[participants] || 300;
   const productsPrice = cart.reduce((sum, p) => sum + p.price, 0);
@@ -90,28 +69,6 @@ export default function FloatingSummary({
       className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:w-72 z-50"
     >
       <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-[#e8e8e8] overflow-hidden">
-        {/* טיימר מעל הכותרת */}
-        {timerActive && (
-          <>
-            <div className={cn(
-              "px-4 py-2 flex items-center justify-center gap-2 text-xs cursor-default",
-              timeLeft < 60 ? "bg-red-100 text-red-700" : "bg-[#ADC178]/20 text-[#6B584C]"
-            )}>
-              <Clock className="w-3.5 h-3.5" />
-              <span>עוד <span className="font-mono font-medium">{formatTime(timeLeft)}</span> עד שהדף יתרענן</span>
-            </div>
-            {/* פס טעינה */}
-            <div className="h-0.5 bg-[#e8e8e8] relative overflow-hidden">
-              <motion.div 
-                className="h-full bg-orange-500"
-                initial={{ width: '0%' }}
-                animate={{ width: `${progressPercentage}%` }}
-                transition={{ duration: 0.3 }}
-              />
-            </div>
-          </>
-        )}
-        
         {/* כותרת */}
         <div className="bg-[#6B584C] text-white px-4 py-2.5 flex items-center justify-between">
           <span className="font-medium text-sm">סיכום הזמנה</span>

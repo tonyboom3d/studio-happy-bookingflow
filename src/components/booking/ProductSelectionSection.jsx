@@ -67,6 +67,11 @@ export default function ProductSelectionSection({
 
   return (
     <div className="py-4">
+      {/* הנחייה */}
+      <div className="text-center mb-4">
+        <p className="text-sm text-[#464646]/70">בחרו את אחת מהאפשרויות</p>
+      </div>
+
       {/* אפשרויות בחירה */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {options.map((option) => {
@@ -168,14 +173,25 @@ export default function ProductSelectionSection({
 
       {/* כפתור המשך */}
       <div className="flex justify-center mt-8">
-        <Button
-          onClick={onContinue}
-          disabled={cart.length === 0}
-          className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
-                     transition-all duration-200 text-lg disabled:opacity-50"
+        <motion.div
+          animate={cart.length > 0 ? {
+            scale: [1, 1.05, 1],
+          } : {}}
+          transition={{
+            duration: 2,
+            repeat: cart.length > 0 ? Infinity : 0,
+            repeatDelay: 1
+          }}
         >
-          המשך לבחירת תאריכים
-        </Button>
+          <Button
+            onClick={onContinue}
+            disabled={cart.length === 0}
+            className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
+                       transition-all duration-200 text-lg disabled:opacity-50"
+          >
+            המשך לבחירת תאריכים
+          </Button>
+        </motion.div>
       </div>
 
       {/* מודלים */}
