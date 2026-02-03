@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, TreeDeciduous, Package, Calendar, CreditCard, Clock } from 'lucide-react';
+import { Users, TreeDeciduous, Package, Calendar, CreditCard, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -23,6 +23,7 @@ export default function FloatingSummary({
   totalMeetings,
   activeSection
 }) {
+  const [isOpen, setIsOpen] = useState(false);
 
   const basePrice = PRICING[participants] || 300;
   const productsPrice = cart.reduce((sum, p) => sum + p.price, 0);
@@ -70,16 +71,33 @@ export default function FloatingSummary({
     >
       <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-[#e8e8e8] overflow-hidden">
         {/* כותרת */}
-        <div className="bg-[#6B584C] text-white px-4 py-2.5 flex items-center justify-between">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full bg-[#6B584C] text-white px-4 py-2.5 flex items-center justify-between md:cursor-default"
+        >
           <span className="font-medium text-sm">סיכום הזמנה</span>
-          <div className="flex items-center gap-1.5">
-            <CreditCard className="w-4 h-4" />
-            <span className="font-bold">₪{totalPrice}</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <CreditCard className="w-4 h-4" />
+              <span className="font-bold">₪{totalPrice}</span>
+            </div>
+            <div className="md:hidden">
+              {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            </div>
           </div>
-        </div>
+        </button>
 
         {/* פריטים */}
-        <div className="p-3 space-y-2">
+        <AnimatePresence>
+          {(isOpen || window.innerWidth >= 768) && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden md:!h-auto md:!opacity-100"
+            >
+              <div className="p-3 space-y-2">
           <AnimatePresence>
             {items.map((item, idx) => {
               const Icon = item.icon;
@@ -107,9 +125,13 @@ export default function FloatingSummary({
                 </motion.div>
               );
             })}
-          </AnimatePresence>
-        </div>
-      </div>
-    </motion.div>
-  );
+            </AnimatePresence>
+                </div>
+              </motion.div>
+            )}
+            </AnimatePresence>
+            </div>
+            </motion.div>
+            );
+            }
 }
