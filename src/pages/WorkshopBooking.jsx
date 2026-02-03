@@ -226,7 +226,7 @@ export default function WorkshopBooking() {
                     setCart={setCart}
                     participants={participants}
                     woodType={woodType}
-                    products={wixProducts}
+                    wixProducts={wixProducts}
                     onContinue={() => completeSection(3)}
                   />
                 )}

@@ -7,12 +7,13 @@ import ProductCatalogDrawer from './ProductCatalogDrawer';
 import CustomBuildModal from './CustomBuildModal';
 import ConsultationModal from './ConsultationModal';
 
-export default function ProductSelectionSection({ 
-  cart, 
-  setCart, 
-  participants, 
-  woodType, 
-  onContinue 
+export default function ProductSelectionSection({
+  cart,
+  setCart,
+  participants,
+  woodType,
+  onContinue,
+  wixProducts // הוספת מוצרים מ-Wix
 }) {
   const [showCatalog, setShowCatalog] = useState(false);
   const [showCustomBuild, setShowCustomBuild] = useState(false);
@@ -22,7 +23,7 @@ export default function ProductSelectionSection({
   const getMeetings = (product) => {
     const isCouple = participants >= 2;
     const isRecycled = woodType === 'recycled';
-    
+
     if (isCouple && isRecycled) return product.meetings_couple_recycled || 2;
     if (isCouple && !isRecycled) return product.meetings_couple_new || 3;
     if (!isCouple && isRecycled) return product.meetings_single_recycled || 3;
@@ -60,7 +61,7 @@ export default function ProductSelectionSection({
 
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)), 0);
   const totalPrice = cart.reduce((sum, p) => sum + p.price, 0);
-  
+
   const removeProduct = (productId) => {
     setCart(cart.filter(p => p.id !== productId));
   };
@@ -85,8 +86,8 @@ export default function ProductSelectionSection({
               onClick={() => handleOptionClick(option.id)}
               className={cn(
                 "relative p-5 rounded-xl border-2 text-right transition-all duration-300",
-                isSelected 
-                  ? "border-[#ADC178] bg-[#ADC178]/5 shadow-lg" 
+                isSelected
+                  ? "border-[#ADC178] bg-[#ADC178]/5 shadow-lg"
                   : "border-[#e8e8e8] hover:border-[#ADC178] bg-white hover:shadow-lg"
               )}
             >
@@ -96,7 +97,7 @@ export default function ProductSelectionSection({
                   מומלץ
                 </div>
               )}
-              
+
               <div className="flex flex-col items-center text-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-[#f5f5f5] flex items-center justify-center text-[#6B584C]">
                   <Icon className="w-6 h-6" />
@@ -121,15 +122,15 @@ export default function ProductSelectionSection({
           <h4 className="font-medium text-[#6B584C] mb-3">המוצרים שנבחרו:</h4>
           <div className="space-y-2">
             {cart.map(product => {
-              const DifficultyIcon = product.difficulty <= 1.5 ? Baby : 
-                                     product.difficulty <= 2.5 ? Smile : 
-                                     product.difficulty <= 3.5 ? Meh : 
-                                     product.difficulty <= 4.5 ? Frown : Skull;
-              const difficultyColor = product.difficulty <= 1.5 ? 'text-green-500' : 
-                                     product.difficulty <= 2.5 ? 'text-lime-500' : 
-                                     product.difficulty <= 3.5 ? 'text-yellow-500' : 
-                                     product.difficulty <= 4.5 ? 'text-orange-500' : 'text-red-500';
-              
+              const DifficultyIcon = product.difficulty <= 1.5 ? Baby :
+                product.difficulty <= 2.5 ? Smile :
+                  product.difficulty <= 3.5 ? Meh :
+                    product.difficulty <= 4.5 ? Frown : Skull;
+              const difficultyColor = product.difficulty <= 1.5 ? 'text-green-500' :
+                product.difficulty <= 2.5 ? 'text-lime-500' :
+                  product.difficulty <= 3.5 ? 'text-yellow-500' :
+                    product.difficulty <= 4.5 ? 'text-orange-500' : 'text-red-500';
+
               return (
                 <motion.div
                   key={product.id}
@@ -195,21 +196,22 @@ export default function ProductSelectionSection({
       </div>
 
       {/* מודלים */}
-      <ProductCatalogDrawer 
-        isOpen={showCatalog} 
+      <ProductCatalogDrawer
+        isOpen={showCatalog}
         onClose={() => setShowCatalog(false)}
         cart={cart}
         setCart={setCart}
         getMeetings={getMeetings}
         woodType={woodType}
+        wixProducts={wixProducts}
       />
-      <CustomBuildModal 
-        isOpen={showCustomBuild} 
-        onClose={() => setShowCustomBuild(false)} 
+      <CustomBuildModal
+        isOpen={showCustomBuild}
+        onClose={() => setShowCustomBuild(false)}
       />
-      <ConsultationModal 
-        isOpen={showConsultation} 
-        onClose={() => setShowConsultation(false)} 
+      <ConsultationModal
+        isOpen={showConsultation}
+        onClose={() => setShowConsultation(false)}
       />
     </div>
   );
