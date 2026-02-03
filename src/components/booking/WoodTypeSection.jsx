@@ -24,6 +24,26 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
 
   return (
     <div className="py-4">
+      {/* הנחייה */}
+      <div className="text-right mb-2">
+        <p className="text-sm text-[#464646]/70">בחרו סוג עץ</p>
+      </div>
+
+      {/* הסבר על ההבדלים */}
+      <div className="mb-6 p-4 bg-[#f5f5f5] rounded-xl">
+        <h3 className="text-base font-semibold text-[#6B584C] mb-3">מה ההבדל בין סוגי העצים?</h3>
+        <div className="space-y-2 text-sm text-[#464646]">
+          <div>
+            <span className="font-medium text-[#6B584C]">עץ ממוחזר:</span>
+            <p className="text-xs mt-0.5">טקסט יבוא כאן</p>
+          </div>
+          <div>
+            <span className="font-medium text-[#6B584C]">עץ חדש:</span>
+            <p className="text-xs mt-0.5">טקסט יבוא כאן</p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {options.map((option) => {
           const isSelected = woodType === option.id;
@@ -76,14 +96,25 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
       </div>
       
       <div className="flex justify-center mt-8">
-        <Button
-          onClick={onContinue}
-          disabled={!woodType}
-          className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
-                     transition-all duration-200 text-lg disabled:opacity-50"
+        <motion.div
+          animate={woodType ? {
+            scale: [1, 1.05, 1],
+          } : {}}
+          transition={{
+            duration: 2,
+            repeat: woodType ? Infinity : 0,
+            repeatDelay: 1
+          }}
         >
-          המשך
-        </Button>
+          <Button
+            onClick={onContinue}
+            disabled={!woodType}
+            className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
+                       transition-all duration-200 text-lg disabled:opacity-50"
+          >
+            המשך לבחירת מוצרים
+          </Button>
+        </motion.div>
       </div>
     </div>
   );

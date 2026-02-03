@@ -14,9 +14,12 @@ export default function ParticipantsSection({ participants, setParticipants, onC
 
   return (
     <div className="flex flex-col items-center py-6">
+      {/* הנחייה */}
+      <p className="text-sm text-[#464646]/70 mb-2">כמה תהיו?</p>
+      
       <div className="flex items-center justify-center gap-2 mb-6 text-[#6B584C]">
         <Users className="w-6 h-6" />
-        <span className="text-lg">כמה תהיו?</span>
+        <span className="text-lg">מספר משתתפים</span>
       </div>
       
       <div className="flex items-center gap-6">
@@ -56,13 +59,24 @@ export default function ParticipantsSection({ participants, setParticipants, onC
         {participants === 1 ? "משתתף אחד" : `${participants} משתתפים`}
       </p>
       
-      <Button
-        onClick={onContinue}
-        className="mt-8 bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
-                   transition-all duration-200 text-lg"
+      <motion.div
+        animate={{
+          scale: [1, 1.05, 1],
+        }}
+        transition={{
+          duration: 2,
+          repeat: Infinity,
+          repeatDelay: 1
+        }}
       >
-        המשך
-      </Button>
+        <Button
+          onClick={onContinue}
+          className="mt-8 bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
+                     transition-all duration-200 text-lg"
+        >
+          המשך לבחירת סוג עץ
+        </Button>
+      </motion.div>
     </div>
   );
 }
