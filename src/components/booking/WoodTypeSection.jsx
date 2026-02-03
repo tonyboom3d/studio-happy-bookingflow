@@ -35,11 +35,12 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
         <div className="space-y-2 text-sm text-[#464646]">
           <div>
             <span className="font-medium text-[#6B584C]">עץ ממוחזר:</span>
-            <p className="text-xs mt-0.5">טקסט יבוא כאן</p>
+            <p className="text-xs mt-0.5">טקסטקרשים מפורקים ממשטחי העמסה (פלטות). עלותו העץ נמוכה אך הוא מחייב זמן עבודה נוסף של הכנה ושיוף.
+            </p>
           </div>
           <div>
             <span className="font-medium text-[#6B584C]">עץ חדש:</span>
-            <p className="text-xs mt-0.5">טקסט יבוא כאן</p>
+            <p className="text-xs mt-0.5">עץ מוכן לעבודה, המאפשר הספקים מהירים. עלות העץ היא בתוספת לתשלום על הסדנה.</p>
           </div>
         </div>
       </div>
@@ -48,7 +49,7 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
         {options.map((option) => {
           const isSelected = woodType === option.id;
           const Icon = option.icon;
-          
+
           return (
             <motion.button
               key={option.id}
@@ -57,8 +58,8 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
               onClick={() => setWoodType(option.id)}
               className={cn(
                 "relative p-6 rounded-xl border-2 text-right transition-all duration-300",
-                isSelected 
-                  ? "border-[#ADC178] bg-[#ADC178]/5" 
+                isSelected
+                  ? "border-[#ADC178] bg-[#ADC178]/5"
                   : "border-[#e8e8e8] hover:border-[#ADC178]/50 bg-white"
               )}
             >
@@ -71,7 +72,7 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
                   <Check className="w-4 h-4 text-white" />
                 </motion.div>
               )}
-              
+
               <div className="flex flex-col items-center text-center gap-3">
                 <div className={cn(
                   "w-14 h-14 rounded-full flex items-center justify-center transition-colors",
@@ -94,7 +95,7 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
           );
         })}
       </div>
-      
+
       <div className="flex justify-center mt-8">
         <motion.div
           animate={woodType ? {
