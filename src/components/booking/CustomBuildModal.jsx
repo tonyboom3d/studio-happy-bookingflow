@@ -101,7 +101,7 @@ export default function CustomBuildModal({ isOpen, onClose }) {
               animate={{ opacity: 1 }}
             >
               <DialogHeader>
-                <DialogTitle className="text-[#6B584C]">אני רוצה לבנות משהו משלי</DialogTitle>
+                <DialogTitle className="text-[#6B584C] text-right">אני רוצה לבנות משהו משלי</DialogTitle>
               </DialogHeader>
 
               {/* הסבר על התהליך */}
@@ -200,17 +200,17 @@ export default function CustomBuildModal({ isOpen, onClose }) {
                     onValueChange={(value) => setFormData({ ...formData, wood_preference: value })}
                     className="mt-2 space-y-2"
                   >
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="recycled" id="recycled" />
+                    <div className="flex items-center gap-2 flex-row-reverse justify-end">
                       <Label htmlFor="recycled" className="font-normal">עץ ממוחזר</Label>
+                      <RadioGroupItem value="recycled" id="recycled" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="new" id="new" />
+                    <div className="flex items-center gap-2 flex-row-reverse justify-end">
                       <Label htmlFor="new" className="font-normal">עץ חדש</Label>
+                      <RadioGroupItem value="new" id="new" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="no_preference" id="no_preference" />
+                    <div className="flex items-center gap-2 flex-row-reverse justify-end">
                       <Label htmlFor="no_preference" className="font-normal">לא משנה לי</Label>
+                      <RadioGroupItem value="no_preference" id="no_preference" />
                     </div>
                   </RadioGroup>
                 </div>

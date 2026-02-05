@@ -97,7 +97,7 @@ export default function ConsultationModal({ isOpen, onClose }) {
               animate={{ opacity: 1 }}
             >
               <DialogHeader>
-                <DialogTitle className="text-[#6B584C]">אשמח להתייעץ</DialogTitle>
+                <DialogTitle className="text-[#6B584C] text-right">אשמח להתייעץ</DialogTitle>
               </DialogHeader>
 
               <form onSubmit={handleSubmit} className="space-y-4 mt-4">

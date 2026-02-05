@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ShoppingBag, Wrench, HelpCircle, Sparkles, X, Baby, Smile, Meh, Frown, Skull } from 'lucide-react';
+import { ShoppingBag, Wrench, HelpCircle, Sparkles, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import ProductCatalogDrawer from './ProductCatalogDrawer';
@@ -123,15 +123,6 @@ export default function ProductSelectionSection({
           <h4 className="font-medium text-[#6B584C] mb-3">המוצרים שנבחרו:</h4>
           <div className="space-y-2">
             {cart.map(product => {
-              const DifficultyIcon = product.difficulty <= 1.5 ? Baby :
-                product.difficulty <= 2.5 ? Smile :
-                  product.difficulty <= 3.5 ? Meh :
-                    product.difficulty <= 4.5 ? Frown : Skull;
-              const difficultyColor = product.difficulty <= 1.5 ? 'text-green-500' :
-                product.difficulty <= 2.5 ? 'text-lime-500' :
-                  product.difficulty <= 3.5 ? 'text-yellow-500' :
-                    product.difficulty <= 4.5 ? 'text-orange-500' : 'text-red-500';
-
               return (
                 <motion.div
                   key={product.id}
@@ -151,8 +142,6 @@ export default function ProductSelectionSection({
                     <div>
                       <h5 className="font-medium text-[#6B584C] text-sm">{product.title}</h5>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <DifficultyIcon className={`w-3.5 h-3.5 ${difficultyColor}`} />
-                        <span className="text-xs text-[#464646]/70">•</span>
                         <span className="text-xs text-[#464646]/70">{product.meetings} מפגשים</span>
                       </div>
                     </div>
