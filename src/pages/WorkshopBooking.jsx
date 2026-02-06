@@ -88,7 +88,7 @@ export default function WorkshopBooking() {
   // חישוב סה"כ מפגשים
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || 3), 0);
 
-  // שליחת נתוני סיכום ל-iframe נפרד של הסיכום (אם קיים)
+  // שליחת נתוני סיכום ל-Wix VELO (שיעביר ל-summary iframe)
   useEffect(() => {
     const summaryData = {
       participants,
@@ -99,15 +99,10 @@ export default function WorkshopBooking() {
       activeSection
     };
     
-    // שליחה ל-iframe נפרד של הסיכום (אם קיים)
-    // ה-iframe של הסיכום מקשיב ל-message events
-    window.postMessage({
-      type: 'SUMMARY_UPDATE',
-      data: summaryData
-    }, '*');
-    
-    // גם לשלוח ל-Custom Element חיצוני (אם עדיין משתמשים בו)
+    // שליחה ל-Wix VELO דרך window.parent.postMessage
+    // Wix VELO יעביר את הנתונים ל-summary iframe (htmlComponent2)
     sendSummaryUpdate(summaryData);
+    console.log('[WorkshopBooking] Sent summary update to Wix:', summaryData);
   }, [participants, woodType, cart, selectedSlots, totalMeetings, activeSection]);
 
   // מעבר לסקשן הבא

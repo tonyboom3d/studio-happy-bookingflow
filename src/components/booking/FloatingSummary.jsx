@@ -22,9 +22,10 @@ export default function FloatingSummary({
   cart, 
   selectedSlots,
   totalMeetings,
-  activeSection
+  activeSection,
+  isSummaryPage = false // האם זה דף Summary נפרד (iframe)
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true); // פתוח כברירת מחדל בדף Summary
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
 
   const basePrice = PRICING[participants] || 300;
@@ -81,14 +82,22 @@ export default function FloatingSummary({
 
   if (isCatalogOpen) return null; // הסתרה מוחלטת כשהקטלוג פתוח
 
+  // בדף Summary נפרד - ללא positioning מיוחד וללא רקע
+  const containerClass = isSummaryPage 
+    ? "w-full" 
+    : "fixed bottom-[10px] left-[5%] right-[5%] w-[90%] md:left-auto md:right-6 md:bottom-6 md:w-[260px] md:max-w-[260px] z-50";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="fixed bottom-[10px] left-[5%] right-[5%] w-[90%] md:left-auto md:right-6 md:bottom-6 md:w-[260px] md:max-w-[260px] z-50"
+      className={containerClass}
       style={{ direction: 'rtl' }}
     >
-      <div className="bg-white/97 backdrop-blur-xl rounded-2xl shadow-xl border border-[#e8e8e8] overflow-hidden">
+      <div className={cn(
+        "rounded-2xl shadow-xl border border-[#e8e8e8] overflow-hidden",
+        isSummaryPage ? "bg-white" : "bg-white/97 backdrop-blur-xl"
+      )}>
         {/* כותרת */}
         <button
           onClick={() => setIsOpen(!isOpen)}

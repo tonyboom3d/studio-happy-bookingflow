@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import FloatingSummary from '../components/booking/FloatingSummary';
-import { addLog } from '@/components/VersionLogger';
 
 /**
  * BookingSummary Page - דף נפרד לסיכום ההזמנה
  * דף זה מיועד להיות ב-iframe נפרד שיהיה sticky
- * הוא מקשיב להודעות מה-iframe הראשי כדי לקבל את נתוני ההזמנה
+ * הוא מקשיב להודעות מה-Wix VELO (parent) כדי לקבל את נתוני ההזמנה
  */
 export default function BookingSummary() {
   const [summaryData, setSummaryData] = useState({
@@ -18,13 +17,20 @@ export default function BookingSummary() {
   });
 
   useEffect(() => {
-    addLog('BookingSummary page loaded', 'success');
+    console.log('[Summary] BookingSummary page loaded');
 
-    // האזנה להודעות מה-iframe הראשי (parent window)
+    // הגדרת רקע שקוף לגוף הדף
+    document.body.style.background = 'transparent';
+    document.documentElement.style.background = 'transparent';
+
+    // האזנה להודעות מ-Wix VELO (parent window)
     const handleMessage = (event) => {
-      // וידוא שההודעה מגיעה מה-iframe הראשי
+      console.log('[Summary] Received message:', event.data?.type);
+      
+      // עדכון נתוני הסיכום
       if (event.data?.type === 'SUMMARY_UPDATE') {
         const data = event.data.data;
+        console.log('[Summary] Updating summary data:', data);
         setSummaryData({
           participants: data.participants || 1,
           woodType: data.woodType || '',
@@ -33,11 +39,11 @@ export default function BookingSummary() {
           totalMeetings: data.totalMeetings || 0,
           activeSection: data.activeSection || 1
         });
-        addLog('Summary data updated from parent', 'success');
       }
 
       // האזנה למצב הקטלוג
       if (event.data?.type === 'CATALOG_STATE_CHANGE') {
+        console.log('[Summary] Catalog state changed:', event.data.data?.isOpen);
         // נשלח ל-FloatingSummary דרך postMessage פנימי
         window.postMessage({
           type: 'CATALOG_STATE_CHANGE',
@@ -54,7 +60,7 @@ export default function BookingSummary() {
       window.parent.postMessage({
         type: 'SUMMARY_IFRAME_READY'
       }, '*');
-      addLog('Sent ready message to parent', 'info');
+      console.log('[Summary] Sent ready message to parent');
     }
 
     return () => {
@@ -78,6 +84,7 @@ export default function BookingSummary() {
         selectedSlots={summaryData.selectedSlots}
         totalMeetings={summaryData.totalMeetings}
         activeSection={summaryData.activeSection}
+        isSummaryPage={true}
       />
     </div>
   );
