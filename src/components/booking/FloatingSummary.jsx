@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { addLog } from '@/components/VersionLogger';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, TreeDeciduous, Package, Calendar, CreditCard, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,7 @@ export default function FloatingSummary({
   activeSection
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
 
   const basePrice = PRICING[participants] || 300;
   const productsPrice = cart.reduce((sum, p) => sum + p.price, 0);
@@ -63,23 +65,39 @@ export default function FloatingSummary({
 
   if (items.length === 0) return null;
 
+  // הסתרה כשהקטלוג פתוח - נשלט מ-ProductCatalogDrawer
+  useEffect(() => {
+    // האזנה להודעות על מצב הקטלוג מ-ProductCatalogDrawer
+    const handleMessage = (event) => {
+      if (event.data?.type === 'CATALOG_STATE_CHANGE') {
+        setIsCatalogOpen(event.data.data?.isOpen || false);
+        addLog(`Catalog ${event.data.data?.isOpen ? 'opened' : 'closed'} - summary ${event.data.data?.isOpen ? 'hidden' : 'shown'}`, 'info');
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  if (isCatalogOpen) return null; // הסתרה מוחלטת כשהקטלוג פתוח
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:w-72 z-50"
+      className="fixed bottom-[10px] left-[5%] right-[5%] w-[90%] md:left-auto md:right-6 md:bottom-6 md:w-[260px] md:max-w-[260px] z-50"
+      style={{ direction: 'rtl' }}
     >
-      <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-[#e8e8e8] overflow-hidden">
+      <div className="bg-white/97 backdrop-blur-xl rounded-2xl shadow-xl border border-[#e8e8e8] overflow-hidden">
         {/* כותרת */}
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="w-full bg-[#6B584C] text-white px-4 py-2.5 flex items-center justify-between md:cursor-default"
         >
-          <span className="font-medium text-sm">סיכום הזמנה</span>
+          <span className="font-semibold text-sm">סיכום הזמנה</span>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5">
               <CreditCard className="w-4 h-4" />
-              <span className="font-bold">₪{totalPrice}</span>
+              <span className="font-bold text-base">₪{Math.round(totalPrice)}</span>
             </div>
             <div className="md:hidden">
               {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
@@ -94,7 +112,7 @@ export default function FloatingSummary({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.25 }}
               className="overflow-hidden md:!h-auto md:!opacity-100"
             >
               <div className="p-3 space-y-2">
@@ -120,7 +138,7 @@ export default function FloatingSummary({
                           <span className="text-[#464646]">{item.label}</span>
                         </div>
                         {item.value && (
-                          <span className="font-medium text-[#6B584C]">{item.value}</span>
+                          <span className="font-semibold text-[#6B584C]">{item.value}</span>
                         )}
                       </motion.div>
                     );

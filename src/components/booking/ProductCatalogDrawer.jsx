@@ -185,18 +185,25 @@ export default function ProductCatalogDrawer({
   const totalPrice = cart.reduce((sum, p) => sum + p.price, 0);
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)), 0);
 
-  // שליחת הודעה ל-VELO על מצב הקטלוג כדי ש-VELO יעדכן את ה-booking-summary CE
+  // שליחת הודעה על מצב הקטלוג ל-FloatingSummary (בתוך ה-iframe) ול-VELO (אם צריך)
   useEffect(() => {
     try {
-      // שליחת הודעה ל-Wix VELO על מצב הקטלוג
+      // שליחה ל-FloatingSummary בתוך ה-iframe
+      window.postMessage({
+        type: 'CATALOG_STATE_CHANGE',
+        data: { isOpen }
+      }, '*');
+      
+      // שליחה ל-Wix VELO (אם עדיין משתמשים ב-CE חיצוני)
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({
           type: 'CATALOG_STATE_CHANGE',
           data: { isOpen }
         }, '*');
-        addLog(`Catalog ${isOpen ? 'opened' : 'closed'}`, isOpen ? 'info' : 'success');
-        console.log('[ProductCatalogDrawer] Sent catalog state to Wix:', isOpen);
       }
+      
+      addLog(`Catalog ${isOpen ? 'opened' : 'closed'}`, isOpen ? 'info' : 'success');
+      console.log('[ProductCatalogDrawer] Sent catalog state:', isOpen);
     } catch (err) {
       addLog(`Failed to send catalog state: ${err.message}`, 'error');
       console.error('[ProductCatalogDrawer] Failed to send catalog state:', err);
