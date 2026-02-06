@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { addLog } from '@/components/VersionLogger';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
@@ -184,15 +185,21 @@ export default function ProductCatalogDrawer({
   const totalPrice = cart.reduce((sum, p) => sum + p.price, 0);
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)), 0);
 
-  // הסתרת/הצגת booking-summary כשהקטלוג נפתח/נסגר
+  // שליחת הודעה ל-VELO על מצב הקטלוג כדי ש-VELO יעדכן את ה-booking-summary CE
   useEffect(() => {
-    const summaryElement = document.querySelector('booking-summary');
-    if (summaryElement) {
-      if (isOpen) {
-        summaryElement.setAttribute('visible', 'false');
-      } else {
-        summaryElement.setAttribute('visible', 'true');
+    try {
+      // שליחת הודעה ל-Wix VELO על מצב הקטלוג
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'CATALOG_STATE_CHANGE',
+          data: { isOpen }
+        }, '*');
+        addLog(`Catalog ${isOpen ? 'opened' : 'closed'}`, isOpen ? 'info' : 'success');
+        console.log('[ProductCatalogDrawer] Sent catalog state to Wix:', isOpen);
       }
+    } catch (err) {
+      addLog(`Failed to send catalog state: ${err.message}`, 'error');
+      console.error('[ProductCatalogDrawer] Failed to send catalog state:', err);
     }
   }, [isOpen]);
 

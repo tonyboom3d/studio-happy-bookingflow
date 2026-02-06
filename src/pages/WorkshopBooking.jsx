@@ -9,6 +9,7 @@ import TimeSlotsSection from '../components/booking/TimeSlotsSection';
 import PersonalDetailsSection from '../components/booking/PersonalDetailsSection';
 import ThankYouScreen from '../components/booking/ThankYouScreen';
 import { submitBooking, subscribeToWix, notifyProgress, sendSummaryUpdate } from '@/api/wixBridge';
+import { addLog } from '@/components/VersionLogger';
 
 export default function WorkshopBooking() {
   // State ראשי
@@ -43,23 +44,29 @@ export default function WorkshopBooking() {
 
   // האזנה לנתונים מ-Wix
   useEffect(() => {
+    addLog('Subscribing to Wix data', 'info');
     const unsubscribe = subscribeToWix((data) => {
       console.log('[WorkshopBooking] Received Wix data:', data);
+      addLog('Received Wix data', 'success');
 
       if (data.products) {
         setWixProducts(data.products);
+        addLog(`Loaded ${data.products.length} products`, 'success');
       }
       if (data.slots) {
         setWixSlots(data.slots);
+        addLog(`Loaded ${data.slots.length} time slots`, 'success');
       }
       if (data.bookingConfirmed) {
         // Wix confirmed booking saved
         setIsProcessing(false);
         setIsComplete(true);
+        addLog('Booking confirmed successfully!', 'success');
       }
       if (data.bookingError) {
         // Booking failed
         setIsProcessing(false);
+        addLog(`Booking error: ${data.bookingError}`, 'error');
         alert('שגיאה בשמירת ההזמנה: ' + data.bookingError);
       }
     });
@@ -69,6 +76,7 @@ export default function WorkshopBooking() {
 
   // עדכון Wix על התקדמות
   useEffect(() => {
+    addLog(`Active section changed to: ${activeSection}`, 'info');
     notifyProgress(activeSection, {
       participants,
       woodType,
@@ -99,6 +107,7 @@ export default function WorkshopBooking() {
       setCompletedSections([...completedSections, sectionNum]);
     }
     setActiveSection(sectionNum + 1);
+    addLog(`Section ${sectionNum} completed, moving to section ${sectionNum + 1}`, 'success');
   };
 
   // פתיחת סקשן
@@ -110,6 +119,7 @@ export default function WorkshopBooking() {
 
   // שליחת ההזמנה
   const handleSubmit = async () => {
+    addLog('Starting booking submission...', 'info');
     setIsProcessing(true);
 
     const bookingData = {
@@ -133,6 +143,7 @@ export default function WorkshopBooking() {
     };
 
     // שליחה ל-Wix דרך postMessage
+    addLog(`Submitting booking with ${cart.length} products, ${selectedSlots.length} slots`, 'info');
     submitBooking(bookingData);
 
     // אם לא מקבלים תגובה מ-Wix תוך 10 שניות, נניח שהצליח

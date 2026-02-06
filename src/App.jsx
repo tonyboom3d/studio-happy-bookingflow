@@ -5,11 +5,13 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import WorkshopBooking from './pages/WorkshopBooking';
 import { useEffect } from 'react';
 import { initWixBridge } from '@/api/wixBridge';
+import VersionLogger, { addLog } from '@/components/VersionLogger';
 
 function App() {
   useEffect(() => {
     // Initialize communication with Wix
     initWixBridge();
+    addLog('App initialized', 'success');
   }, []);
 
   return (
@@ -19,6 +21,7 @@ function App() {
           <Route path="*" element={<WorkshopBooking />} />
         </Routes>
         <Toaster />
+        <VersionLogger />
       </Router>
     </QueryClientProvider>
   )
