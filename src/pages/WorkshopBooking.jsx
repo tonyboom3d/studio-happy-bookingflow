@@ -8,7 +8,6 @@ import ProductSelectionSection from '../components/booking/ProductSelectionSecti
 import TimeSlotsSection from '../components/booking/TimeSlotsSection';
 import PersonalDetailsSection from '../components/booking/PersonalDetailsSection';
 import ThankYouScreen from '../components/booking/ThankYouScreen';
-import FloatingSummary from '../components/booking/FloatingSummary';
 import { submitBooking, subscribeToWix, notifyProgress, sendSummaryUpdate } from '@/api/wixBridge';
 import { addLog } from '@/components/VersionLogger';
 
@@ -89,19 +88,27 @@ export default function WorkshopBooking() {
   // חישוב סה"כ מפגשים
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || 3), 0);
 
-  // שליחת נתוני סיכום ל-Custom Element חיצוני (אופציונלי - אם עדיין רוצים להשתמש ב-CE החיצוני)
-  // כעת ה-FloatingSummary בתוך ה-iframe, אז לא צריך לשלוח ל-CE חיצוני
-  // useEffect(() => {
-  //   const summaryData = {
-  //     participants,
-  //     woodType,
-  //     cart: cart.map(p => ({ id: p.id, title: p.title, price: p.price, meetings: p.meetings })),
-  //     selectedSlots,
-  //     totalMeetings,
-  //     activeSection
-  //   };
-  //   sendSummaryUpdate(summaryData);
-  // }, [participants, woodType, cart, selectedSlots, totalMeetings, activeSection]);
+  // שליחת נתוני סיכום ל-iframe נפרד של הסיכום (אם קיים)
+  useEffect(() => {
+    const summaryData = {
+      participants,
+      woodType,
+      cart: cart.map(p => ({ id: p.id, title: p.title, price: p.price, meetings: p.meetings })),
+      selectedSlots,
+      totalMeetings,
+      activeSection
+    };
+    
+    // שליחה ל-iframe נפרד של הסיכום (אם קיים)
+    // ה-iframe של הסיכום מקשיב ל-message events
+    window.postMessage({
+      type: 'SUMMARY_UPDATE',
+      data: summaryData
+    }, '*');
+    
+    // גם לשלוח ל-Custom Element חיצוני (אם עדיין משתמשים בו)
+    sendSummaryUpdate(summaryData);
+  }, [participants, woodType, cart, selectedSlots, totalMeetings, activeSection]);
 
   // מעבר לסקשן הבא
   const completeSection = (sectionNum) => {
@@ -327,15 +334,7 @@ export default function WorkshopBooking() {
         © 2024 הנגריה הפתוחה. כל הזכויות שמורות.
       </footer>
       
-      {/* Floating Summary - בתוך ה-iframe */}
-      <FloatingSummary
-        participants={participants}
-        woodType={woodType}
-        cart={cart}
-        selectedSlots={selectedSlots}
-        totalMeetings={totalMeetings}
-        activeSection={activeSection}
-      />
+      {/* הערה: FloatingSummary כעת ב-iframe נפרד בנתיב /summary */}
     </div>
   );
 }
