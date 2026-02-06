@@ -146,3 +146,11 @@ export function isInWix() {
         return true; // Cross-origin restriction means we're in iframe
     }
 }
+
+/**
+ * Send summary data to Wix for the external booking-summary Custom Element
+ */
+export function sendSummaryUpdate(summaryData) {
+    sendToWix('SUMMARY_UPDATE', summaryData);
+}
+

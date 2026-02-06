@@ -5,11 +5,10 @@ import AccordionSection from '../components/booking/AccordionSection';
 import ParticipantsSection from '../components/booking/ParticipantsSection';
 import WoodTypeSection from '../components/booking/WoodTypeSection';
 import ProductSelectionSection from '../components/booking/ProductSelectionSection';
-import FloatingSummary from '../components/booking/FloatingSummary';
 import TimeSlotsSection from '../components/booking/TimeSlotsSection';
 import PersonalDetailsSection from '../components/booking/PersonalDetailsSection';
 import ThankYouScreen from '../components/booking/ThankYouScreen';
-import { submitBooking, subscribeToWix, notifyProgress } from '@/api/wixBridge';
+import { submitBooking, subscribeToWix, notifyProgress, sendSummaryUpdate } from '@/api/wixBridge';
 
 export default function WorkshopBooking() {
   // State ראשי
@@ -80,6 +79,19 @@ export default function WorkshopBooking() {
 
   // חישוב סה"כ מפגשים
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || 3), 0);
+
+  // שליחת נתוני סיכום ל-Custom Element חיצוני
+  useEffect(() => {
+    const summaryData = {
+      participants,
+      woodType,
+      cart: cart.map(p => ({ id: p.id, title: p.title, price: p.price, meetings: p.meetings })),
+      selectedSlots,
+      totalMeetings,
+      activeSection
+    };
+    sendSummaryUpdate(summaryData);
+  }, [participants, woodType, cart, selectedSlots, totalMeetings, activeSection]);
 
   // מעבר לסקשן הבא
   const completeSection = (sectionNum) => {
@@ -202,7 +214,7 @@ export default function WorkshopBooking() {
   }
 
   const sections = [
-    { id: 1, title: 'כמה נגרים?' },
+    { id: 1, title: 'כמה תיהיו?' },
     { id: 2, title: 'סוג העץ' },
     { id: 3, title: 'מה בונים?' },
     { id: 4, title: 'בחירת תאריכים' },
@@ -296,16 +308,6 @@ export default function WorkshopBooking() {
           })}
         </div>
       </main>
-
-      {/* סיכום צף */}
-      <FloatingSummary
-        participants={participants}
-        woodType={woodType}
-        cart={cart}
-        selectedSlots={selectedSlots}
-        totalMeetings={totalMeetings}
-        activeSection={activeSection}
-      />
 
       {/* Footer */}
       <footer className="py-6 pb-32 md:pb-6 text-center text-sm text-[#464646]/60">

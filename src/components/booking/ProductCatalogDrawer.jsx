@@ -204,35 +204,35 @@ export default function ProductCatalogDrawer({
             </button>
           </div>
 
-          {/* סוג עץ Selection Tags */}
-          <div className="p-3 bg-[#fafafa] rounded-lg">
-            <p className="text-sm text-[#464646] mb-2">הצג מחירים וכמות מפגשים עבור סוג עץ:</p>
-            <div className="flex gap-2">
+          {/* סוג עץ Selection Tags - Compact */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-[#464646]/70">הצג מחירים וכמות מפגשים עבור סוג עץ:</span>
+            <div className="flex gap-1.5">
               <button
                 onClick={() => setSelectedWoodType('recycled')}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all duration-200",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200",
                   selectedWoodType === 'recycled'
                     ? "border-[#ADC178] bg-[#ADC178]/10 text-[#6B584C]"
                     : "border-[#e8e8e8] bg-white text-[#464646] hover:border-[#ADC178]/50"
                 )}
               >
-                <Recycle className="w-4 h-4" />
-                <span className="text-sm font-medium">עץ ממוחזר</span>
-                {selectedWoodType === 'recycled' && <Check className="w-4 h-4 text-[#ADC178]" />}
+                <Recycle className="w-3.5 h-3.5" />
+                <span>עץ ממוחזר</span>
+                {selectedWoodType === 'recycled' && <Check className="w-3 h-3 text-[#ADC178]" />}
               </button>
               <button
                 onClick={() => setSelectedWoodType('new')}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all duration-200",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200",
                   selectedWoodType === 'new'
                     ? "border-[#ADC178] bg-[#ADC178]/10 text-[#6B584C]"
                     : "border-[#e8e8e8] bg-white text-[#464646] hover:border-[#ADC178]/50"
                 )}
               >
-                <TreeDeciduous className="w-4 h-4" />
-                <span className="text-sm font-medium">עץ חדש</span>
-                {selectedWoodType === 'new' && <Check className="w-4 h-4 text-[#ADC178]" />}
+                <TreeDeciduous className="w-3.5 h-3.5" />
+                <span>עץ חדש</span>
+                {selectedWoodType === 'new' && <Check className="w-3 h-3 text-[#ADC178]" />}
               </button>
             </div>
           </div>
@@ -312,7 +312,7 @@ export default function ProductCatalogDrawer({
         </div>
 
         {/* סיכום תחתון */}
-        <div className="fixed bottom-0 right-0 w-full sm:max-w-xl p-4 bg-white border-t border-[#e8e8e8] shadow-lg">
+        <div className="fixed bottom-[120px] right-0 w-full sm:max-w-xl p-4 bg-white border-t border-[#e8e8e8] shadow-lg">
           <div className="flex items-center justify-between mb-3">
             <div className="flex gap-4 text-sm">
               <div className="flex items-center gap-1.5 text-[#464646]">
@@ -347,21 +347,23 @@ export default function ProductCatalogDrawer({
         </div>
       </SheetContent>
 
-      {/* מודל להגדלת תמונה */}
+      {/* מודל להגדלת תמונה - Fixed consistent sizing */}
       <Dialog open={!!enlargedImage} onOpenChange={() => setEnlargedImage(null)}>
-        <DialogContent className="max-w-3xl bg-transparent border-none p-0 shadow-none">
-          <div className="relative w-full h-full flex items-center justify-center">
+        <DialogContent hideCloseButton className="max-w-2xl bg-transparent border-none p-0 shadow-none">
+          <div className="relative flex items-center justify-center">
             <button
               onClick={() => setEnlargedImage(null)}
               className="absolute -top-10 right-0 bg-white/20 hover:bg-white/40 rounded-full p-2 text-white transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
-            <img
-              src={enlargedImage}
-              alt="Enlarged product"
-              className="max-h-[80vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
-            />
+            <div className="w-[500px] h-[500px] flex items-center justify-center bg-white rounded-lg shadow-2xl overflow-hidden">
+              <img
+                src={enlargedImage}
+                alt="Enlarged product"
+                className="w-full h-full object-contain p-4"
+              />
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -35,11 +35,11 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
         <div className="space-y-2 text-sm text-[#464646]">
           <div>
             <span className="font-medium text-[#6B584C]">עץ ממוחזר:</span>
-            <p className="text-xs mt-0.5">עצים מפורקים ממשטחי העמסה (פלטות). עלותו העץ נמוכה אך הוא מחייב זמן עבודה נוסף של הכנה ושיוף.</p>
+            <p className="text-sm mt-0.5">עצים מפורקים ממשטחי העמסה (פלטות). עלותו העץ נמוכה אך הוא מחייב זמן עבודה נוסף של הכנה ושיוף.</p>
           </div>
           <div>
             <span className="font-medium text-[#6B584C]">עץ חדש:</span>
-            <p className="text-xs mt-0.5">עץ מוכן לעבודה, המאפשר הספקים מהירים. עלות העץ היא בתוספת לתשלום על הסדנה.</p>
+            <p className="text-sm mt-0.5">עץ מוכן לעבודה, המאפשר הספקים מהירים. עלות העץ היא בתוספת לתשלום על הסדנה.</p>
           </div>
         </div>
       </div>

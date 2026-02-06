@@ -6,20 +6,20 @@ import { cn } from '@/lib/utils';
 import { format, addDays, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isBefore, startOfDay } from 'date-fns';
 import { he } from 'date-fns/locale';
 
-export default function TimeSlotsSection({ 
-  selectedSlots, 
-  setSelectedSlots, 
-  totalMeetings, 
+export default function TimeSlotsSection({
+  selectedSlots,
+  setSelectedSlots,
+  totalMeetings,
   onContinue,
   timerActive,
-  setTimerActive 
+  setTimerActive
 }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDates, setSelectedDates] = useState([]);
   const [currentSlotIndex, setCurrentSlotIndex] = useState(0);
-  
+
   const today = startOfDay(new Date());
-  
+
   // יצירת משבצות למפגשים
   const slots = Array.from({ length: totalMeetings }, (_, i) => ({
     index: i,
@@ -28,7 +28,7 @@ export default function TimeSlotsSection({
 
   const handleDateSelect = (date) => {
     if (isBefore(startOfDay(date), today)) return;
-    
+
     // אם כבר יש תאריך זה, נסיר אותו
     const existingIndex = selectedDates.findIndex(d => d && isSameDay(d, date));
     if (existingIndex !== -1) {
@@ -37,13 +37,13 @@ export default function TimeSlotsSection({
       setSelectedDates(newDates);
       return;
     }
-    
+
     // אם המשבצת הנוכחית ריקה, נמלא אותה
     if (currentSlotIndex < totalMeetings) {
       const newDates = [...selectedDates];
       newDates[currentSlotIndex] = date;
       setSelectedDates(newDates);
-      
+
       // מעבר למשבצת הריקה הבאה
       const nextEmptyIndex = newDates.findIndex((d, i) => i > currentSlotIndex && !d);
       if (nextEmptyIndex !== -1) {
@@ -53,11 +53,11 @@ export default function TimeSlotsSection({
       }
     }
   };
-  
+
   const handleSlotClick = (index) => {
     setCurrentSlotIndex(index);
   };
-  
+
   const removeDate = (index) => {
     const newDates = [...selectedDates];
     newDates[index] = null;
@@ -71,11 +71,11 @@ export default function TimeSlotsSection({
   const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
   const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
   const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
-  
+
   const isDateSelected = (date) => {
     return selectedDates.some(d => d && isSameDay(d, date));
   };
-  
+
   const getDateSelectionNumber = (date) => {
     const index = selectedDates.findIndex(d => d && isSameDay(d, date));
     return index !== -1 ? index + 1 : null;
@@ -90,7 +90,7 @@ export default function TimeSlotsSection({
           בחרו {totalMeetings} תאריכי מפגש
         </span>
       </div>
-      
+
       {/* הערה חשובה */}
       <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
         <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -114,8 +114,8 @@ export default function TimeSlotsSection({
                   currentSlotIndex === index
                     ? "border-[#ADC178] bg-[#ADC178]/10 shadow-md"
                     : slot.date
-                    ? "border-[#ADC178]/50 bg-white"
-                    : "border-[#e8e8e8] bg-[#fafafa]"
+                      ? "border-[#ADC178]/50 bg-white"
+                      : "border-[#e8e8e8] bg-[#fafafa]"
                 )}
               >
                 <div className="text-xs text-[#464646]/70 mb-1">מפגש {index + 1}</div>
@@ -150,7 +150,7 @@ export default function TimeSlotsSection({
               </motion.button>
             ))}
           </div>
-          
+
           <div className="mt-3 p-2 bg-[#fafafa] rounded-lg text-center">
             <span className="text-sm text-[#464646]">
               נבחרו {selectedDates.filter(Boolean).length} מתוך {totalMeetings}
@@ -170,7 +170,7 @@ export default function TimeSlotsSection({
                 onClick={() => setCurrentMonth(addDays(currentMonth, -30))}
                 className="p-2 hover:bg-[#fafafa] rounded-lg transition-colors"
               >
-                ←
+                →
               </button>
               <h3 className="font-medium text-[#6B584C]">
                 {format(currentMonth, 'MMMM yyyy', { locale: he })}
@@ -179,7 +179,7 @@ export default function TimeSlotsSection({
                 onClick={() => setCurrentMonth(addDays(currentMonth, 30))}
                 className="p-2 hover:bg-[#fafafa] rounded-lg transition-colors"
               >
-                →
+                ←
               </button>
             </div>
 
@@ -199,7 +199,7 @@ export default function TimeSlotsSection({
                 const isPast = isBefore(startOfDay(day), today);
                 const isSelected = isDateSelected(day);
                 const selectionNumber = getDateSelectionNumber(day);
-                
+
                 return (
                   <motion.button
                     key={i}
