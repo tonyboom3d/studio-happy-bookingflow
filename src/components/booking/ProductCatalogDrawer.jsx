@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
@@ -139,6 +139,7 @@ export default function ProductCatalogDrawer({
   const [showFilters, setShowFilters] = useState(false);
   const [selectedWoodType, setSelectedWoodType] = useState(woodType || 'recycled');
   const [enlargedImage, setEnlargedImage] = useState(null);
+  const productsContainerRef = useRef(null);
 
   // חישוב כמות מפגשים לפי סוג עץ נבחר ב-Drawer
   const getLocalMeetings = (product) => {
@@ -183,6 +184,49 @@ export default function ProductCatalogDrawer({
   const totalPrice = cart.reduce((sum, p) => sum + p.price, 0);
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)), 0);
 
+  // הסתרת/הצגת booking-summary כשהקטלוג נפתח/נסגר
+  useEffect(() => {
+    const summaryElement = document.querySelector('booking-summary');
+    if (summaryElement) {
+      if (isOpen) {
+        summaryElement.setAttribute('visible', 'false');
+      } else {
+        summaryElement.setAttribute('visible', 'true');
+      }
+    }
+  }, [isOpen]);
+
+  // סגירת הסינון כשמשתמש גולל או לוחץ על מוצר
+  useEffect(() => {
+    if (!showFilters) return;
+
+    const container = productsContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      setShowFilters(false);
+    };
+
+    const handleClick = (e) => {
+      // אם לוחצים על מוצר (לא על כפתור הסינון או על הסינון עצמו)
+      const isFilterButton = e.target.closest('button[onclick*="setShowFilters"]') || 
+                              e.target.closest('[data-filter-section]');
+      const isProductCard = e.target.closest('[data-product-card]');
+      
+      if (isProductCard && !isFilterButton) {
+        setShowFilters(false);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('click', handleClick);
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('click', handleClick);
+    };
+  }, [showFilters]);
+
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent
@@ -192,47 +236,45 @@ export default function ProductCatalogDrawer({
         <SheetHeader className="p-4 border-b border-[#e8e8e8] sticky top-0 bg-white/95 backdrop-blur-xl z-10">
           <div className="flex items-center justify-between mb-3">
             <SheetTitle className="text-xl font-semibold text-[#6B584C]">קטלוג מוצרים</SheetTitle>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors",
-                showFilters ? "border-[#ADC178] bg-[#ADC178]/10" : "border-[#e8e8e8] hover:border-[#ADC178]"
-              )}
-            >
-              <Filter className="w-4 h-4 text-[#6B584C]" />
-              <span className="text-sm text-[#464646]">סינון</span>
-            </button>
-          </div>
-
-          {/* סוג עץ Selection Tags - Compact */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-[#464646]/70">הצג מחירים וכמות מפגשים עבור סוג עץ:</span>
-            <div className="flex gap-1.5">
+            <div className="flex items-center gap-2">
+              {/* סינון עץ באותה שורה עם כפתור הסינון */}
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => setSelectedWoodType('recycled')}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200",
+                    selectedWoodType === 'recycled'
+                      ? "border-[#ADC178] bg-[#ADC178]/10 text-[#6B584C]"
+                      : "border-[#e8e8e8] bg-white text-[#464646] hover:border-[#ADC178]/50"
+                  )}
+                >
+                  <Recycle className="w-3.5 h-3.5" />
+                  <span>עץ ממוחזר</span>
+                  {selectedWoodType === 'recycled' && <Check className="w-3 h-3 text-[#ADC178]" />}
+                </button>
+                <button
+                  onClick={() => setSelectedWoodType('new')}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200",
+                    selectedWoodType === 'new'
+                      ? "border-[#ADC178] bg-[#ADC178]/10 text-[#6B584C]"
+                      : "border-[#e8e8e8] bg-white text-[#464646] hover:border-[#ADC178]/50"
+                  )}
+                >
+                  <TreeDeciduous className="w-3.5 h-3.5" />
+                  <span>עץ חדש</span>
+                  {selectedWoodType === 'new' && <Check className="w-3 h-3 text-[#ADC178]" />}
+                </button>
+              </div>
               <button
-                onClick={() => setSelectedWoodType('recycled')}
+                onClick={() => setShowFilters(!showFilters)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200",
-                  selectedWoodType === 'recycled'
-                    ? "border-[#ADC178] bg-[#ADC178]/10 text-[#6B584C]"
-                    : "border-[#e8e8e8] bg-white text-[#464646] hover:border-[#ADC178]/50"
+                  "flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors",
+                  showFilters ? "border-[#ADC178] bg-[#ADC178]/10" : "border-[#e8e8e8] hover:border-[#ADC178]"
                 )}
               >
-                <Recycle className="w-3.5 h-3.5" />
-                <span>עץ ממוחזר</span>
-                {selectedWoodType === 'recycled' && <Check className="w-3 h-3 text-[#ADC178]" />}
-              </button>
-              <button
-                onClick={() => setSelectedWoodType('new')}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200",
-                  selectedWoodType === 'new'
-                    ? "border-[#ADC178] bg-[#ADC178]/10 text-[#6B584C]"
-                    : "border-[#e8e8e8] bg-white text-[#464646] hover:border-[#ADC178]/50"
-                )}
-              >
-                <TreeDeciduous className="w-3.5 h-3.5" />
-                <span>עץ חדש</span>
-                {selectedWoodType === 'new' && <Check className="w-3 h-3 text-[#ADC178]" />}
+                <Filter className="w-4 h-4 text-[#6B584C]" />
+                <span className="text-sm text-[#464646]">סינון</span>
               </button>
             </div>
           </div>
@@ -245,6 +287,7 @@ export default function ProductCatalogDrawer({
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden"
+                data-filter-section
               >
                 <div className="mt-4 p-4 bg-[#fafafa] rounded-xl space-y-4">
                   <div>
@@ -287,20 +330,28 @@ export default function ProductCatalogDrawer({
         </SheetHeader>
 
         {/* גריד מוצרים */}
-        <div className="flex-1 overflow-y-auto p-4 pb-32 h-[calc(100vh-300px)]">
+        <div ref={productsContainerRef} className="flex-1 overflow-y-auto p-4 pb-32 h-[calc(100vh-200px)]">
           <div className="grid grid-cols-2 gap-4">
             {filteredProducts.map(product => {
               const productId = product._id || product.id;
               return (
-                <ProductGridCard
-                  key={productId}
-                  product={product}
-                  isSelected={cart.some(p => (p._id || p.id) === productId)}
-                  onClick={() => toggleProduct(product)}
-                  meetings={getLocalMeetings(product)}
-                  showNewWoodPrices={selectedWoodType === 'new'}
-                  onZoom={setEnlargedImage}
-                />
+                <div 
+                  key={productId} 
+                  data-product-card 
+                  onClick={() => {
+                    toggleProduct(product);
+                    setShowFilters(false);
+                  }}
+                >
+                  <ProductGridCard
+                    product={product}
+                    isSelected={cart.some(p => (p._id || p.id) === productId)}
+                    onClick={() => {}}
+                    meetings={getLocalMeetings(product)}
+                    showNewWoodPrices={selectedWoodType === 'new'}
+                    onZoom={setEnlargedImage}
+                  />
+                </div>
               );
             })}
           </div>
@@ -312,7 +363,7 @@ export default function ProductCatalogDrawer({
         </div>
 
         {/* סיכום תחתון */}
-        <div className="fixed bottom-[120px] right-0 w-full sm:max-w-xl p-4 bg-white border-t border-[#e8e8e8] shadow-lg">
+        <div className="fixed bottom-0 right-0 w-full sm:max-w-xl p-4 bg-white border-t border-[#e8e8e8] shadow-lg">
           <div className="flex items-center justify-between mb-3">
             <div className="flex gap-4 text-sm">
               <div className="flex items-center gap-1.5 text-[#464646]">
