@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/Kan-bonim-booking-flow/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>הנגריה הפתוחה - הזמנת סדנה</title>
+    <meta name="description" content="הזמנת סדנת נגרות בהנגריה הפתוחה" />
+    <script>
+      // GitHub Pages 404 handler for HashRouter
+      // Convert path to hash and redirect to index.html
+      var path = window.location.pathname.replace('/Kan-bonim-booking-flow', '') || '/';
+      var search = window.location.search;
+      var hash = window.location.hash;
+      
+      // If there's already a hash, use it; otherwise convert path to hash
+      if (!hash && path !== '/') {
+        hash = '#' + path + search;
+      }
+      
+      // Redirect to index.html with hash
+      window.location.replace('/Kan-bonim-booking-flow/index.html' + hash);
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+  </body>
+</html>
