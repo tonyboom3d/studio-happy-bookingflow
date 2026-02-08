@@ -52,12 +52,12 @@ export default function FloatingSummary({
       value: sessionsCount > 1 ? `₪${basePricePerSession} × ${sessionsCount}` : '',
       active: activeSection === 4
     },
-    // שורה 3: מוצרים
+    // שורה 3: מוצרים - אם עץ ממוחזר לא מציג מחיר
     {
       show: cart.length > 0,
       icon: Package,
       label: `${cart.length} מוצרים`,
-      value: `₪${productsPrice}`,
+      value: woodType === 'recycled' ? '' : `₪${productsPrice}`,
       active: activeSection === 3
     },
     // שורה 4: סוג עץ - תמיד אחרון, אם ממוחזר לא מציג ערך
