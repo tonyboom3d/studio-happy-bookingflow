@@ -148,6 +148,13 @@ export default function ProductCatalogDrawer({
   const [enlargedImage, setEnlargedImage] = useState(null);
   const productsContainerRef = useRef(null);
 
+  // סנכרון סוג העץ בבחירת הקטלוג כשהחלונית נפתחת (משקף את הבחירה בדף הראשי)
+  useEffect(() => {
+    if (isOpen && woodType) {
+      setSelectedWoodType(woodType);
+    }
+  }, [isOpen, woodType]);
+
   // חישוב כמות מפגשים לפי סוג עץ נבחר ב-Drawer
   const getLocalMeetings = (product) => {
     const isCouple = participants >= 2;
@@ -188,7 +195,9 @@ export default function ProductCatalogDrawer({
     }
   };
 
-  const totalPrice = cart.reduce((sum, p) => sum + p.price, 0);
+  const totalPriceBase = cart.reduce((sum, p) => sum + p.price, 0);
+  // סה"כ לתצוגה: עץ חדש = +20%, עץ ממוחזר = כלול
+  const totalPrice = selectedWoodType === 'new' ? Math.round(totalPriceBase * 1.2) : totalPriceBase;
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)), 0);
 
   // שליחת הודעה על מצב הקטלוג ל-FloatingSummary (בתוך ה-iframe) ול-VELO (אם צריך)
@@ -395,7 +404,7 @@ export default function ProductCatalogDrawer({
             </div>
             <div className="flex items-center gap-1.5">
               <CreditCard className="w-4 h-4 text-[#ADC178]" />
-              {woodType === 'recycled' ? (
+              {selectedWoodType === 'recycled' ? (
                 <span className="text-sm text-[#6B584C]">כלול במחיר</span>
               ) : (
                 <span className="text-xl font-bold text-[#ADC178]">₪{totalPrice}</span>
