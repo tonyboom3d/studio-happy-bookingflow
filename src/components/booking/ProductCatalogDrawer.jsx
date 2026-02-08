@@ -395,7 +395,11 @@ export default function ProductCatalogDrawer({
             </div>
             <div className="flex items-center gap-1.5">
               <CreditCard className="w-4 h-4 text-[#ADC178]" />
-              <span className="text-xl font-bold text-[#ADC178]">₪{totalPrice}</span>
+              {woodType === 'recycled' ? (
+                <span className="text-sm text-[#6B584C]">כלול במחיר</span>
+              ) : (
+                <span className="text-xl font-bold text-[#ADC178]">₪{totalPrice}</span>
+              )}
             </div>
           </div>
           <motion.div
