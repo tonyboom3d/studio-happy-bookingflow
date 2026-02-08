@@ -44,11 +44,13 @@ export default function FloatingSummary({
       value: `₪${basePricePerSession} למפגש`,
       active: activeSection === 1
     },
-    // שורה 2: מספר מפגשים עם חישוב
+    // שורה 2: מספר מפגשים – מוצג מרגע שיש מוצרים (אז ידוע מספר המפגשים)
     {
-      show: selectedSlots.length > 0,
+      show: (totalMeetings || 0) > 0,
       icon: Calendar,
-      label: `${selectedSlots.length}/${totalMeetings || '?'} מפגשים`,
+      label: selectedSlots.length > 0
+        ? `${selectedSlots.length}/${totalMeetings} מפגשים`
+        : `${totalMeetings} מפגשים`,
       value: sessionsCount > 1 ? `₪${basePricePerSession} × ${sessionsCount}` : '',
       active: activeSection === 4
     },
@@ -60,12 +62,12 @@ export default function FloatingSummary({
       value: woodType === 'recycled' ? '' : `₪${productsPrice}`,
       active: activeSection === 3
     },
-    // שורה 4: סוג עץ - תמיד אחרון, אם ממוחזר לא מציג ערך
+    // שורה 4: סוג עץ - תמיד אחרון, בלי הצגת ערך (מחיר/אחוז)
     {
       show: woodType,
       icon: TreeDeciduous,
       label: woodType === 'recycled' ? 'עץ ממוחזר' : 'עץ חדש',
-      value: woodType === 'new' ? '+20%' : '',
+      value: '',
       active: activeSection === 2
     }
   ].filter(item => item.show);
