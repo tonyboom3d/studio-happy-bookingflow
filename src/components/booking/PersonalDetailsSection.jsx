@@ -10,7 +10,9 @@ export default function PersonalDetailsSection({
   userDetails, 
   setUserDetails, 
   onSubmit,
-  isSubmitting 
+  isSubmitting,
+  bookingError = null,
+  onClearError
 }) {
   const [termsAccepted, setTermsAccepted] = useState(false);
 
@@ -139,7 +141,7 @@ export default function PersonalDetailsSection({
       </div>
 
       {/* כפתור המשך */}
-      <div className="flex justify-center mt-8">
+      <div className="flex flex-col items-center mt-8 gap-3">
         <Button
           onClick={onSubmit}
           disabled={!isValid || isSubmitting}
@@ -148,6 +150,11 @@ export default function PersonalDetailsSection({
         >
           {isSubmitting ? 'מעבד...' : 'מעבר לתשלום'}
         </Button>
+        {bookingError && (
+          <p className="text-sm text-red-600 text-center max-w-md bg-red-50 border border-red-200 rounded-lg px-4 py-2" role="alert">
+            {bookingError}
+          </p>
+        )}
       </div>
     </div>
   );

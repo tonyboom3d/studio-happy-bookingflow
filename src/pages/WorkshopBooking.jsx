@@ -31,6 +31,7 @@ export default function WorkshopBooking() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [booking, setBooking] = useState(null);
+  const [bookingError, setBookingError] = useState(null);
   const [timerActive, setTimerActive] = useState(true);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
 
@@ -61,10 +62,9 @@ export default function WorkshopBooking() {
         addLog('Booking confirmed successfully!', 'success');
       }
       if (data.bookingError) {
-        // Booking failed
         setIsProcessing(false);
+        setBookingError(data.bookingError);
         addLog(`Booking error: ${data.bookingError}`, 'error');
-        alert('שגיאה בשמירת ההזמנה: ' + data.bookingError);
       }
     });
 
@@ -119,6 +119,7 @@ export default function WorkshopBooking() {
 
   // שליחת ההזמנה
   const handleSubmit = async () => {
+    setBookingError(null);
     addLog('Starting booking submission...', 'info');
     setIsProcessing(true);
 
@@ -313,6 +314,8 @@ export default function WorkshopBooking() {
                     setUserDetails={setUserDetails}
                     onSubmit={handleSubmit}
                     isSubmitting={isProcessing}
+                    bookingError={bookingError}
+                    onClearError={() => setBookingError(null)}
                   />
                 )}
               </AccordionSection>

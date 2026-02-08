@@ -28,17 +28,19 @@ export default function FloatingSummary({
   const [isOpen, setIsOpen] = useState(true); // פתוח כברירת מחדל בדף Summary
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
 
-  const basePrice = PRICING[participants] || 300;
+  const sessionsCount = totalMeetings || 1;
+  const basePricePerSession = PRICING[participants] || 300;
+  const basePriceTotal = basePricePerSession * sessionsCount;
   const productsPrice = cart.reduce((sum, p) => sum + p.price, 0);
   const woodExtra = woodType === 'new' ? (productsPrice * 0.2) : 0;
-  const totalPrice = basePrice + productsPrice + woodExtra;
+  const totalPrice = basePriceTotal + productsPrice + woodExtra;
 
   const items = [
     {
       show: participants > 0,
       icon: Users,
       label: participants === 1 ? 'יחיד' : participants === 2 ? 'זוגי' : 'שלישייה',
-      value: `₪${PRICING[participants]}`,
+      value: `₪${basePriceTotal}`,
       active: activeSection === 1
     },
     {
