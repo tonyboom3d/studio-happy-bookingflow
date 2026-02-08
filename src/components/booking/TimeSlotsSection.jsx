@@ -6,11 +6,16 @@ import { cn } from '@/lib/utils';
 import { format, addDays, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isBefore, startOfDay } from 'date-fns';
 import { he } from 'date-fns/locale';
 
-// מחזיר Set של מפתחות תאריך "YYYY-MM-DD" עבור ימים שיש בהם לפחות slot אחד API
-function getAvailableDatesSet(availableSlots) {
+// מחזיר Set של מפתחות תאריך "YYYY-MM-DD" עבור ימים שיש בהם לפחות slot אחד
+// עם מספיק מקומות פנויים (openSpots >= requiredSpots)
+function getAvailableDatesSet(availableSlots, requiredSpots = 1) {
   const set = new Set();
   if (!Array.isArray(availableSlots)) return set;
   availableSlots.forEach((slot) => {
+    // בדיקה שיש מספיק מקומות פנויים
+    const openSpots = slot?.openSpots ?? slot?.remainingSpots ?? 999;
+    if (openSpots < requiredSpots) return;
+
     const start = slot?.start;
     if (!start) return;
     let dateStr;
@@ -34,7 +39,8 @@ export default function TimeSlotsSection({
   onContinue,
   timerActive,
   setTimerActive,
-  availableSlots = []
+  availableSlots = [],
+  participants = 1
 }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDates, setSelectedDates] = useState([]);
@@ -42,10 +48,10 @@ export default function TimeSlotsSection({
 
   const today = startOfDay(new Date());
 
-  // ימים שבהם יש זמינות לפי מה שה-API (slots) מחזיר – רק ימים עם slot ניתנים לבחירה
+  // ימים שבהם יש זמינות לפי מה שה-API (slots) מחזיר – רק ימים עם slot ומספיק openSpots ניתנים לבחירה
   const availableDatesSet = useMemo(
-    () => getAvailableDatesSet(Array.isArray(availableSlots) ? availableSlots : []),
-    [availableSlots]
+    () => getAvailableDatesSet(Array.isArray(availableSlots) ? availableSlots : [], participants),
+    [availableSlots, participants]
   );
 
   // יצירת משבצות למפגשים

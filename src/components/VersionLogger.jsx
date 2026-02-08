@@ -3,8 +3,8 @@ import { X, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // גרסה - עדכן כאן בכל עדכון
-const BUILD_VERSION = '1.0.6';
-const BUILD_DATE = '08/02/2026 - Calendar: only days with API slots selectable';
+const BUILD_VERSION = '1.1.0';
+const BUILD_DATE = '08/02/2026 - CLASS API + openSpots filtering by participants';
 
 // Store for logs
 const logs = [];

@@ -301,6 +301,7 @@ export default function WorkshopBooking() {
                     setSelectedSlots={setSelectedSlots}
                     totalMeetings={totalMeetings || 1}
                     availableSlots={wixSlots}
+                    participants={participants}
                     onContinue={() => completeSection(4)}
                     timerActive={timerActive}
                     setTimerActive={setTimerActive}
