@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, Info, X, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,19 +6,47 @@ import { cn } from '@/lib/utils';
 import { format, addDays, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isBefore, startOfDay } from 'date-fns';
 import { he } from 'date-fns/locale';
 
+// מחזיר Set של מפתחות תאריך "YYYY-MM-DD" עבור ימים שיש בהם לפחות slot אחד API
+function getAvailableDatesSet(availableSlots) {
+  const set = new Set();
+  if (!Array.isArray(availableSlots)) return set;
+  availableSlots.forEach((slot) => {
+    const start = slot?.start;
+    if (!start) return;
+    let dateStr;
+    if (start.localDateTime) {
+      const { year, monthOfYear, dayOfMonth } = start.localDateTime;
+      dateStr = `${year}-${String(monthOfYear).padStart(2, '0')}-${String(dayOfMonth).padStart(2, '0')}`;
+    } else if (start.timestamp) {
+      dateStr = format(new Date(start.timestamp), 'yyyy-MM-dd');
+    } else {
+      return;
+    }
+    set.add(dateStr);
+  });
+  return set;
+}
+
 export default function TimeSlotsSection({
   selectedSlots,
   setSelectedSlots,
   totalMeetings,
   onContinue,
   timerActive,
-  setTimerActive
+  setTimerActive,
+  availableSlots = []
 }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDates, setSelectedDates] = useState([]);
   const [currentSlotIndex, setCurrentSlotIndex] = useState(0);
 
   const today = startOfDay(new Date());
+
+  // ימים שבהם יש זמינות לפי מה שה-API (slots) מחזיר
+  const availableDatesSet = useMemo(
+    () => getAvailableDatesSet(availableSlots),
+    [availableSlots]
+  );
 
   // יצירת משבצות למפגשים
   const slots = Array.from({ length: totalMeetings }, (_, i) => ({
@@ -28,6 +56,8 @@ export default function TimeSlotsSection({
 
   const handleDateSelect = (date) => {
     if (isBefore(startOfDay(date), today)) return;
+    const dateStr = format(startOfDay(date), 'yyyy-MM-dd');
+    if (!availableDatesSet.has(dateStr)) return;
 
     // אם כבר יש תאריך זה, נסיר אותו
     const existingIndex = selectedDates.findIndex(d => d && isSameDay(d, date));
@@ -192,25 +222,28 @@ export default function TimeSlotsSection({
               ))}
             </div>
 
-            {/* ימים */}
+            {/* ימים - רק ימים שיש להם slot ב-API ניתנים לבחירה */}
             <div className="grid grid-cols-7 gap-1">
               {calendarDays.map((day, i) => {
                 const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
                 const isPast = isBefore(startOfDay(day), today);
+                const dateStr = format(startOfDay(day), 'yyyy-MM-dd');
+                const hasSlots = availableDatesSet.has(dateStr);
+                const isDisabled = isPast || !hasSlots;
                 const isSelected = isDateSelected(day);
                 const selectionNumber = getDateSelectionNumber(day);
 
                 return (
                   <motion.button
                     key={i}
-                    whileTap={{ scale: 0.9 }}
+                    whileTap={isDisabled ? undefined : { scale: 0.9 }}
                     onClick={() => handleDateSelect(day)}
-                    disabled={isPast}
+                    disabled={isDisabled}
                     className={cn(
                       "aspect-square rounded-lg text-sm font-medium transition-all duration-200 relative",
                       !isCurrentMonth && "text-[#464646]/30",
-                      isPast && "cursor-not-allowed opacity-30",
-                      !isPast && !isSelected && isCurrentMonth && "hover:bg-[#ADC178]/20 text-[#6B584C]",
+                      isDisabled && "cursor-not-allowed opacity-40",
+                      !isDisabled && !isSelected && isCurrentMonth && "hover:bg-[#ADC178]/20 text-[#6B584C]",
                       isSelected && "bg-[#ADC178] text-white shadow-md"
                     )}
                   >
