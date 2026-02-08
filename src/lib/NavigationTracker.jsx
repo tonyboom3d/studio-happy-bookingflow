@@ -10,7 +10,6 @@ export default function NavigationTracker() {
 
     useEffect(() => {
         // Log page navigation to console (for debugging)
-        console.log('[Navigation] Page:', location.pathname);
 
         // Optionally notify Wix of navigation
         try {

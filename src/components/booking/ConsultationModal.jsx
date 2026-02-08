@@ -13,7 +13,6 @@ const sendConsultationToWix = (data) => {
   try {
     window.parent.postMessage({ type: 'CONSULTATION_REQUEST', data }, '*');
   } catch (e) {
-    console.log('Could not send to Wix parent');
   }
 };
 

@@ -46,9 +46,6 @@ export default function WorkshopBooking() {
   useEffect(() => {
     addLog('Subscribing to Wix data', 'info');
     const unsubscribe = subscribeToWix((data) => {
-      console.log('[WorkshopBooking] Received Wix data:', data);
-      addLog('Received Wix data', 'success');
-
       if (data.products) {
         setWixProducts(data.products);
         addLog(`Loaded ${data.products.length} products`, 'success');
@@ -102,7 +99,6 @@ export default function WorkshopBooking() {
     // שליחה ל-Wix VELO דרך window.parent.postMessage
     // Wix VELO יעביר את הנתונים ל-summary iframe (htmlComponent2)
     sendSummaryUpdate(summaryData);
-    console.log('[WorkshopBooking] Sent summary update to Wix:', summaryData);
   }, [participants, woodType, cart, selectedSlots, totalMeetings, activeSection]);
 
   // מעבר לסקשן הבא

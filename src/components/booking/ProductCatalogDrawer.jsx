@@ -203,10 +203,8 @@ export default function ProductCatalogDrawer({
       }
       
       addLog(`Catalog ${isOpen ? 'opened' : 'closed'}`, isOpen ? 'info' : 'success');
-      console.log('[ProductCatalogDrawer] Sent catalog state:', isOpen);
     } catch (err) {
       addLog(`Failed to send catalog state: ${err.message}`, 'error');
-      console.error('[ProductCatalogDrawer] Failed to send catalog state:', err);
     }
   }, [isOpen]);
 

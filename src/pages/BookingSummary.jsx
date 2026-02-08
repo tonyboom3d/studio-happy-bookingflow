@@ -17,20 +17,12 @@ export default function BookingSummary() {
   });
 
   useEffect(() => {
-    console.log('[Summary] BookingSummary page loaded');
-
-    // הגדרת רקע שקוף לגוף הדף
     document.body.style.background = 'transparent';
     document.documentElement.style.background = 'transparent';
 
-    // האזנה להודעות מ-Wix VELO (parent window)
     const handleMessage = (event) => {
-      console.log('[Summary] Received message:', event.data?.type);
-      
-      // עדכון נתוני הסיכום
       if (event.data?.type === 'SUMMARY_UPDATE') {
         const data = event.data.data;
-        console.log('[Summary] Updating summary data:', data);
         setSummaryData({
           participants: data.participants || 1,
           woodType: data.woodType || '',
@@ -40,11 +32,7 @@ export default function BookingSummary() {
           activeSection: data.activeSection || 1
         });
       }
-
-      // האזנה למצב הקטלוג
       if (event.data?.type === 'CATALOG_STATE_CHANGE') {
-        console.log('[Summary] Catalog state changed:', event.data.data?.isOpen);
-        // נשלח ל-FloatingSummary דרך postMessage פנימי
         window.postMessage({
           type: 'CATALOG_STATE_CHANGE',
           data: event.data.data
@@ -52,15 +40,12 @@ export default function BookingSummary() {
       }
     };
 
-    // האזנה ל-message events
     window.addEventListener('message', handleMessage);
 
-    // שליחת הודעה ל-parent שאנחנו מוכנים
     if (window.parent && window.parent !== window) {
       window.parent.postMessage({
         type: 'SUMMARY_IFRAME_READY'
       }, '*');
-      console.log('[Summary] Sent ready message to parent');
     }
 
     return () => {

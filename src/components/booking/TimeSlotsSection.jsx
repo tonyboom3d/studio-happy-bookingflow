@@ -42,9 +42,9 @@ export default function TimeSlotsSection({
 
   const today = startOfDay(new Date());
 
-  // ימים שבהם יש זמינות לפי מה שה-API (slots) מחזיר
+  // ימים שבהם יש זמינות לפי מה שה-API (slots) מחזיר – רק ימים עם slot ניתנים לבחירה
   const availableDatesSet = useMemo(
-    () => getAvailableDatesSet(availableSlots),
+    () => getAvailableDatesSet(Array.isArray(availableSlots) ? availableSlots : []),
     [availableSlots]
   );
 
@@ -242,7 +242,7 @@ export default function TimeSlotsSection({
                     className={cn(
                       "aspect-square rounded-lg text-sm font-medium transition-all duration-200 relative",
                       !isCurrentMonth && "text-[#464646]/30",
-                      isDisabled && "cursor-not-allowed opacity-40",
+                      isDisabled && "cursor-not-allowed opacity-50 bg-[#e8e8e8] text-[#999] hover:bg-[#e8e8e8] hover:opacity-50 pointer-events-none",
                       !isDisabled && !isSelected && isCurrentMonth && "hover:bg-[#ADC178]/20 text-[#6B584C]",
                       isSelected && "bg-[#ADC178] text-white shadow-md"
                     )}

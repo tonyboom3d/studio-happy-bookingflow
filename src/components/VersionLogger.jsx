@@ -30,9 +30,6 @@ export const addLog = (message, type = 'info') => {
   if (window.versionLoggerUpdate) {
     window.versionLoggerUpdate();
   }
-  
-  // Also log to console
-  console.log(`[VersionLogger ${logEntry.timestamp}]`, message);
 };
 
 export default function VersionLogger() {

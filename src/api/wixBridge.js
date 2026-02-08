@@ -27,8 +27,6 @@ export function initWixBridge() {
 
     // Request initial data from Wix
     requestDataFromWix();
-
-    console.log('[WixBridge] Initialized and listening for messages');
 }
 
 /**
@@ -39,8 +37,6 @@ function handleWixMessage(event) {
     const { data } = event;
 
     if (!data || !data.type) return;
-
-    console.log('[WixBridge] Received message:', data.type);
 
     switch (data.type) {
         case 'WIX_DATA':
@@ -123,10 +119,7 @@ export function notifyProgress(section, data = {}) {
 function sendToWix(type, data) {
     try {
         window.parent.postMessage({ type, data }, '*');
-        console.log('[WixBridge] Sent to Wix:', type);
-    } catch (error) {
-        console.error('[WixBridge] Failed to send message:', error);
-    }
+    } catch (error) {}
 }
 
 /**
