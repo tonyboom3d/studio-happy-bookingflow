@@ -63,8 +63,22 @@ export default function TimeSlotsSection({
   participants = 1
 }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDates, setSelectedDates] = useState([]);
-  const [currentSlotIndex, setCurrentSlotIndex] = useState(0);
+  // אתחול selectedDates מ-selectedSlots אם קיימים (שמירת הבחירה בעת מעבר בין שלבים)
+  const [selectedDates, setSelectedDates] = useState(() => {
+    if (selectedSlots && selectedSlots.length > 0) {
+      // המרת selectedSlots חזרה לתאריכים
+      return selectedSlots.map(slot => slot.date ? new Date(slot.date) : null);
+    }
+    return [];
+  });
+  const [currentSlotIndex, setCurrentSlotIndex] = useState(() => {
+    // התחלה מהמפגש הריק הראשון
+    if (selectedSlots && selectedSlots.length > 0) {
+      const firstEmpty = selectedSlots.findIndex(slot => !slot.date);
+      return firstEmpty >= 0 ? firstEmpty : selectedSlots.length;
+    }
+    return 0;
+  });
 
   const today = startOfDay(new Date());
 

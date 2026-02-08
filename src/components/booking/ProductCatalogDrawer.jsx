@@ -95,13 +95,13 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
             className="w-full h-full object-contain transition-transform duration-300 hover:scale-105"
           />
 
-          {/* כפתור הגדלה */}
+          {/* כפתור הגדלה - תמיד מוצג */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               onZoom(product.image || "https://images.unsplash.com/photo-1588117472556-1ddf8c5c3c68?w=400");
             }}
-            className="absolute bottom-2 left-2 p-1.5 bg-white/80 rounded-full hover:bg-white transition-colors opacity-0 group-hover:opacity-100"
+            className="absolute bottom-2 left-2 p-1.5 bg-white/80 rounded-full hover:bg-white transition-colors"
           >
             <ZoomIn className="w-4 h-4 text-[#6B584C]" />
           </button>

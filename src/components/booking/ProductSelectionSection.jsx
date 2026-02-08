@@ -147,7 +147,11 @@ export default function ProductSelectionSection({
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="font-bold text-[#ADC178]">₪{product.price}</span>
+                    {woodType === 'recycled' ? (
+                      <span className="text-xs text-[#6B584C]">כלול במחיר</span>
+                    ) : (
+                      <span className="font-bold text-[#ADC178]">₪{product.price}</span>
+                    )}
                     <button
                       onClick={() => removeProduct(product.id)}
                       className="w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200 transition-colors"

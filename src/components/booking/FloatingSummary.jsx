@@ -52,21 +52,21 @@ export default function FloatingSummary({
       value: sessionsCount > 1 ? `₪${basePricePerSession} × ${sessionsCount}` : '',
       active: activeSection === 4
     },
-    // שורה 3: סוג עץ - אם ממוחזר לא מציג ערך
-    {
-      show: woodType,
-      icon: TreeDeciduous,
-      label: woodType === 'recycled' ? 'עץ ממוחזר' : 'עץ חדש',
-      value: woodType === 'new' ? '+20%' : '',
-      active: activeSection === 2
-    },
-    // שורה 4: מוצרים
+    // שורה 3: מוצרים
     {
       show: cart.length > 0,
       icon: Package,
       label: `${cart.length} מוצרים`,
       value: `₪${productsPrice}`,
       active: activeSection === 3
+    },
+    // שורה 4: סוג עץ - תמיד אחרון, אם ממוחזר לא מציג ערך
+    {
+      show: woodType,
+      icon: TreeDeciduous,
+      label: woodType === 'recycled' ? 'עץ ממוחזר' : 'עץ חדש',
+      value: woodType === 'new' ? '+20%' : '',
+      active: activeSection === 2
     }
   ].filter(item => item.show);
 
