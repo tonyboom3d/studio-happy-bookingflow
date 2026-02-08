@@ -86,29 +86,32 @@ export default function TimeSlotsSection({
     const dateStr = format(startOfDay(date), 'yyyy-MM-dd');
     if (!availableDatesSet.has(dateStr)) return;
 
-    // אם כבר יש תאריך זה, נסיר אותו
-    const existingIndex = selectedDates.findIndex(d => d && isSameDay(d, date));
+    // מערך באורך totalMeetings (ממלאים null אם חסר)
+    const baseDates = Array.from({ length: totalMeetings }, (_, i) => selectedDates[i] ?? null);
+
+    // אם התאריך כבר נבחר – מסירים אותו
+    const existingIndex = baseDates.findIndex(d => d && isSameDay(d, date));
     if (existingIndex !== -1) {
-      const newDates = [...selectedDates];
+      const newDates = [...baseDates];
       newDates[existingIndex] = null;
       setSelectedDates(newDates);
+      const firstEmpty = newDates.findIndex(d => !d);
+      setCurrentSlotIndex(firstEmpty >= 0 ? firstEmpty : 0);
       return;
     }
 
-    // אם המשבצת הנוכחית ריקה, נמלא אותה
-    if (currentSlotIndex < totalMeetings) {
-      const newDates = [...selectedDates];
-      newDates[currentSlotIndex] = date;
-      setSelectedDates(newDates);
+    // תמיד ממלאים את המפגש הריק הראשון – המשתמש רק לוחץ על תאריכים ברצף
+    const firstEmptyIndex = baseDates.findIndex(d => !d);
+    if (firstEmptyIndex === -1) return;
 
-      // מעבר למשבצת הריקה הבאה
-      const nextEmptyIndex = newDates.findIndex((d, i) => i > currentSlotIndex && !d);
-      if (nextEmptyIndex !== -1) {
-        setCurrentSlotIndex(nextEmptyIndex);
-      } else if (newDates.filter(Boolean).length < totalMeetings) {
-        setCurrentSlotIndex(newDates.findIndex(d => !d));
-      }
-    }
+    const newDates = [...baseDates];
+    newDates[firstEmptyIndex] = date;
+    setSelectedDates(newDates);
+
+    // מעבר אוטומטי להדגשת המפגש הריק הבא (כדי שהלחיצה הבאה תלך אליו)
+    const nextEmpty = newDates.findIndex((d, i) => i > firstEmptyIndex && !d);
+    const fallbackEmpty = newDates.findIndex(d => !d);
+    setCurrentSlotIndex(nextEmpty !== -1 ? nextEmpty : (fallbackEmpty >= 0 ? fallbackEmpty : totalMeetings - 1));
   };
 
   const handleSlotClick = (index) => {
@@ -284,7 +287,7 @@ export default function TimeSlotsSection({
                   >
                     {format(day, 'd')}
                     {isSelected && selectionNumber && (
-                      <div className="absolute -top-2 -right-2 min-w-[50px] px-1 py-0.5 rounded-full bg-[#6B584C] text-white text-[9px] flex items-center justify-center whitespace-nowrap">
+                      <div className="absolute top-0 right-0 z-20 min-w-[2rem] px-1.5 py-0.5 rounded-full bg-[#6B584C] text-white text-[8px] font-medium flex items-center justify-center whitespace-nowrap shadow-sm translate-x-1/2 -translate-y-1/2">
                         מפגש {selectionNumber}
                       </div>
                     )}
