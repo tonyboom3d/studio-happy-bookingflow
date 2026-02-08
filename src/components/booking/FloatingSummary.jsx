@@ -36,33 +36,37 @@ export default function FloatingSummary({
   const totalPrice = basePriceTotal + productsPrice + woodExtra;
 
   const items = [
+    // שורה 1: כמה תהיו - מציג את מחיר הכרטיס לפי הבחירה
     {
       show: participants > 0,
       icon: Users,
       label: participants === 1 ? 'יחיד' : participants === 2 ? 'זוגי' : 'שלישייה',
-      value: `₪${basePriceTotal}`,
+      value: `₪${basePricePerSession} למפגש`,
       active: activeSection === 1
     },
+    // שורה 2: מספר מפגשים עם חישוב
+    {
+      show: selectedSlots.length > 0,
+      icon: Calendar,
+      label: `${selectedSlots.length}/${totalMeetings || '?'} מפגשים`,
+      value: sessionsCount > 1 ? `₪${basePricePerSession} × ${sessionsCount}` : '',
+      active: activeSection === 4
+    },
+    // שורה 3: סוג עץ - אם ממוחזר לא מציג ערך
     {
       show: woodType,
       icon: TreeDeciduous,
       label: woodType === 'recycled' ? 'עץ ממוחזר' : 'עץ חדש',
-      value: woodType === 'new' ? '+20%' : 'כלול',
+      value: woodType === 'new' ? '+20%' : '',
       active: activeSection === 2
     },
+    // שורה 4: מוצרים
     {
       show: cart.length > 0,
       icon: Package,
       label: `${cart.length} מוצרים`,
       value: `₪${productsPrice}`,
       active: activeSection === 3
-    },
-    {
-      show: selectedSlots.length > 0,
-      icon: Calendar,
-      label: `${selectedSlots.length}/${totalMeetings || '?'} מפגשים`,
-      value: '',
-      active: activeSection === 4
     }
   ].filter(item => item.show);
 

@@ -28,7 +28,10 @@ const FALLBACK_PRODUCTS = [
 
 function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPrices, onZoom }) {
   const [showDimensions, setShowDimensions] = useState(false);
-  const displayPrice = showNewWoodPrices ? Math.round(product.price * 1.2) : product.price;
+  // אם עץ ממוחזר - "כולל במחיר", אם חדש - המחיר עם תוספת
+  const priceDisplay = showNewWoodPrices 
+    ? `₪${Math.round(product.price * 1.2)}` 
+    : 'כולל במחיר';
 
   return (
     <motion.div
@@ -117,7 +120,10 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-[#e8e8e8]">
-            <span className="text-lg font-bold text-[#ADC178]">₪{displayPrice}</span>
+            <span className={cn(
+              "text-lg font-bold",
+              showNewWoodPrices ? "text-[#ADC178]" : "text-[#6B584C]"
+            )}>{priceDisplay}</span>
           </div>
         </div>
       </button>

@@ -3,7 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Minus, Plus, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+const PRICING = {
+  1: 300,
+  2: 500,
+  3: 650
+};
+
 export default function ParticipantsSection({ participants, setParticipants, onContinue }) {
+  const ticketPrice = PRICING[participants] || 300;
   const handleDecrease = () => {
     if (participants > 1) setParticipants(participants - 1);
   };
@@ -55,9 +62,14 @@ export default function ParticipantsSection({ participants, setParticipants, onC
         </motion.button>
       </div>
       
-      <p className="mt-4 text-sm text-[#464646] opacity-70">
-        {participants === 1 ? "משתתף אחד" : `${participants} משתתפים`}
-      </p>
+      <div className="mt-4 text-center">
+        <p className="text-sm text-[#464646] opacity-70">
+          {participants === 1 ? "משתתף אחד" : `${participants} משתתפים`}
+        </p>
+        <p className="text-lg font-semibold text-[#ADC178] mt-1">
+          ₪{ticketPrice} למפגש
+        </p>
+      </div>
       
       <motion.div
         animate={{

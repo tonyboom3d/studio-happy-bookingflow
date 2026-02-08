@@ -3,8 +3,8 @@ import { X, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // גרסה - עדכן כאן בכל עדכון
-const BUILD_VERSION = '1.2.0';
-const BUILD_DATE = '08/02/2026 - Calendar: meeting labels + partial spots indicator';
+const BUILD_VERSION = '1.3.0';
+const BUILD_DATE = '08/02/2026 - UI: pricing clarity + Hebrew errors';
 
 // Store for logs
 const logs = [];

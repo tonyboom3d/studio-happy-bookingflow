@@ -6,6 +6,39 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Phone, Mail, User, Instagram, FileText, Bell } from 'lucide-react';
 
+// המרת שגיאות לעברית
+const translateErrorToHebrew = (error) => {
+  if (!error) return null;
+  
+  // אם השגיאה כבר בעברית
+  if (/[\u0590-\u05FF]/.test(error)) return error;
+  
+  // מילון תרגום לשגיאות נפוצות
+  const errorTranslations = {
+    'payment failed': 'התשלום נכשל, אנא נסו שוב',
+    'payment cancelled': 'התשלום בוטל',
+    'payment error': 'שגיאה בתהליך התשלום',
+    'network error': 'שגיאת רשת, אנא בדקו את החיבור ונסו שוב',
+    'timeout': 'הבקשה נכשלה עקב זמן המתנה ארוך',
+    'invalid data': 'הנתונים שהוזנו אינם תקינים',
+    'booking failed': 'ההזמנה נכשלה, אנא נסו שוב',
+    'session expired': 'פג תוקף החיבור, אנא רעננו את הדף',
+    'no available slots': 'אין מקומות פנויים במועד הנבחר',
+    'missing required fields': 'יש למלא את כל שדות החובה',
+  };
+  
+  // בדיקה אם יש תרגום מתאים
+  const lowerError = error.toLowerCase();
+  for (const [key, translation] of Object.entries(errorTranslations)) {
+    if (lowerError.includes(key)) {
+      return translation;
+    }
+  }
+  
+  // שגיאה כללית בעברית
+  return 'אירעה שגיאה בתהליך ההזמנה. אנא נסו שוב או פנו לתמיכה.';
+};
+
 export default function PersonalDetailsSection({ 
   userDetails, 
   setUserDetails, 
@@ -15,6 +48,9 @@ export default function PersonalDetailsSection({
   onClearError
 }) {
   const [termsAccepted, setTermsAccepted] = useState(false);
+  
+  // תרגום השגיאה לעברית
+  const hebrewError = translateErrorToHebrew(bookingError);
 
   const handleChange = (field, value) => {
     setUserDetails({ ...userDetails, [field]: value });
@@ -150,9 +186,9 @@ export default function PersonalDetailsSection({
         >
           {isSubmitting ? 'מעבד...' : 'מעבר לתשלום'}
         </Button>
-        {bookingError && (
+        {hebrewError && (
           <p className="text-sm text-red-600 text-center max-w-md bg-red-50 border border-red-200 rounded-lg px-4 py-2" role="alert">
-            {bookingError}
+            {hebrewError}
           </p>
         )}
       </div>
