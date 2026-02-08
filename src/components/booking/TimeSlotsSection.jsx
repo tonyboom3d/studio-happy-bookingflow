@@ -113,8 +113,8 @@ export default function TimeSlotsSection({
 
   return (
     <div className="py-4">
-      {/* כותרת */}
-      <div className="flex items-center justify-center gap-2 mb-2">
+      {/* כותרת - רק תאריכים עם זמינות ב-API ניתנים לבחירה */}
+      <div className="flex items-center justify-center gap-2 mb-2" data-calendar-version="slots-only">
         <Calendar className="w-5 h-5 text-[#6B584C]" />
         <span className="text-lg font-medium text-[#6B584C]">
           בחרו {totalMeetings} תאריכי מפגש
