@@ -6,18 +6,24 @@ import { cn } from '@/lib/utils';
 import { format, addDays, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isBefore, startOfDay } from 'date-fns';
 import { he } from 'date-fns/locale';
 
-// מחזיר Set של מפתחות תאריך "YYYY-MM-DD" עבור ימים שיש בהם לפחות slot אחד
-// עם מספיק מקומות פנויים (openSpots >= requiredSpots)
-function getAvailableDatesSet(availableSlots, requiredSpots = 1) {
-  const set = new Set();
-  if (!Array.isArray(availableSlots)) return set;
-  availableSlots.forEach((slot) => {
-    // בדיקה שיש מספיק מקומות פנויים
-    const openSpots = slot?.openSpots ?? slot?.remainingSpots ?? 999;
-    if (openSpots < requiredSpots) return;
+// מחזיר מידע על תאריכים זמינים
+// availableDates: Set של תאריכים עם מספיק מקומות (openSpots >= requiredSpots)
+// partialDates: Set של תאריכים עם slots אבל לא מספיק מקומות
+// spotsMap: Map של תאריך למספר מקומות פנויים מקסימלי
+function getAvailabilityInfo(availableSlots, requiredSpots = 1) {
+  const availableDates = new Set();
+  const partialDates = new Set();
+  const spotsMap = new Map();
 
+  if (!Array.isArray(availableSlots)) {
+    return { availableDates, partialDates, spotsMap };
+  }
+
+  availableSlots.forEach((slot) => {
+    const openSpots = slot?.openSpots ?? slot?.remainingSpots ?? 0;
     const start = slot?.start;
     if (!start) return;
+
     let dateStr;
     if (start.localDateTime) {
       const { year, monthOfYear, dayOfMonth } = start.localDateTime;
@@ -27,9 +33,23 @@ function getAvailableDatesSet(availableSlots, requiredSpots = 1) {
     } else {
       return;
     }
-    set.add(dateStr);
+
+    // שמירת מספר המקומות הפנויים המקסימלי לתאריך
+    const currentMax = spotsMap.get(dateStr) || 0;
+    if (openSpots > currentMax) {
+      spotsMap.set(dateStr, openSpots);
+    }
+
+    // סיווג התאריך
+    if (openSpots >= requiredSpots) {
+      availableDates.add(dateStr);
+      partialDates.delete(dateStr); // אם יש slot עם מספיק מקומות, זה לא partial
+    } else if (openSpots > 0 && !availableDates.has(dateStr)) {
+      partialDates.add(dateStr); // יש מקומות אבל לא מספיק
+    }
   });
-  return set;
+
+  return { availableDates, partialDates, spotsMap };
 }
 
 export default function TimeSlotsSection({
@@ -48,9 +68,10 @@ export default function TimeSlotsSection({
 
   const today = startOfDay(new Date());
 
-  // ימים שבהם יש זמינות לפי מה שה-API (slots) מחזיר – רק ימים עם slot ומספיק openSpots ניתנים לבחירה
-  const availableDatesSet = useMemo(
-    () => getAvailableDatesSet(Array.isArray(availableSlots) ? availableSlots : [], participants),
+  // מידע על זמינות תאריכים לפי מה שה-API מחזיר
+  // availableDates = ימים עם מספיק מקומות, partialDates = ימים עם slots אבל לא מספיק מקומות
+  const { availableDates: availableDatesSet, partialDates, spotsMap } = useMemo(
+    () => getAvailabilityInfo(Array.isArray(availableSlots) ? availableSlots : [], participants),
     [availableSlots, participants]
   );
 
@@ -234,29 +255,37 @@ export default function TimeSlotsSection({
                 const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
                 const isPast = isBefore(startOfDay(day), today);
                 const dateStr = format(startOfDay(day), 'yyyy-MM-dd');
-                const hasSlots = availableDatesSet.has(dateStr);
-                const isDisabled = isPast || !hasSlots;
+                const hasEnoughSlots = availableDatesSet.has(dateStr);
+                const hasPartialSlots = partialDates.has(dateStr); // יש מקומות אבל לא מספיק
+                const isDisabled = isPast || (!hasEnoughSlots && !hasPartialSlots);
+                const isNotEnoughSpots = hasPartialSlots && !hasEnoughSlots; // יש slots אבל לא מספיק מקומות
                 const isSelected = isDateSelected(day);
                 const selectionNumber = getDateSelectionNumber(day);
 
                 return (
                   <motion.button
                     key={i}
-                    whileTap={isDisabled ? undefined : { scale: 0.9 }}
+                    whileTap={(isDisabled || isNotEnoughSpots) ? undefined : { scale: 0.9 }}
                     onClick={() => handleDateSelect(day)}
-                    disabled={isDisabled}
+                    disabled={isDisabled || isNotEnoughSpots}
+                    title={isNotEnoughSpots ? `נשארו רק ${spotsMap.get(dateStr)} מקומות` : undefined}
                     className={cn(
                       "aspect-square rounded-lg text-sm font-medium transition-all duration-200 relative",
                       !isCurrentMonth && "text-[#464646]/30",
+                      // תאריך ללא slots בכלל או שעבר - אפור
                       isDisabled && "cursor-not-allowed opacity-50 bg-[#e8e8e8] text-[#999] hover:bg-[#e8e8e8] hover:opacity-50 pointer-events-none",
-                      !isDisabled && !isSelected && isCurrentMonth && "hover:bg-[#ADC178]/20 text-[#6B584C]",
+                      // תאריך עם slots אבל לא מספיק מקומות - כתום/אדום בהיר
+                      isNotEnoughSpots && !isDisabled && "cursor-not-allowed bg-orange-100 text-orange-600 border border-orange-300 opacity-70",
+                      // תאריך זמין ולא נבחר
+                      !isDisabled && !isNotEnoughSpots && !isSelected && isCurrentMonth && "hover:bg-[#ADC178]/20 text-[#6B584C]",
+                      // תאריך נבחר
                       isSelected && "bg-[#ADC178] text-white shadow-md"
                     )}
                   >
                     {format(day, 'd')}
                     {isSelected && selectionNumber && (
-                      <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#6B584C] text-white text-[10px] flex items-center justify-center">
-                        {selectionNumber}
+                      <div className="absolute -top-2 -right-2 min-w-[50px] px-1 py-0.5 rounded-full bg-[#6B584C] text-white text-[9px] flex items-center justify-center whitespace-nowrap">
+                        מפגש {selectionNumber}
                       </div>
                     )}
                   </motion.button>
