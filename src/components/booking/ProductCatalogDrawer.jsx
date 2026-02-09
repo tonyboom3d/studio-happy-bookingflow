@@ -115,7 +115,12 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1 text-xs text-[#464646]/70">
               <Calendar className="w-3.5 h-3.5" />
-              <span>{meetings} מפגשים</span>
+              {/* מציג מפגשים × כמות אם יש יותר מיחידה אחת */}
+              <span>
+                {isSelected && quantity > 1 
+                  ? `${meetings * quantity} מפגשים` 
+                  : `${meetings} מפגשים`}
+              </span>
             </div>
 
             {/* הוסר רמת קושי כבקשת המשתמש */}
