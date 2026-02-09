@@ -10,13 +10,15 @@ import { he } from 'date-fns/locale';
 // availableDates: Set של תאריכים עם מספיק מקומות (openSpots >= requiredSpots)
 // partialDates: Set של תאריכים עם slots אבל לא מספיק מקומות
 // spotsMap: Map של תאריך למספר מקומות פנויים מקסימלי
+// sessionMap: Map של תאריך ל-sessionId (חשוב עבור ביצוע ההזמנה!)
 function getAvailabilityInfo(availableSlots, requiredSpots = 1) {
   const availableDates = new Set();
   const partialDates = new Set();
   const spotsMap = new Map();
+  const sessionMap = new Map(); // תאריך -> slot מלא עם sessionId
 
   if (!Array.isArray(availableSlots)) {
-    return { availableDates, partialDates, spotsMap };
+    return { availableDates, partialDates, spotsMap, sessionMap };
   }
 
   availableSlots.forEach((slot) => {
@@ -40,6 +42,13 @@ function getAvailabilityInfo(availableSlots, requiredSpots = 1) {
       spotsMap.set(dateStr, openSpots);
     }
 
+    // שמירת ה-slot המלא עם ה-sessionId (מעדיפים slot עם מספיק מקומות)
+    if (openSpots >= requiredSpots) {
+      sessionMap.set(dateStr, slot);
+    } else if (!sessionMap.has(dateStr)) {
+      sessionMap.set(dateStr, slot);
+    }
+
     // סיווג התאריך
     if (openSpots >= requiredSpots) {
       availableDates.add(dateStr);
@@ -49,7 +58,7 @@ function getAvailabilityInfo(availableSlots, requiredSpots = 1) {
     }
   });
 
-  return { availableDates, partialDates, spotsMap };
+  return { availableDates, partialDates, spotsMap, sessionMap };
 }
 
 export default function TimeSlotsSection({
@@ -84,7 +93,8 @@ export default function TimeSlotsSection({
 
   // מידע על זמינות תאריכים לפי מה שה-API מחזיר
   // availableDates = ימים עם מספיק מקומות, partialDates = ימים עם slots אבל לא מספיק מקומות
-  const { availableDates: availableDatesSet, partialDates, spotsMap } = useMemo(
+  // sessionMap = מיפוי תאריך ל-slot עם sessionId
+  const { availableDates: availableDatesSet, partialDates, spotsMap, sessionMap } = useMemo(
     () => getAvailabilityInfo(Array.isArray(availableSlots) ? availableSlots : [], participants),
     [availableSlots, participants]
   );
@@ -327,11 +337,22 @@ export default function TimeSlotsSection({
         >
           <Button
             onClick={() => {
-              setSelectedSlots(selectedDates.filter(Boolean).map((date, i) => ({
-                id: `slot-${i}`,
-                date: date,
-                time: '10:00'
-              })));
+              // בניית slots עם sessionId מה-Wix API
+              const slotsWithSession = selectedDates.filter(Boolean).map((date, i) => {
+                const dateStr = format(date, 'yyyy-MM-dd');
+                const wixSlot = sessionMap.get(dateStr);
+                return {
+                  id: `slot-${i}`,
+                  date: date,
+                  time: '10:00',
+                  // שמירת ה-sessionId מה-Wix API - חיוני לביצוע ההזמנה!
+                  sessionId: wixSlot?.sessionId || wixSlot?._id || null,
+                  // שמירת ה-slot המקורי לגיבוי
+                  wixSlot: wixSlot || null
+                };
+              });
+              console.log('[TimeSlotsSection] Saving slots with sessionId:', slotsWithSession);
+              setSelectedSlots(slotsWithSession);
               onContinue();
             }}
             disabled={selectedDates.filter(Boolean).length !== totalMeetings}

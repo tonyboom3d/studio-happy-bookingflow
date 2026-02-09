@@ -131,11 +131,13 @@ export default function WorkshopBooking() {
       phone: userDetails.phone,
       participants,
       wood_type: woodType,
-      products: cart.map(p => ({ product_id: p.id, title: p.title, price: p.price })),
+      products: cart.map(p => ({ product_id: p.id, _id: p._id || p.id, title: p.title, price: p.price })),
       selected_slots: selectedSlots.map(s => ({
         slot_id: s.id,
         date: s.date?.toISOString?.() || s.date,
-        time: s.time
+        time: s.time,
+        // sessionId חיוני לביצוע ההזמנה ב-Wix Bookings API
+        sessionId: s.sessionId || null
       })),
       total_price: cart.reduce((sum, p) => sum + p.price, 0),
       total_sessions: totalMeetings,
