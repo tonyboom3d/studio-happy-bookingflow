@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ShoppingBag, Wrench, HelpCircle, Sparkles, X } from 'lucide-react';
+import { ShoppingBag, Wrench, HelpCircle, Sparkles, X, Minus, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import ProductCatalogDrawer from './ProductCatalogDrawer';
 import CustomBuildModal from './CustomBuildModal';
 import ConsultationModal from './ConsultationModal';
+
+const MAX_PRODUCTS = 21;
 
 export default function ProductSelectionSection({
   cart,
@@ -13,7 +15,8 @@ export default function ProductSelectionSection({
   participants,
   woodType,
   onContinue,
-  wixProducts // הוספת מוצרים מ-Wix
+  wixProducts, // הוספת מוצרים מ-Wix
+  updateQuantity // עדכון כמות מוצר בעגלה
 }) {
   const [showCatalog, setShowCatalog] = useState(false);
   const [showCustomBuild, setShowCustomBuild] = useState(false);
@@ -60,8 +63,9 @@ export default function ProductSelectionSection({
     }
   ];
 
-  const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)), 0);
-  const totalPrice = cart.reduce((sum, p) => sum + p.price, 0);
+  const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)) * (p.quantity || 1), 0);
+  const totalPrice = cart.reduce((sum, p) => sum + p.price * (p.quantity || 1), 0);
+  const totalItems = cart.reduce((sum, p) => sum + (p.quantity || 1), 0);
 
   const removeProduct = (productId) => {
     setCart(cart.filter(p => p.id !== productId));
@@ -150,8 +154,24 @@ export default function ProductSelectionSection({
                     {woodType === 'recycled' ? (
                       <span className="text-xs text-[#6B584C]">כלול במחיר</span>
                     ) : (
-                      <span className="font-bold text-[#ADC178]">₪{product.price}</span>
+                      <span className="font-bold text-[#ADC178]">₪{product.price * (product.quantity || 1)}</span>
                     )}
+                    {/* בורר כמות */}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => updateQuantity(product._id || product.id, -1)}
+                        className="w-6 h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#ADC178] hover:bg-[#ADC178]/10 transition-colors"
+                      >
+                        <Minus className="w-3 h-3 text-[#6B584C]" />
+                      </button>
+                      <span className="text-sm font-bold text-[#6B584C] min-w-[20px] text-center">{product.quantity || 1}</span>
+                      <button
+                        onClick={() => updateQuantity(product._id || product.id, 1)}
+                        className="w-6 h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#ADC178] hover:bg-[#ADC178]/10 transition-colors"
+                      >
+                        <Plus className="w-3 h-3 text-[#6B584C]" />
+                      </button>
+                    </div>
                     <button
                       onClick={() => removeProduct(product.id)}
                       className="w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200 transition-colors"
@@ -199,6 +219,7 @@ export default function ProductSelectionSection({
         woodType={woodType}
         participants={participants}
         wixProducts={wixProducts}
+        updateQuantity={updateQuantity}
       />
       <CustomBuildModal
         isOpen={showCustomBuild}

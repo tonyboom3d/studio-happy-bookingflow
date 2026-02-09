@@ -84,15 +84,27 @@ export default function WorkshopBooking() {
     });
   }, [activeSection, participants, woodType, cart.length, selectedSlots.length]);
 
-  // חישוב סה"כ מפגשים
-  const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || 3), 0);
+  // עדכון כמות מוצר בעגלה (מינימום 1, מקסימום 5)
+  const updateQuantity = (productId, delta) => {
+    setCart(prev => prev.map(p => {
+      const pid = p._id || p.id;
+      if (pid === productId) {
+        const newQty = Math.min(5, Math.max(1, (p.quantity || 1) + delta));
+        return { ...p, quantity: newQty };
+      }
+      return p;
+    }));
+  };
+
+  // חישוב סה"כ מפגשים (כולל כמויות)
+  const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || 3) * (p.quantity || 1), 0);
 
   // שליחת נתוני סיכום ל-Wix VELO (שיעביר ל-summary iframe)
   useEffect(() => {
     const summaryData = {
       participants,
       woodType,
-      cart: cart.map(p => ({ id: p.id, title: p.title, price: p.price, meetings: p.meetings })),
+      cart: cart.map(p => ({ id: p.id, title: p.title, price: p.price, meetings: p.meetings, quantity: p.quantity || 1 })),
       selectedSlots,
       totalMeetings,
       activeSection
@@ -131,7 +143,7 @@ export default function WorkshopBooking() {
       phone: userDetails.phone,
       participants,
       wood_type: woodType,
-      products: cart.map(p => ({ product_id: p.id, _id: p._id || p.id, title: p.title, price: p.price })),
+      products: cart.map(p => ({ product_id: p.id, _id: p._id || p.id, title: p.title, price: p.price, quantity: p.quantity || 1, addOnId: p.addOnId })),
       selected_slots: selectedSlots.map(s => ({
         slot_id: s.id,
         date: s.date?.toISOString?.() || s.date,
@@ -139,7 +151,7 @@ export default function WorkshopBooking() {
         // sessionId חיוני לביצוע ההזמנה ב-Wix Bookings API
         sessionId: s.sessionId || null
       })),
-      total_price: cart.reduce((sum, p) => sum + p.price, 0),
+      total_price: cart.reduce((sum, p) => sum + p.price * (p.quantity || 1), 0),
       total_sessions: totalMeetings,
       notes: userDetails.notes,
       instagram: userDetails.instagram,
@@ -299,6 +311,7 @@ export default function WorkshopBooking() {
                     participants={participants}
                     woodType={woodType}
                     wixProducts={wixProducts}
+                    updateQuantity={updateQuantity}
                     onContinue={() => completeSection(3)}
                   />
                 )}

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import {
   X, Filter, Check, Info, Package, Calendar, CreditCard,
-  TreeDeciduous, Minus, ZoomIn, Recycle
+  TreeDeciduous, Minus, Plus, ZoomIn, Recycle, AlertCircle
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from '@/components/ui/switch';
@@ -26,7 +26,9 @@ const FALLBACK_PRODUCTS = [
 
 // Difficulty functions removed as requested
 
-function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPrices, onZoom }) {
+const MAX_PRODUCTS = 21;
+
+function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPrices, onZoom, quantity, onQuantityChange }) {
   const [showDimensions, setShowDimensions] = useState(false);
   // אם עץ ממוחזר - "כולל במחיר", אם חדש - המחיר עם תוספת
   const priceDisplay = showNewWoodPrices 
@@ -124,6 +126,26 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
               "text-lg font-bold",
               showNewWoodPrices ? "text-[#ADC178]" : "text-[#6B584C]"
             )}>{priceDisplay}</span>
+            {isSelected && onQuantityChange && (
+              <div 
+                className="flex items-center gap-1.5"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={(e) => { e.stopPropagation(); onQuantityChange(product._id || product.id, -1); }}
+                  className="w-6 h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#ADC178] hover:bg-[#ADC178]/10 transition-colors"
+                >
+                  <Minus className="w-3 h-3 text-[#6B584C]" />
+                </button>
+                <span className="text-sm font-bold text-[#6B584C] min-w-[20px] text-center">{quantity || 1}</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onQuantityChange(product._id || product.id, 1); }}
+                  className="w-6 h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#ADC178] hover:bg-[#ADC178]/10 transition-colors"
+                >
+                  <Plus className="w-3 h-3 text-[#6B584C]" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </button>
@@ -139,7 +161,8 @@ export default function ProductCatalogDrawer({
   getMeetings,
   woodType,
   participants,
-  wixProducts // קבלת מוצרים מ-Wix!
+  wixProducts, // קבלת מוצרים מ-Wix!
+  updateQuantity // עדכון כמות מוצר בעגלה
 }) {
   const [difficultyFilter, setDifficultyFilter] = useState([1, 5]);
   const [priceFilter, setPriceFilter] = useState([0, 1000]);
@@ -191,14 +214,17 @@ export default function ProductCatalogDrawer({
     if (isSelected) {
       setCart(cart.filter(p => (p._id || p.id) !== productId));
     } else {
-      setCart([...cart, { ...product, id: productId, meetings: getMeetings(product) }]);
+      // מגבלה של 21 מוצרים מקסימום
+      if (cart.length >= MAX_PRODUCTS) return;
+      setCart([...cart, { ...product, id: productId, meetings: getMeetings(product), quantity: 1 }]);
     }
   };
 
-  const totalPriceBase = cart.reduce((sum, p) => sum + p.price, 0);
+  const totalPriceBase = cart.reduce((sum, p) => sum + p.price * (p.quantity || 1), 0);
   // סה"כ לתצוגה: עץ חדש = +20%, עץ ממוחזר = כלול
   const totalPrice = selectedWoodType === 'new' ? Math.round(totalPriceBase * 1.2) : totalPriceBase;
-  const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)), 0);
+  const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)) * (p.quantity || 1), 0);
+  const totalItems = cart.reduce((sum, p) => sum + (p.quantity || 1), 0);
 
   // שליחת הודעה על מצב הקטלוג ל-FloatingSummary (בתוך ה-iframe) ול-VELO (אם צריך)
   useEffect(() => {
@@ -358,9 +384,19 @@ export default function ProductCatalogDrawer({
 
         {/* גריד מוצרים */}
         <div ref={productsContainerRef} className="flex-1 overflow-y-auto p-4 pb-32 h-[calc(100vh-200px)]">
+          {/* הערה על מגבלה ופיצול */}
+          <div className="flex items-center gap-2 mb-4 p-3 bg-[#fafafa] rounded-lg border border-[#e8e8e8]">
+            <AlertCircle className="w-4 h-4 text-[#ADC178] flex-shrink-0" />
+            <p className="text-xs text-[#464646]/70">
+              ניתן לבחור עד {MAX_PRODUCTS} מוצרים להזמנה ({cart.length}/{MAX_PRODUCTS}). ניתן לפצל הזמנות במידת הצורך.
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             {filteredProducts.map(product => {
               const productId = product._id || product.id;
+              const cartItem = cart.find(p => (p._id || p.id) === productId);
+              const isSelected = !!cartItem;
               return (
                 <div 
                   key={productId} 
@@ -372,11 +408,13 @@ export default function ProductCatalogDrawer({
                 >
                   <ProductGridCard
                     product={product}
-                    isSelected={cart.some(p => (p._id || p.id) === productId)}
+                    isSelected={isSelected}
                     onClick={() => {}}
                     meetings={getLocalMeetings(product)}
                     showNewWoodPrices={selectedWoodType === 'new'}
                     onZoom={setEnlargedImage}
+                    quantity={cartItem?.quantity || 1}
+                    onQuantityChange={updateQuantity}
                   />
                 </div>
               );
@@ -395,7 +433,7 @@ export default function ProductCatalogDrawer({
             <div className="flex gap-4 text-sm">
               <div className="flex items-center gap-1.5 text-[#464646]">
                 <Package className="w-4 h-4 text-[#ADC178]" />
-                <span>{cart.length} מוצרים</span>
+                <span>{cart.length} מוצרים{totalItems > cart.length ? ` (${totalItems} יח')` : ''}</span>
               </div>
               <div className="flex items-center gap-1.5 text-[#464646]">
                 <Calendar className="w-4 h-4 text-[#ADC178]" />
