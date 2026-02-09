@@ -32,6 +32,7 @@ export default function WorkshopBooking() {
   const [isComplete, setIsComplete] = useState(false);
   const [booking, setBooking] = useState(null);
   const [bookingError, setBookingError] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState('Successful');
   const [timerActive, setTimerActive] = useState(true);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
 
@@ -59,7 +60,8 @@ export default function WorkshopBooking() {
         // Wix confirmed booking saved
         setIsProcessing(false);
         setIsComplete(true);
-        addLog('Booking confirmed successfully!', 'success');
+        setPaymentStatus(data.paymentStatus || 'Successful');
+        addLog(`Booking confirmed! Payment status: ${data.paymentStatus}`, 'success');
       }
       if (data.bookingError) {
         setIsProcessing(false);
@@ -195,6 +197,7 @@ export default function WorkshopBooking() {
     return (
       <ThankYouScreen
         booking={booking}
+        paymentStatus={paymentStatus}
         onGoHome={() => {
           setIsComplete(false);
           setActiveSection(1);
@@ -205,6 +208,7 @@ export default function WorkshopBooking() {
           setSelectedSlots([]);
           setUserDetails({});
           setBooking(null);
+          setPaymentStatus('Successful');
         }}
       />
     );
@@ -236,11 +240,11 @@ export default function WorkshopBooking() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-[#fafafa]" dir="rtl">
       {/* Header */}
-      <header className="py-8 px-4 text-center border-b border-[#e8e8e8] bg-white">
+      <header className="py-8 px-8 text-center border-b border-[#e8e8e8] bg-white">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-3xl md:text-4xl font-bold text-[#6B584C]"
+          className="text-xl md:text-2xl font-bold text-[#6B584C]"
         >
           הנגריה הפתוחה
         </motion.h1>

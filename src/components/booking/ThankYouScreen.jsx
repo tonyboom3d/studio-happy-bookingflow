@@ -1,11 +1,13 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Check, Calendar, MapPin, Phone, Mail, Home } from 'lucide-react';
+import { Check, Calendar, MapPin, Phone, Mail, Home, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 
-export default function ThankYouScreen({ booking, onGoHome }) {
+export default function ThankYouScreen({ booking, paymentStatus = 'Successful', onGoHome }) {
+  // Pending = התשלום טרם אושר במלואו
+  const isPendingPayment = paymentStatus === 'Pending';
   const addToGoogleCalendar = () => {
     const firstSlot = booking.selected_slots?.[0];
     if (!firstSlot) return;
@@ -75,10 +77,30 @@ END:VCALENDAR`;
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
-        className="text-lg text-[#464646] mb-8 text-center"
+        className="text-lg text-[#464646] mb-4 text-center"
       >
         ההזמנה שלך התקבלה בהצלחה. נתראה בנגריה!
       </motion.p>
+
+      {/* הערה כתומה - תשלום ממתין לאישור */}
+      {isPendingPayment && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="w-full max-w-md bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6 flex items-start gap-3"
+        >
+          <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+          <div className="text-right">
+            <p className="text-sm font-medium text-orange-700">
+              התשלום טרם אושר במלואו
+            </p>
+            <p className="text-xs text-orange-600 mt-1">
+              ההזמנה נרשמה במערכת. נעדכן אותך ברגע שהתשלום יאושר על ידי חברת האשראי.
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       {/* סיכום הזמנה */}
       <motion.div

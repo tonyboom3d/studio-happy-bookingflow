@@ -59,7 +59,11 @@ function handleWixMessage(event) {
 
         case 'BOOKING_CONFIRMED':
             // Wix confirmed booking was saved
-            notifyListeners({ bookingConfirmed: true, bookingId: data.bookingId });
+            notifyListeners({ 
+                bookingConfirmed: true, 
+                bookingId: data.bookingId,
+                paymentStatus: data.paymentStatus || 'Successful'
+            });
             break;
 
         case 'BOOKING_ERROR':
