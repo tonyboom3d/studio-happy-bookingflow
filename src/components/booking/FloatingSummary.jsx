@@ -31,7 +31,16 @@ export default function FloatingSummary({
   const sessionsCount = totalMeetings || 1;
   const basePricePerSession = PRICING[participants] || 300;
   const basePriceTotal = basePricePerSession * sessionsCount;
-  const productsPrice = cart.reduce((sum, p) => sum + p.price, 0);
+  // כמות כוללת של יחידות (אם אותו מוצר נבחר כמה פעמים)
+  const totalItems = cart.reduce((sum, p) => {
+    const qty = typeof p.quantity === 'number' ? p.quantity : 1;
+    return sum + (qty > 0 ? qty : 1);
+  }, 0);
+  // מחיר מוצרים כולל כמות
+  const productsPrice = cart.reduce((sum, p) => {
+    const qty = typeof p.quantity === 'number' ? p.quantity : 1;
+    return sum + (p.price || 0) * (qty > 0 ? qty : 1);
+  }, 0);
   const woodExtra = woodType === 'new' ? (productsPrice * 0.2) : 0;
   const totalPrice = basePriceTotal + productsPrice + woodExtra;
 
@@ -58,7 +67,8 @@ export default function FloatingSummary({
     {
       show: cart.length > 0,
       icon: Package,
-      label: `${cart.length} מוצרים`,
+      // מציגים מספר יחידות כולל, לא רק מספר שורות בעגלה
+      label: `${totalItems} מוצרים`,
       value: woodType === 'recycled' ? '' : `₪${productsPrice}`,
       active: activeSection === 3
     },

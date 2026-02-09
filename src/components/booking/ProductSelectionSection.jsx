@@ -146,7 +146,10 @@ export default function ProductSelectionSection({
                     <div>
                       <h5 className="font-medium text-[#6B584C] text-sm">{product.title}</h5>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-[#464646]/70">{product.meetings} מפגשים</span>
+                        {/* מספר מפגשים × כמות יחידות */}
+                        <span className="text-xs text-[#464646]/70">
+                          {(product.meetings || getMeetings(product)) * (product.quantity || 1)} מפגשים
+                        </span>
                       </div>
                     </div>
                   </div>
