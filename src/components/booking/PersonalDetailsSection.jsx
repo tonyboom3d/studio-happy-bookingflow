@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -51,6 +51,17 @@ export default function PersonalDetailsSection({
   
   // תרגום השגיאה לעברית
   const hebrewError = translateErrorToHebrew(bookingError);
+
+  // הצגת הודעת השגיאה למשך 8 שניות ואז הסרה אוטומטית
+  useEffect(() => {
+    if (!bookingError || !onClearError) return;
+
+    const timer = setTimeout(() => {
+      onClearError();
+    }, 8000);
+
+    return () => clearTimeout(timer);
+  }, [bookingError, onClearError]);
 
   const handleChange = (field, value) => {
     setUserDetails({ ...userDetails, [field]: value });

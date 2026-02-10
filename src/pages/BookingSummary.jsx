@@ -75,9 +75,6 @@ export default function BookingSummary() {
         selectedSlots={summaryData.selectedSlots}
         totalMeetings={summaryData.totalMeetings}
         activeSection={summaryData.activeSection}
-        isProcessing={summaryData.isProcessing}
-        isComplete={summaryData.isComplete}
-        hasPaymentError={summaryData.hasPaymentError}
         isSummaryPage={true}
       />
     </div>
