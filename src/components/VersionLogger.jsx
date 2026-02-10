@@ -3,32 +3,67 @@ import { X, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // גרסה - עדכן כאן בכל עדכון
-const BUILD_VERSION = '1.4.0';
-const BUILD_DATE = '08/02/2026 - UI fixes: pricing display, summary order, calendar persist';
+const BUILD_VERSION = '1.5.0';
+const BUILD_DATE = '10/02/2026 - Performance: memory optimization, CSS animations, debounce';
 
 // Store for logs
 const logs = [];
 const maxLogs = 50;
 
-// Function to add log
+// Throttle state למניעת עדכונים מרובים
+let updateScheduled = false;
+const UPDATE_THROTTLE_DELAY = 500; // 500ms בין עדכונים
+
+// Batch logs למניעת עדכונים מרובים
+const pendingLogs = [];
+let batchTimeout = null;
+const BATCH_DELAY = 300; // 300ms לאיסוף logs
+
+// בדיקה אם אנחנו בסביבת פיתוח
+const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV === 'development';
+
+/**
+ * Function to add log
+ * עם throttle ו-batch updates לחיסכון בביצועים
+ */
 export const addLog = (message, type = 'info') => {
   const logEntry = {
-    id: Date.now(),
+    id: Date.now() + Math.random(), // unique id גם אם נוספים כמה logs באותו ms
     timestamp: new Date().toLocaleTimeString('he-IL'),
     message,
     type // 'info', 'success', 'warning', 'error'
   };
   
-  logs.push(logEntry);
+  // הוספה ל-pending logs
+  pendingLogs.push(logEntry);
   
-  // Keep only last maxLogs
-  if (logs.length > maxLogs) {
-    logs.shift();
-  }
-  
-  // Trigger update if component is mounted
-  if (window.versionLoggerUpdate) {
-    window.versionLoggerUpdate();
+  // Batch - איסוף כמה logs לעדכון אחד
+  if (!batchTimeout) {
+    batchTimeout = setTimeout(() => {
+      // העברת כל ה-pending logs ל-logs הראשי
+      logs.push(...pendingLogs);
+      pendingLogs.length = 0;
+      
+      // שמירה על מקסימום logs
+      while (logs.length > maxLogs) {
+        logs.shift();
+      }
+      
+      // Throttle - עדכון מקסימום פעם ב-500ms
+      if (!updateScheduled && window.versionLoggerUpdate) {
+        updateScheduled = true;
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            if (window.versionLoggerUpdate) {
+              window.versionLoggerUpdate();
+            }
+            updateScheduled = false;
+          }, UPDATE_THROTTLE_DELAY);
+        });
+      }
+      
+      batchTimeout = null;
+    }, BATCH_DELAY);
   }
 };
 
@@ -52,6 +87,10 @@ export default function VersionLogger() {
 
     return () => {
       delete window.versionLoggerUpdate;
+      // ניקוי timers
+      if (batchTimeout) {
+        clearTimeout(batchTimeout);
+      }
     };
   }, []);
 
@@ -66,16 +105,12 @@ export default function VersionLogger() {
 
   return (
     <div className="fixed bottom-4 left-4 z-[10000] font-mono text-xs">
-      {/* Version Badge */}
-      <motion.button
+      {/* Version Badge - CSS hover במקום framer-motion */}
+      <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`
-          flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg
-          bg-white border border-gray-200 hover:border-blue-400
-          transition-all duration-200
-        `}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg
+          bg-white border border-gray-200 hover:border-blue-400 hover:scale-105 active:scale-95
+          transition-all duration-200"
       >
         <Info className="w-4 h-4 text-blue-600" />
         <span className="font-semibold text-blue-600">v{BUILD_VERSION}</span>
@@ -84,7 +119,7 @@ export default function VersionLogger() {
         ) : (
           <ChevronUp className="w-4 h-4 text-gray-600" />
         )}
-      </motion.button>
+      </button>
 
       {/* Logs Panel */}
       <AnimatePresence>

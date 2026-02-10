@@ -323,45 +323,34 @@ export default function TimeSlotsSection({
         </div>
       </div>
 
-      {/* כפתור המשך */}
+      {/* כפתור המשך - הסרת אנימציה אינסופית לחיסכון בזיכרון */}
       <div className="flex justify-center mt-6">
-        <motion.div
-          animate={selectedDates.filter(Boolean).length === totalMeetings ? {
-            scale: [1, 1.05, 1],
-          } : {}}
-          transition={{
-            duration: 2,
-            repeat: selectedDates.filter(Boolean).length === totalMeetings ? Infinity : 0,
-            repeatDelay: 1
+        <Button
+          onClick={() => {
+            // בניית slots עם sessionId מה-Wix API
+            const slotsWithSession = selectedDates.filter(Boolean).map((date, i) => {
+              const dateStr = format(date, 'yyyy-MM-dd');
+              const wixSlot = sessionMap.get(dateStr);
+              return {
+                id: `slot-${i}`,
+                date: date,
+                time: '10:00',
+                // שמירת ה-sessionId מה-Wix API - חיוני לביצוע ההזמנה!
+                sessionId: wixSlot?.sessionId || wixSlot?._id || null,
+                // שמירת ה-slot המקורי לגיבוי
+                wixSlot: wixSlot || null
+              };
+            });
+            console.log('[TimeSlotsSection] Saving slots with sessionId:', slotsWithSession);
+            setSelectedSlots(slotsWithSession);
+            onContinue();
           }}
+          disabled={selectedDates.filter(Boolean).length !== totalMeetings}
+          className="bg-[#ADC178] hover:bg-[#9ab569] hover:scale-[1.02] text-white px-8 py-3 rounded-lg
+                     transition-all duration-200 text-lg disabled:opacity-50"
         >
-          <Button
-            onClick={() => {
-              // בניית slots עם sessionId מה-Wix API
-              const slotsWithSession = selectedDates.filter(Boolean).map((date, i) => {
-                const dateStr = format(date, 'yyyy-MM-dd');
-                const wixSlot = sessionMap.get(dateStr);
-                return {
-                  id: `slot-${i}`,
-                  date: date,
-                  time: '10:00',
-                  // שמירת ה-sessionId מה-Wix API - חיוני לביצוע ההזמנה!
-                  sessionId: wixSlot?.sessionId || wixSlot?._id || null,
-                  // שמירת ה-slot המקורי לגיבוי
-                  wixSlot: wixSlot || null
-                };
-              });
-              console.log('[TimeSlotsSection] Saving slots with sessionId:', slotsWithSession);
-              setSelectedSlots(slotsWithSession);
-              onContinue();
-            }}
-            disabled={selectedDates.filter(Boolean).length !== totalMeetings}
-            className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
-                       transition-all duration-200 text-lg disabled:opacity-50"
-          >
-            המשך לפרטים אישיים
-          </Button>
-        </motion.div>
+          המשך לפרטים אישיים
+        </Button>
       </div>
     </div>
   );

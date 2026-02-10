@@ -180,7 +180,7 @@ export default function WorkshopBooking() {
     }, 60000);
   };
 
-  // מסך טעינה ראשוני
+  // מסך טעינה ראשוני - שימוש ב-CSS animations במקום framer-motion לחיסכון בזיכרון
   if (!minTimeElapsed || !wixProducts) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white" dir="rtl">
@@ -191,22 +191,16 @@ export default function WorkshopBooking() {
           className="flex flex-col items-center"
         >
           <div className="relative mb-6">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="w-20 h-20 border-4 border-[#e8e8e8] border-t-[#ADC178] rounded-full"
-            />
+            {/* CSS animation במקום framer-motion repeat: Infinity */}
+            <div className="w-20 h-20 border-4 border-[#e8e8e8] border-t-[#ADC178] rounded-full animate-spin" />
             <div className="absolute inset-0 flex items-center justify-center">
               <Loader2 className="w-8 h-8 text-[#ADC178] animate-pulse" />
             </div>
           </div>
-          <motion.h2
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="text-2xl font-bold text-[#6B584C]"
-          >
+          {/* CSS animation במקום framer-motion repeat: Infinity */}
+          <h2 className="text-2xl font-bold text-[#6B584C] animate-pulse">
             הנגריה הפתוחה
-          </motion.h2>
+          </h2>
           <p className="text-[#464646]/70 mt-2">טוען נתונים...</p>
         </motion.div>
       </div>
@@ -235,16 +229,12 @@ export default function WorkshopBooking() {
     );
   }
 
-  // מסך עיבוד
+  // מסך עיבוד - שימוש ב-CSS animation במקום framer-motion לחיסכון בזיכרון
   if (isProcessing) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-        >
-          <Loader2 className="w-12 h-12 text-[#ADC178]" />
-        </motion.div>
+        {/* CSS animation במקום framer-motion repeat: Infinity */}
+        <Loader2 className="w-12 h-12 text-[#ADC178] animate-spin" />
         <p className="mt-4 text-lg text-[#6B584C]">שומר את ההזמנה...</p>
       </div>
     );

@@ -189,27 +189,16 @@ export default function ProductSelectionSection({
         </motion.div>
       )}
 
-      {/* כפתור המשך */}
+      {/* כפתור המשך - הסרת אנימציה אינסופית לחיסכון בזיכרון */}
       <div className="flex justify-center mt-8">
-        <motion.div
-          animate={cart.length > 0 ? {
-            scale: [1, 1.05, 1],
-          } : {}}
-          transition={{
-            duration: 2,
-            repeat: cart.length > 0 ? Infinity : 0,
-            repeatDelay: 1
-          }}
+        <Button
+          onClick={onContinue}
+          disabled={cart.length === 0}
+          className="bg-[#ADC178] hover:bg-[#9ab569] hover:scale-[1.02] text-white px-8 py-3 rounded-lg
+                     transition-all duration-200 text-lg disabled:opacity-50"
         >
-          <Button
-            onClick={onContinue}
-            disabled={cart.length === 0}
-            className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
-                       transition-all duration-200 text-lg disabled:opacity-50"
-          >
-            המשך לבחירת תאריכים
-          </Button>
-        </motion.div>
+          המשך לבחירת תאריכים
+        </Button>
       </div>
 
       {/* מודלים */}

@@ -262,23 +262,20 @@ export default function ProductCatalogDrawer({
   }, [isOpen]);
 
   // סגירת הסינון כשמשתמש גולל או לוחץ על מוצר
+  // תיקון: הגדרת הפונקציות בתוך ה-useEffect למניעת memory leaks
   useEffect(() => {
     if (!showFilters) return;
 
     const container = productsContainerRef.current;
     if (!container) return;
 
-    const handleScroll = () => {
-      setShowFilters(false);
-    };
-
+    // הגדרה בתוך ה-effect - אותה reference תמיד
+    const handleScroll = () => setShowFilters(false);
+    
     const handleClick = (e) => {
-      // אם לוחצים על מוצר (לא על כפתור הסינון או על הסינון עצמו)
-      const isFilterButton = e.target.closest('button[onclick*="setShowFilters"]') || 
-                              e.target.closest('[data-filter-section]');
+      const isFilterSection = e.target.closest('[data-filter-section]');
       const isProductCard = e.target.closest('[data-product-card]');
-      
-      if (isProductCard && !isFilterButton) {
+      if (isProductCard && !isFilterSection) {
         setShowFilters(false);
       }
     };
@@ -445,21 +442,17 @@ export default function ProductCatalogDrawer({
               )}
             </div>
           </div>
-          <motion.div
-            animate={cart.length > 0 ? { scale: [1, 1.02, 1] } : {}}
-            transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
+          {/* הסרת אנימציה אינסופית לחיסכון בזיכרון - שימוש ב-CSS hover במקום */}
+          <Button
+            onClick={onClose}
+            disabled={cart.length === 0}
+            className={`w-full text-white transition-all h-12 text-lg font-medium shadow-md ${cart.length > 0
+              ? 'bg-[#ADC178] hover:bg-[#9ab569] hover:scale-[1.02]'
+              : 'bg-gray-300 cursor-not-allowed'
+              }`}
           >
-            <Button
-              onClick={onClose}
-              disabled={cart.length === 0}
-              className={`w-full text-white transition-all h-12 text-lg font-medium shadow-md ${cart.length > 0
-                ? 'bg-[#ADC178] hover:bg-[#9ab569]'
-                : 'bg-gray-300 cursor-not-allowed'
-                }`}
-            >
-              המשך
-            </Button>
-          </motion.div>
+            המשך
+          </Button>
         </div>
       </SheetContent>
 

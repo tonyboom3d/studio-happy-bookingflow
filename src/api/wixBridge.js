@@ -7,6 +7,10 @@
  * Communication patterns:
  * - FROM Wix: window.addEventListener('message', ...) receives data
  * - TO Wix: window.parent.postMessage(...) sends data
+ * 
+ * Performance optimizations:
+ * - Origin validation לאבטחה ולמניעת עיבוד הודעות מיותרות
+ * - Debounce לשליחת summary updates למניעת עומס
  */
 
 // Store for received data from Wix
@@ -18,6 +22,35 @@ let wixData = {
 
 // Callbacks for data updates
 const listeners = new Set();
+
+// רשימת origins מותרים
+const ALLOWED_ORIGINS = [
+    'https://www.kan-bonim.co.il',
+    'https://kan-bonim.co.il',
+    'https://editor.wix.com',
+    'https://manage.wix.com',
+    'https://www.wix.com'
+];
+
+// Debounce timer לשליחת summary
+let summaryDebounceTimer = null;
+const SUMMARY_DEBOUNCE_DELAY = 300; // 300ms
+
+/**
+ * בדיקה אם ה-origin מותר
+ */
+function isAllowedOrigin(origin) {
+    // בפיתוח - להתיר הכל
+    const isDev = typeof window !== 'undefined' && 
+        (window.location.hostname === 'localhost' || 
+         window.location.hostname === '127.0.0.1' ||
+         window.location.protocol === 'file:');
+    
+    if (isDev) return true;
+    
+    // בדיקה אם ה-origin ברשימת המותרים
+    return ALLOWED_ORIGINS.some(allowed => origin?.startsWith(allowed));
+}
 
 /**
  * Initialize communication with Wix
@@ -31,13 +64,20 @@ export function initWixBridge() {
 
 /**
  * Handle incoming messages from Wix
+ * עם origin validation לאבטחה וביצועים
  */
 function handleWixMessage(event) {
-    // In production, validate event.origin
+    // Origin validation - יציאה מוקדמת אם לא מותר
+    if (!isAllowedOrigin(event.origin)) {
+        return;
+    }
+
     const { data } = event;
 
+    // יציאה מוקדמת אם אין type
     if (!data || !data.type) return;
 
+    // טיפול רק ב-types שאנחנו מכירים
     switch (data.type) {
         case 'WIX_DATA':
             // Wix sent products/slots data
@@ -69,6 +109,10 @@ function handleWixMessage(event) {
         case 'BOOKING_ERROR':
             // Booking failed
             notifyListeners({ bookingError: data.error });
+            break;
+
+        // התעלמות מ-types לא מוכרים
+        default:
             break;
     }
 }
@@ -146,8 +190,17 @@ export function isInWix() {
 
 /**
  * Send summary data to Wix for the external booking-summary Custom Element
+ * עם Debounce למניעת שליחות מיותרות
  */
 export function sendSummaryUpdate(summaryData) {
-    sendToWix('SUMMARY_UPDATE', summaryData);
+    // ביטול טיימר קודם אם קיים
+    if (summaryDebounceTimer) {
+        clearTimeout(summaryDebounceTimer);
+    }
+    
+    // Debounce - המתנה לפני שליחה
+    summaryDebounceTimer = setTimeout(() => {
+        sendToWix('SUMMARY_UPDATE', summaryData);
+        summaryDebounceTimer = null;
+    }, SUMMARY_DEBOUNCE_DELAY);
 }
-
