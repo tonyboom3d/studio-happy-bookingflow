@@ -25,8 +25,12 @@ const listeners = new Set();
 
 // רשימת origins מותרים
 const ALLOWED_ORIGINS = [
+    // הדומיין הראשי של האתר
+    'https://www.canbonim.com',
+    'https://canbonim.com',
     'https://www.kan-bonim.co.il',
     'https://kan-bonim.co.il',
+    // Wix Editor & Management
     'https://editor.wix.com',
     'https://manage.wix.com',
     'https://www.wix.com',
@@ -34,9 +38,7 @@ const ALLOWED_ORIGINS = [
     'https://tonyboom3d.github.io',
     // Wix iframes
     'https://static.parastorage.com',
-    'https://www.wixstatic.com',
-    // null origin (לפעמים מופיע מ-iframes)
-    'null'
+    'https://www.wixstatic.com'
 ];
 
 // Debounce timer לשליחת summary
