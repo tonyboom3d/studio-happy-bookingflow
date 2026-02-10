@@ -152,10 +152,10 @@ export default function WorkshopBooking() {
         slot_id: s.id,
         date: s.date?.toISOString?.() || s.date,
         time: s.time,
-        // שדות חיוניים לביצוע ההזמנה ב-Wix Bookings API
+        // שדות חיוניים לביצוע ההזמנה ב-Wix Bookings API (כולם מגיעים מ-TimeSlotsSection)
         sessionId: s.sessionId || null,
-        scheduleId: s.scheduleId || s.originalSlot?.scheduleId || null,
-        serviceId: s.serviceId || s.originalSlot?.serviceId || null,
+        scheduleId: s.scheduleId || null,
+        serviceId: s.serviceId || null,
         startDate: s.start?.timestamp || s.originalSlot?.startDate || null,
         endDate: s.end?.timestamp || s.originalSlot?.endDate || null
       })),

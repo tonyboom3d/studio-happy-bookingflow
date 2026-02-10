@@ -3,8 +3,8 @@ import { X, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // גרסה - עדכן כאן בכל עדכון
-const BUILD_VERSION = '1.5.0';
-const BUILD_DATE = '10/02/2026 - Performance: memory optimization, CSS animations, debounce';
+const BUILD_VERSION = '1.5.1';
+const BUILD_DATE = '10/02/2026 - Fix: choice._id mapping, slot data, summary collapse, contact details';
 
 // Store for logs
 const logs = [];
