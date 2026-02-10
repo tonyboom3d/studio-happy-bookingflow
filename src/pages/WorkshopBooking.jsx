@@ -152,12 +152,8 @@ export default function WorkshopBooking() {
         slot_id: s.id,
         date: s.date?.toISOString?.() || s.date,
         time: s.time,
-        // שדות חיוניים לביצוע ההזמנה ב-Wix Bookings API (כולם מגיעים מ-TimeSlotsSection)
-        sessionId: s.sessionId || null,
-        scheduleId: s.scheduleId || null,
-        serviceId: s.serviceId || null,
-        startDate: s.start?.timestamp || s.originalSlot?.startDate || null,
-        endDate: s.end?.timestamp || s.originalSlot?.endDate || null
+        // עבור CLASS booking - רק sessionId נדרש (שאר הפרטים מחושבים אוטומטית ע"י Wix)
+        sessionId: s.sessionId || null
       })),
       total_price: cart.reduce((sum, p) => sum + p.price * (p.quantity || 1), 0),
       total_sessions: totalMeetings,

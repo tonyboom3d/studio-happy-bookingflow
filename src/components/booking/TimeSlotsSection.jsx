@@ -327,7 +327,7 @@ export default function TimeSlotsSection({
       <div className="flex justify-center mt-6">
         <Button
             onClick={() => {
-              // בניית slots עם כל הנתונים הדרושים מה-Wix API
+              // בניית slots - לפי הדוקומנטציה, עבור Classes מספיק רק sessionId
               const slotsWithSession = selectedDates.filter(Boolean).map((date, i) => {
                 const dateStr = format(date, 'yyyy-MM-dd');
                 const wixSlot = sessionMap.get(dateStr);
@@ -335,16 +335,11 @@ export default function TimeSlotsSection({
                   id: `slot-${i}`,
                   date: date,
                   time: '10:00',
-                  // שמירת כל השדות החיוניים לביצוע ההזמנה
-                  sessionId: wixSlot?.sessionId || wixSlot?._id || null,
-                  scheduleId: wixSlot?.scheduleId || null,
-                  serviceId: wixSlot?.serviceId || null,
-                  start: wixSlot?.start || null,
-                  end: wixSlot?.end || null,
-                  originalSlot: wixSlot?.originalSlot || null
+                  // עבור CLASS booking - רק sessionId נדרש (שאר הפרטים מחושבים אוטומטית)
+                  sessionId: wixSlot?.sessionId || wixSlot?._id || null
                 };
               });
-              console.log('[TimeSlotsSection] Saving slots with full data:', slotsWithSession);
+              console.log('[TimeSlotsSection] Saving slots with sessionId:', slotsWithSession);
               setSelectedSlots(slotsWithSession);
               onContinue();
             }}
