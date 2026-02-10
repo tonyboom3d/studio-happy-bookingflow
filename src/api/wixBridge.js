@@ -29,7 +29,14 @@ const ALLOWED_ORIGINS = [
     'https://kan-bonim.co.il',
     'https://editor.wix.com',
     'https://manage.wix.com',
-    'https://www.wix.com'
+    'https://www.wix.com',
+    // GitHub Pages (האפליקציה עצמה)
+    'https://tonyboom3d.github.io',
+    // Wix iframes
+    'https://static.parastorage.com',
+    'https://www.wixstatic.com',
+    // null origin (לפעמים מופיע מ-iframes)
+    'null'
 ];
 
 // Debounce timer לשליחת summary
@@ -48,8 +55,11 @@ function isAllowedOrigin(origin) {
     
     if (isDev) return true;
     
+    // אם אין origin (null או undefined) - יכול להיות מ-Wix iframe
+    if (!origin || origin === 'null') return true;
+    
     // בדיקה אם ה-origin ברשימת המותרים
-    return ALLOWED_ORIGINS.some(allowed => origin?.startsWith(allowed));
+    return ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed));
 }
 
 /**
