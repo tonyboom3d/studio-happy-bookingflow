@@ -182,10 +182,13 @@ export default function ProductCatalogDrawer({
     }
   }, [isOpen, woodType]);
 
-  // כאשר המשתמש עובר לעץ ממוחזר – סגירת חלון הסינון והסתרת הכפתור
+  // כאשר המשתמש עובר לעץ ממוחזר – סגירת חלון הסינון והחזרת סינון המחיר לברירת מחדל
   useEffect(() => {
     if (selectedWoodType === 'recycled' && showFilters) {
       setShowFilters(false);
+    }
+    if (selectedWoodType === 'recycled') {
+      setPriceFilter([0, 1000]);
     }
   }, [selectedWoodType, showFilters]);
 
