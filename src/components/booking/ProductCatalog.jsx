@@ -2,8 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { X, Star, Filter } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import ProductCard from './ProductCard';
 
 export default function ProductCatalog({ 
@@ -14,7 +13,6 @@ export default function ProductCatalog({
   toggleProduct, 
   getMeetings 
 }) {
-  const [difficultyFilter, setDifficultyFilter] = useState([1, 5]);
   const [meetingsFilter, setMeetingsFilter] = useState([1, 6]);
   const [priceFilter, setPriceFilter] = useState([0, 1000]);
   const [showFilters, setShowFilters] = useState(false);
@@ -23,15 +21,13 @@ export default function ProductCatalog({
     return products.filter(product => {
       const meetings = getMeetings(product);
       return (
-        product.difficulty >= difficultyFilter[0] &&
-        product.difficulty <= difficultyFilter[1] &&
         meetings >= meetingsFilter[0] &&
         meetings <= meetingsFilter[1] &&
         product.price >= priceFilter[0] &&
         product.price <= priceFilter[1]
       );
     });
-  }, [products, difficultyFilter, meetingsFilter, priceFilter, getMeetings]);
+  }, [products, meetingsFilter, priceFilter, getMeetings]);
 
   const totalPrice = cart.reduce((sum, p) => sum + p.price, 0);
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)), 0);
@@ -56,24 +52,6 @@ export default function ProductCatalog({
           {/* פילטרים */}
           {showFilters && (
             <div className="mt-4 p-4 bg-[#fafafa] rounded-xl space-y-4">
-              <div>
-                <Label className="text-sm text-[#464646] mb-2 flex items-center gap-2">
-                  <Star className="w-4 h-4" /> רמת קושי
-                </Label>
-                <Slider
-                  value={difficultyFilter}
-                  onValueChange={setDifficultyFilter}
-                  min={1}
-                  max={5}
-                  step={0.5}
-                  className="mt-2"
-                />
-                <div className="flex justify-between text-xs text-[#464646]/70 mt-1">
-                  <span>{difficultyFilter[0]}</span>
-                  <span>{difficultyFilter[1]}</span>
-                </div>
-              </div>
-
               <div>
                 <Label className="text-sm text-[#464646]">כמות מפגשים</Label>
                 <Slider

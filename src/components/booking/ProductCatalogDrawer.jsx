@@ -169,7 +169,6 @@ export default function ProductCatalogDrawer({
   wixProducts, // קבלת מוצרים מ-Wix!
   updateQuantity // עדכון כמות מוצר בעגלה
 }) {
-  const [difficultyFilter, setDifficultyFilter] = useState([1, 5]);
   const [priceFilter, setPriceFilter] = useState([0, 1000]);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedWoodType, setSelectedWoodType] = useState(woodType || 'recycled');
@@ -182,6 +181,13 @@ export default function ProductCatalogDrawer({
       setSelectedWoodType(woodType);
     }
   }, [isOpen, woodType]);
+
+  // כאשר המשתמש עובר לעץ ממוחזר – סגירת חלון הסינון והסתרת הכפתור
+  useEffect(() => {
+    if (selectedWoodType === 'recycled' && showFilters) {
+      setShowFilters(false);
+    }
+  }, [selectedWoodType, showFilters]);
 
   // חישוב כמות מפגשים לפי סוג עץ נבחר ב-Drawer
   const getLocalMeetings = (product) => {
@@ -204,13 +210,11 @@ export default function ProductCatalogDrawer({
       if (meetings === 0) return false;
 
       return (
-        (product.difficulty || 3) >= difficultyFilter[0] &&
-        (product.difficulty || 3) <= difficultyFilter[1] &&
         (product.price || 0) >= priceFilter[0] &&
         (product.price || 0) <= priceFilter[1]
       );
     });
-  }, [products, difficultyFilter, priceFilter, selectedWoodType, participants]);
+  }, [products, priceFilter, selectedWoodType, participants]);
 
   const toggleProduct = (product) => {
     // תמיכה גם ב-id וגם ב-_id מ-Wix CMS
@@ -324,16 +328,18 @@ export default function ProductCatalogDrawer({
                   {selectedWoodType === 'new' && <Check className="w-3 h-3 text-[#ADC178]" />}
                 </button>
               </div>
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors",
-                  showFilters ? "border-[#ADC178] bg-[#ADC178]/10" : "border-[#e8e8e8] hover:border-[#ADC178]"
-                )}
-              >
-                <Filter className="w-4 h-4 text-[#6B584C]" />
-                <span className="text-sm text-[#464646]">סינון</span>
-              </button>
+              {selectedWoodType === 'new' && (
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors",
+                    showFilters ? "border-[#ADC178] bg-[#ADC178]/10" : "border-[#e8e8e8] hover:border-[#ADC178]"
+                  )}
+                >
+                  <Filter className="w-4 h-4 text-[#6B584C]" />
+                  <span className="text-sm text-[#464646]">סינון</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -348,24 +354,6 @@ export default function ProductCatalogDrawer({
                 data-filter-section
               >
                 <div className="mt-4 p-4 bg-[#fafafa] rounded-xl space-y-4">
-                  <div>
-                    <Label className="text-sm text-[#464646] mb-2 flex items-center gap-2">
-                      רמת קושי
-                    </Label>
-                    <Slider
-                      value={difficultyFilter}
-                      onValueChange={setDifficultyFilter}
-                      min={1}
-                      max={5}
-                      step={0.5}
-                      className="mt-2"
-                    />
-                    <div className="flex justify-between text-xs text-[#464646]/70 mt-1">
-                      <span>קל</span>
-                      <span>מאתגר</span>
-                    </div>
-                  </div>
-
                   <div>
                     <Label className="text-sm text-[#464646]">מחיר (₪)</Label>
                     <Slider

@@ -163,14 +163,14 @@ export default function WorkshopBooking() {
     addLog(`Submitting booking with ${cart.length} products, ${selectedSlots.length} slots`, 'info');
     submitBooking(bookingData);
 
-    // אם לא מקבלים תגובה מ-Wix תוך 10 שניות, נניח שהצליח
+    // אם לא מתקבלת תגובה מ-Wix תוך 60 שניות - נציג שגיאת timeout ונפסיק את הטעינה
     setTimeout(() => {
-      if (isProcessing) {
-        setBooking(bookingData);
-        setIsProcessing(false);
-        setIsComplete(true);
-      }
-    }, 10000);
+      setIsProcessing(prev => {
+        if (!prev) return prev; // כבר קיבלנו תגובה מ-Wix
+        setBookingError(prevError => prevError || 'timeout');
+        return false;
+      });
+    }, 60000);
   };
 
   // מסך טעינה ראשוני
