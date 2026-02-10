@@ -21,15 +21,6 @@ export default function BookingSummary() {
     document.documentElement.style.background = 'transparent';
 
     const handleMessage = (event) => {
-      // לוג דיבוג כדי לראות מה ה-iframe של הסיכום מקבל
-      try {
-        console.log('[BookingSummary iframe] window message:', {
-          origin: event.origin,
-          type: event?.data?.type,
-          raw: event.data
-        });
-      } catch (e) {}
-
       if (event.data?.type === 'SUMMARY_UPDATE') {
         const data = event.data.data;
         setSummaryData({

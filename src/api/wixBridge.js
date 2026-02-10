@@ -77,21 +77,10 @@ export function initWixBridge() {
 /**
  * Handle incoming messages from Wix
  * עם origin validation לאבטחה וביצועים
- * כולל לוגים לדיבוג כדי לראות מה ה-iframe מקבל
  */
 function handleWixMessage(event) {
-    // Debug log: מה ה-iframe מקבל מה-parent
-    try {
-        console.log('[wixBridge] message from parent:', {
-            origin: event.origin,
-            type: event?.data?.type,
-            raw: event.data
-        });
-    } catch (e) {}
-
     // Origin validation - יציאה מוקדמת אם לא מותר
     if (!isAllowedOrigin(event.origin)) {
-        console.warn('[wixBridge] blocked message from disallowed origin:', event.origin);
         return;
     }
 
