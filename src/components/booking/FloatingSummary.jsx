@@ -23,7 +23,10 @@ export default function FloatingSummary({
   selectedSlots,
   totalMeetings,
   activeSection,
-  isSummaryPage = false // האם זה דף Summary נפרד (iframe)
+  isSummaryPage = false, // האם זה דף Summary נפרד (iframe)
+  isProcessing = false,
+  isComplete = false,
+  hasPaymentError = false
 }) {
   const [isOpen, setIsOpen] = useState(true); // פתוח כברירת מחדל בדף Summary
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
@@ -84,6 +87,20 @@ export default function FloatingSummary({
 
   // אם אין פריטים, הצג את הסיכום הבסיסי (רק עבור iframe נפרד)
   const showEmptyState = items.length === 0;
+
+  // שליטה אוטומטית על פתיחה/סגירה לפי מצב התשלום
+  useEffect(() => {
+    // בעת מעבר לדף תשלום (isProcessing) או דף תודה (isComplete) – לסגור את החלונית
+    if (isProcessing || isComplete) {
+      setIsOpen(false);
+      return;
+    }
+
+    // אם הייתה שגיאת תשלום – לפתוח שוב את החלונית
+    if (hasPaymentError) {
+      setIsOpen(true);
+    }
+  }, [isProcessing, isComplete, hasPaymentError]);
 
   // הסתרה כשהקטלוג פתוח - נשלט מ-ProductCatalogDrawer
   useEffect(() => {

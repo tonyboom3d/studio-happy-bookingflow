@@ -107,13 +107,17 @@ export default function WorkshopBooking() {
       cart: cart.map(p => ({ id: p.id, title: p.title, price: p.price, meetings: p.meetings, quantity: p.quantity || 1 })),
       selectedSlots,
       totalMeetings,
-      activeSection
+      activeSection,
+      // מידע עבור שליטה על התנהגות חלונית הסיכום
+      isProcessing,
+      isComplete,
+      hasPaymentError: !!bookingError
     };
     
     // שליחה ל-Wix VELO דרך window.parent.postMessage
     // Wix VELO יעביר את הנתונים ל-summary iframe (htmlComponent2)
     sendSummaryUpdate(summaryData);
-  }, [participants, woodType, cart, selectedSlots, totalMeetings, activeSection]);
+  }, [participants, woodType, cart, selectedSlots, totalMeetings, activeSection, isProcessing, isComplete, bookingError]);
 
   // מעבר לסקשן הבא
   const completeSection = (sectionNum) => {

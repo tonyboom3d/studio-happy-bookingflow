@@ -13,7 +13,10 @@ export default function BookingSummary() {
     cart: [],
     selectedSlots: [],
     totalMeetings: 0,
-    activeSection: 1
+    activeSection: 1,
+    isProcessing: false,
+    isComplete: false,
+    hasPaymentError: false
   });
 
   useEffect(() => {
@@ -29,7 +32,10 @@ export default function BookingSummary() {
           cart: data.cart || [],
           selectedSlots: data.selectedSlots || [],
           totalMeetings: data.totalMeetings || 0,
-          activeSection: data.activeSection || 1
+          activeSection: data.activeSection || 1,
+          isProcessing: !!data.isProcessing,
+          isComplete: !!data.isComplete,
+          hasPaymentError: !!data.hasPaymentError
         });
       }
       if (event.data?.type === 'CATALOG_STATE_CHANGE') {
@@ -69,6 +75,9 @@ export default function BookingSummary() {
         selectedSlots={summaryData.selectedSlots}
         totalMeetings={summaryData.totalMeetings}
         activeSection={summaryData.activeSection}
+        isProcessing={summaryData.isProcessing}
+        isComplete={summaryData.isComplete}
+        hasPaymentError={summaryData.hasPaymentError}
         isSummaryPage={true}
       />
     </div>

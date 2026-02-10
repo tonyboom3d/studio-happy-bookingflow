@@ -16,7 +16,7 @@ export default function ThankYouScreen({ booking, paymentStatus = 'Successful', 
     const startDate = format(date, "yyyyMMdd'T'HHmmss");
     const endDate = format(new Date(date.getTime() + 2 * 60 * 60 * 1000), "yyyyMMdd'T'HHmmss");
     
-    const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('סדנת נגרות - הנגריה הפתוחה')}&dates=${startDate}/${endDate}&details=${encodeURIComponent('סדנת נגרות בהנגריה הפתוחה')}&location=${encodeURIComponent('הנגריה הפתוחה, תל אביב')}`;
+    const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('סדנת נגרות - הנגריה הפתוחה')}&dates=${startDate}/${endDate}&details=${encodeURIComponent('סדנת נגרות בהנגריה הפתוחה')}&location=${encodeURIComponent('הנגריה הפתוחה, דרך שלמה (סלמה) 19, תל אביב-יפו')}`;
     
     window.open(url, '_blank');
   };
@@ -36,7 +36,7 @@ DTSTART:${startDate}
 DTEND:${endDate}
 SUMMARY:סדנת נגרות - הנגריה הפתוחה
 DESCRIPTION:סדנת נגרות בהנגריה הפתוחה
-LOCATION:הנגריה הפתוחה, תל אביב
+LOCATION:הנגריה הפתוחה, דרך שלמה (סלמה) 19, תל אביב-יפו
 END:VEVENT
 END:VCALENDAR`;
     
@@ -146,18 +146,18 @@ END:VCALENDAR`;
 
         {/* פרטי קשר */}
         <div className="pt-4 border-t border-[#e8e8e8] space-y-2">
-          <div className="flex items-center gap-2 text-sm text-[#464646]">
-            <MapPin className="w-4 h-4 text-[#ADC178]" />
-            <span>הנגריה הפתוחה, רחוב הנגרים 12, תל אביב</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-[#464646]">
-            <Phone className="w-4 h-4 text-[#ADC178]" />
-            <span dir="ltr">050-1234567</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-[#464646]">
-            <Mail className="w-4 h-4 text-[#ADC178]" />
-            <span>hello@openworkshop.co.il</span>
-          </div>
+        <div className="flex items-center gap-2 text-sm text-[#464646]">
+          <MapPin className="w-4 h-4 text-[#ADC178]" />
+          <span>הנגריה הפתוחה, דרך שלמה (סלמה) 19, תל אביב-יפו</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-[#464646]">
+          <Phone className="w-4 h-4 text-[#ADC178]" />
+          <span dir="ltr">055-721-9327</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-[#464646]">
+          <Mail className="w-4 h-4 text-[#ADC178]" />
+          <span>Noam.r89@gmail.com</span>
+        </div>
         </div>
       </motion.div>
 
