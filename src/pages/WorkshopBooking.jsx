@@ -159,6 +159,9 @@ export default function WorkshopBooking() {
       status: 'pending'
     };
 
+    // שמירת נתוני ההזמנה ל-state כדי שמסך התודה יוכל להציג אותם
+    setBooking(bookingData);
+
     // שליחה ל-Wix דרך postMessage
     addLog(`Submitting booking with ${cart.length} products, ${selectedSlots.length} slots`, 'info');
     submitBooking(bookingData);
