@@ -1,13 +1,36 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Check, Calendar, MapPin, Phone, Mail, Home, AlertCircle } from 'lucide-react';
+import { Check, Calendar, MapPin, Phone, Mail, Home, AlertCircle, Users, Package, TreeDeciduous, Receipt } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 
+// מחירים לפי סוג כרטיס
+const PRICING = {
+  1: 300,
+  2: 500,
+  3: 650
+};
+
 export default function ThankYouScreen({ booking, paymentStatus = 'Successful', onGoHome }) {
   // Pending = התשלום טרם אושר במלואו
   const isPendingPayment = paymentStatus === 'Pending';
+  
+  // חישוב פירוט מחירים
+  const participants = booking?.participants || 1;
+  const woodType = booking?.wood_type || 'recycled';
+  const totalMeetings = booking?.total_sessions || 1;
+  const basePricePerSession = PRICING[participants] || 300;
+  const basePriceTotal = basePricePerSession * totalMeetings;
+  
+  // מחיר מוצרים כולל כמות
+  const productsPrice = (booking?.products || []).reduce((sum, p) => {
+    const qty = p.quantity || 1;
+    return sum + (p.price || 0) * qty;
+  }, 0);
+  
+  const woodExtra = woodType === 'new' ? (productsPrice * 0.2) : 0;
+  const totalPrice = basePriceTotal + productsPrice + woodExtra;
   const addToGoogleCalendar = () => {
     const firstSlot = booking.selected_slots?.[0];
     if (!firstSlot) return;
@@ -113,14 +136,30 @@ END:VCALENDAR`;
           סיכום הזמנה
         </h2>
 
+        {/* כמות משתתפים */}
+        <div className="mb-4">
+          <div className="flex items-center gap-2 text-sm">
+            <Users className="w-5 h-5 text-[#ADC178]" />
+            <span className="font-medium text-[#464646]">
+              {participants === 1 ? 'יחיד' : participants === 2 ? 'זוגי' : 'שלישייה'}
+            </span>
+            <span className="text-[#464646]/60">
+              ({participants} {participants === 1 ? 'משתתף' : 'משתתפים'})
+            </span>
+          </div>
+        </div>
+
         {/* מוצרים */}
         {booking.products?.length > 0 && (
           <div className="mb-4">
-            <h3 className="text-sm font-medium text-[#464646] mb-2">מה נבנה:</h3>
-            <ul className="space-y-1">
+            <h3 className="text-sm font-medium text-[#464646] mb-2 flex items-center gap-2">
+              <Package className="w-4 h-4 text-[#ADC178]" />
+              מה נבנה:
+            </h3>
+            <ul className="space-y-1 mr-6">
               {booking.products.map((product, idx) => (
                 <li key={idx} className="text-sm text-[#464646]/80">
-                  • {product.title}
+                  • {product.title} {product.quantity > 1 && `(×${product.quantity})`}
                 </li>
               ))}
             </ul>
@@ -131,10 +170,10 @@ END:VCALENDAR`;
         {booking.selected_slots?.length > 0 && (
           <div className="mb-4">
             <h3 className="text-sm font-medium text-[#464646] mb-2 flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
+              <Calendar className="w-4 h-4 text-[#ADC178]" />
               מועדים:
             </h3>
-            <ul className="space-y-1">
+            <ul className="space-y-1 mr-6">
               {booking.selected_slots.map((slot, idx) => (
                 <li key={idx} className="text-sm text-[#464646]/80">
                   {format(new Date(slot.date), 'EEEE d/M', { locale: he })} בשעה {slot.time}
@@ -143,6 +182,58 @@ END:VCALENDAR`;
             </ul>
           </div>
         )}
+
+        {/* פירוט מחיר */}
+        <div className="mb-4 pt-4 border-t border-[#e8e8e8]">
+          <h3 className="text-sm font-medium text-[#464646] mb-3 flex items-center gap-2">
+            <Receipt className="w-4 h-4 text-[#ADC178]" />
+            פירוט תשלום:
+          </h3>
+          <div className="space-y-2 mr-6">
+            {/* מחיר בסיס */}
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-[#464646]/80">
+                {totalMeetings > 1 
+                  ? `${totalMeetings} מפגשים × ₪${basePricePerSession}`
+                  : `מפגש יחיד`
+                }
+              </span>
+              <span className="font-medium text-[#464646]">₪{basePriceTotal}</span>
+            </div>
+            
+            {/* מוצרים */}
+            {productsPrice > 0 && (
+              <div className="flex justify-between items-center text-sm">
+                <div className="flex items-center gap-1">
+                  <span className="text-[#464646]/80">מוצרים</span>
+                  {woodType === 'recycled' && (
+                    <span className="text-xs text-[#ADC178]">(עץ ממוחזר)</span>
+                  )}
+                </div>
+                <span className="font-medium text-[#464646]">
+                  {woodType === 'recycled' ? 'כלול במחיר' : `₪${productsPrice}`}
+                </span>
+              </div>
+            )}
+            
+            {/* תוספת עץ חדש */}
+            {woodExtra > 0 && (
+              <div className="flex justify-between items-center text-sm">
+                <div className="flex items-center gap-1">
+                  <TreeDeciduous className="w-3 h-3 text-[#6B584C]" />
+                  <span className="text-[#464646]/80">תוספת עץ חדש (20%)</span>
+                </div>
+                <span className="font-medium text-[#464646]">₪{woodExtra.toFixed(0)}</span>
+              </div>
+            )}
+            
+            {/* סה"כ */}
+            <div className="flex justify-between items-center pt-2 border-t border-[#e8e8e8]">
+              <span className="font-semibold text-[#6B584C]">סה"כ</span>
+              <span className="font-bold text-lg text-[#ADC178]">₪{totalPrice}</span>
+            </div>
+          </div>
+        </div>
 
         {/* פרטי קשר */}
         <div className="pt-4 border-t border-[#e8e8e8] space-y-2">
