@@ -3,8 +3,12 @@ import { X, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // גרסה - עדכן כאן בכל עדכון
-const BUILD_VERSION = '1.5.1';
-const BUILD_DATE = '10/02/2026 - Fix: choice._id mapping, slot data, summary collapse, contact details';
+const BUILD_VERSION = '1.6.0';
+const BUILD_DATE = '12/03/2026 - Switch to eCommerce checkout, remove personal-details step, iframe-only flow';
+
+// מאפשר שימוש מחוץ לקומפוננטה (לדוגמה ב-footer)
+export const APP_VERSION = BUILD_VERSION;
+export const APP_BUILD_DATE = BUILD_DATE;
 
 // Store for logs
 const logs = [];
