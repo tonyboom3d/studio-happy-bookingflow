@@ -6,6 +6,7 @@ import ParticipantsSection from '../components/booking/ParticipantsSection';
 import WoodTypeSection from '../components/booking/WoodTypeSection';
 import ProductSelectionSection from '../components/booking/ProductSelectionSection';
 import TimeSlotsSection from '../components/booking/TimeSlotsSection';
+import PersonalDetailsSection from '../components/booking/PersonalDetailsSection';
 import ThankYouScreen from '../components/booking/ThankYouScreen';
 import { submitBooking, subscribeToWix, notifyProgress, sendSummaryUpdate } from '@/api/wixBridge';
 import { addLog, APP_VERSION } from '@/components/VersionLogger';
@@ -20,6 +21,7 @@ export default function WorkshopBooking() {
   const [woodType, setWoodType] = useState('');
   const [cart, setCart] = useState([]);
   const [selectedSlots, setSelectedSlots] = useState([]);
+  const [userDetails, setUserDetails] = useState({ name: '', email: '', phone: '' });
 
   // נתונים מ-Wix
   const [wixProducts, setWixProducts] = useState(null);
@@ -157,7 +159,6 @@ export default function WorkshopBooking() {
   };
 
   // שליחת ההזמנה — מפעיל את תהליך ה-checkout ב-Wix
-  // פרטי הלקוח (שם, אימייל, טלפון) יתמלאו ע"י הלקוח בדף הצ'קאאוט של Wix
   const handleSubmit = async () => {
     setBookingError(null);
     addLog('Starting booking submission...', 'info');
@@ -175,7 +176,12 @@ export default function WorkshopBooking() {
       })),
       total_price: cart.reduce((sum, p) => sum + p.price * (p.quantity || 1), 0),
       total_sessions: totalMeetings,
-      status: 'pending'
+      status: 'pending',
+      userDetails: {
+        name: userDetails.name?.trim() || '',
+        email: userDetails.email?.trim() || '',
+        phone: userDetails.phone?.trim() || ''
+      }
     };
 
     addLog(`Submitting booking with ${cart.length} products, ${selectedSlots.length} slots`, 'info');
@@ -232,6 +238,7 @@ export default function WorkshopBooking() {
           setWoodType('');
           setCart([]);
           setSelectedSlots([]);
+          setUserDetails({ name: '', email: '', phone: '' });
           setBooking(null);
           setPaymentStatus('Successful');
         }}
@@ -255,6 +262,7 @@ export default function WorkshopBooking() {
     { id: 2, title: 'סוג העץ' },
     { id: 3, title: 'מה בונים?' },
     { id: 4, title: 'בחירת תאריכים' },
+    { id: 5, title: 'פרטים אישיים' },
   ];
 
   return (
@@ -328,11 +336,19 @@ export default function WorkshopBooking() {
                     totalMeetings={totalMeetings || 1}
                     availableSlots={wixSlots}
                     participants={participants}
-                    onContinue={handleSubmit}
-                    continueLabel={isProcessing ? null : 'המשך לפרטים אישיים'}
-                    isSubmitting={isProcessing}
+                    onContinue={() => completeSection(4)}
+                    continueLabel="המשך לפרטים אישיים"
+                    isSubmitting={false}
                     timerActive={timerActive}
                     setTimerActive={setTimerActive}
+                  />
+                )}
+                {section.id === 5 && (
+                  <PersonalDetailsSection
+                    userDetails={userDetails}
+                    setUserDetails={setUserDetails}
+                    onContinue={handleSubmit}
+                    isSubmitting={isProcessing}
                   />
                 )}
               </AccordionSection>
