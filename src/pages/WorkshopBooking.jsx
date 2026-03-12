@@ -251,7 +251,7 @@ export default function WorkshopBooking() {
   }
 
   const sections = [
-    { id: 1, title: 'כמה תיהיו?' },
+    { id: 1, title: 'כמה תיהיו??' },
     { id: 2, title: 'סוג העץ' },
     { id: 3, title: 'מה בונים?' },
     { id: 4, title: 'בחירת תאריכים' },
