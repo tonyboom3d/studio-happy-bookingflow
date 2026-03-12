@@ -57,11 +57,34 @@ export default function WorkshopBooking() {
         addLog(`Loaded ${data.slots.length} time slots`, 'success');
       }
       if (data.bookingConfirmed) {
-        // Wix confirmed booking saved
+        // Wix confirmed booking saved (either legacy Wix Pay or eCommerce checkout)
         setIsProcessing(false);
         setIsComplete(true);
         setPaymentStatus(data.paymentStatus || 'Successful');
         addLog(`Booking confirmed! Payment status: ${data.paymentStatus}`, 'success');
+
+        // אם הגיע מ-ORDER_CONFIRMED (eCommerce checkout), נשמור את נתוני ה-order
+        // ונשתמש בהם לבניית אובייקט booking מינימלי לתצוגה בדף תודה
+        if (data.orderData) {
+          setBooking(prev => {
+            // אם כבר יש booking מה-submit (flow רגיל) — נשמר
+            if (prev) return prev;
+            // אחרת — בונה booking מינימלי מנתוני ה-order
+            return {
+              full_name: `${data.orderData.buyerInfo?.firstName || ''} ${data.orderData.buyerInfo?.lastName || ''}`.trim(),
+              email: data.orderData.buyerInfo?.email || '',
+              phone: data.orderData.buyerInfo?.phone || '',
+              participants: 1,
+              wood_type: 'recycled',
+              products: [],
+              selected_slots: [],
+              total_sessions: 1,
+              _fromOrder: true,
+              orderNumber: data.orderData.orderNumber,
+              orderTotal: data.orderData.total
+            };
+          });
+        }
       }
       if (data.bookingError) {
         setIsProcessing(false);

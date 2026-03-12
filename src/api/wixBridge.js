@@ -110,11 +110,22 @@ function handleWixMessage(event) {
             break;
 
         case 'BOOKING_CONFIRMED':
-            // Wix confirmed booking was saved
+            // Wix confirmed booking was saved (legacy Wix Pay flow)
             notifyListeners({ 
                 bookingConfirmed: true, 
                 bookingId: data.bookingId,
                 paymentStatus: data.paymentStatus || 'Successful'
+            });
+            break;
+
+        case 'ORDER_CONFIRMED':
+            // Wix eCommerce checkout completed — sent from Thank You Page
+            // ממפה את ה-order לאותה לוגיקה כמו BOOKING_CONFIRMED
+            notifyListeners({
+                bookingConfirmed: true,
+                bookingId: data.order?.orderId,
+                paymentStatus: data.order?.paymentStatus || 'Successful',
+                orderData: data.order  // נתוני ה-order המלאים לתצוגה בדף תודה
             });
             break;
 

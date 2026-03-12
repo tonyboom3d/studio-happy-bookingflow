@@ -15,8 +15,11 @@ const PRICING = {
 export default function ThankYouScreen({ booking, paymentStatus = 'Successful', onGoHome }) {
   // Pending = התשלום טרם אושר במלואו
   const isPendingPayment = paymentStatus === 'Pending';
+
+  // האם ה-booking הגיע מ-eCommerce checkout (ORDER_CONFIRMED)
+  const isFromEcomOrder = booking?._fromOrder === true;
   
-  // חישוב פירוט מחירים
+  // חישוב פירוט מחירים (רלוונטי רק כשיש נתוני booking מלאים מה-UI)
   const participants = booking?.participants || 1;
   const woodType = booking?.wood_type || 'recycled';
   const totalMeetings = booking?.total_sessions || 1;
@@ -30,7 +33,9 @@ export default function ThankYouScreen({ booking, paymentStatus = 'Successful', 
   }, 0);
   
   const woodExtra = woodType === 'new' ? (productsPrice * 0.2) : 0;
-  const totalPrice = basePriceTotal + productsPrice + woodExtra;
+  const totalPrice = isFromEcomOrder
+    ? (booking?.orderTotal || 0)
+    : (basePriceTotal + productsPrice + woodExtra);
   const addToGoogleCalendar = () => {
     const firstSlot = booking.selected_slots?.[0];
     if (!firstSlot) return;
@@ -135,6 +140,13 @@ END:VCALENDAR`;
         <h2 className="text-lg font-semibold text-[#6B584C] mb-4 border-b border-[#e8e8e8] pb-2">
           סיכום הזמנה
         </h2>
+
+        {/* מספר הזמנה — מוצג כשיש נתוני eCommerce order */}
+        {isFromEcomOrder && booking?.orderNumber && (
+          <div className="mb-4 text-sm text-[#464646]/70 text-right">
+            מספר הזמנה: <span className="font-medium text-[#6B584C]">#{booking.orderNumber}</span>
+          </div>
+        )}
 
         {/* כמות משתתפים */}
         <div className="mb-4">
