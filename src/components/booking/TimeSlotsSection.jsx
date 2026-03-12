@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Info, X, Check } from 'lucide-react';
+import { Calendar, Clock, Info, X, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { format, addDays, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isBefore, startOfDay } from 'date-fns';
@@ -66,6 +66,8 @@ export default function TimeSlotsSection({
   setSelectedSlots,
   totalMeetings,
   onContinue,
+  continueLabel,
+  isSubmitting = false,
   timerActive,
   setTimerActive,
   availableSlots = [],
@@ -323,32 +325,42 @@ export default function TimeSlotsSection({
         </div>
       </div>
 
-      {/* כפתור המשך - הסרת אנימציה אינסופית לחיסכון בזיכרון */}
-      <div className="flex justify-center mt-6">
+      {/* כפתור המשך לתשלום */}
+      <div className="flex flex-col items-center mt-6 gap-3">
         <Button
-            onClick={() => {
-              // בניית slots - לפי הדוקומנטציה, עבור Classes מספיק רק sessionId
-              const slotsWithSession = selectedDates.filter(Boolean).map((date, i) => {
-                const dateStr = format(date, 'yyyy-MM-dd');
-                const wixSlot = sessionMap.get(dateStr);
-                return {
-                  id: `slot-${i}`,
-                  date: date,
-                  time: '10:00',
-                  // עבור CLASS booking - רק sessionId נדרש (שאר הפרטים מחושבים אוטומטית)
-                  sessionId: wixSlot?.sessionId || wixSlot?._id || null
-                };
-              });
-              console.log('[TimeSlotsSection] Saving slots with sessionId:', slotsWithSession);
-              setSelectedSlots(slotsWithSession);
-              onContinue();
-            }}
-          disabled={selectedDates.filter(Boolean).length !== totalMeetings}
+          onClick={() => {
+            const slotsWithSession = selectedDates.filter(Boolean).map((date, i) => {
+              const dateStr = format(date, 'yyyy-MM-dd');
+              const wixSlot = sessionMap.get(dateStr);
+              return {
+                id: `slot-${i}`,
+                date: date,
+                time: '10:00',
+                sessionId: wixSlot?.sessionId || wixSlot?._id || null
+              };
+            });
+            console.log('[TimeSlotsSection] Saving slots with sessionId:', slotsWithSession);
+            setSelectedSlots(slotsWithSession);
+            onContinue();
+          }}
+          disabled={selectedDates.filter(Boolean).length !== totalMeetings || isSubmitting}
           className="bg-[#ADC178] hover:bg-[#9ab569] hover:scale-[1.02] text-white px-8 py-3 rounded-lg
-                     transition-all duration-200 text-lg disabled:opacity-50"
+                     transition-all duration-200 text-lg disabled:opacity-50 flex items-center gap-2"
         >
-          המשך לפרטים אישיים
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              מכין את ההזמנה...
+            </>
+          ) : (
+            continueLabel || 'המשך לתשלום'
+          )}
         </Button>
+        {isSubmitting && (
+          <p className="text-sm text-[#6B584C]/70 animate-pulse">
+            אנחנו יוצרים עבורך הזמנה — תועבר לדף התשלום בשניות
+          </p>
+        )}
       </div>
     </div>
   );

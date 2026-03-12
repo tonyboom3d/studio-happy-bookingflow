@@ -6,7 +6,6 @@ import ParticipantsSection from '../components/booking/ParticipantsSection';
 import WoodTypeSection from '../components/booking/WoodTypeSection';
 import ProductSelectionSection from '../components/booking/ProductSelectionSection';
 import TimeSlotsSection from '../components/booking/TimeSlotsSection';
-import PersonalDetailsSection from '../components/booking/PersonalDetailsSection';
 import ThankYouScreen from '../components/booking/ThankYouScreen';
 import { submitBooking, subscribeToWix, notifyProgress, sendSummaryUpdate } from '@/api/wixBridge';
 import { addLog } from '@/components/VersionLogger';
@@ -21,7 +20,6 @@ export default function WorkshopBooking() {
   const [woodType, setWoodType] = useState('');
   const [cart, setCart] = useState([]);
   const [selectedSlots, setSelectedSlots] = useState([]);
-  const [userDetails, setUserDetails] = useState({});
 
   // נתונים מ-Wix
   const [wixProducts, setWixProducts] = useState(null);
@@ -158,16 +156,14 @@ export default function WorkshopBooking() {
     }
   };
 
-  // שליחת ההזמנה
+  // שליחת ההזמנה — מפעיל את תהליך ה-checkout ב-Wix
+  // פרטי הלקוח (שם, אימייל, טלפון) יתמלאו ע"י הלקוח בדף הצ'קאאוט של Wix
   const handleSubmit = async () => {
     setBookingError(null);
     addLog('Starting booking submission...', 'info');
     setIsProcessing(true);
 
     const bookingData = {
-      full_name: userDetails.full_name,
-      email: userDetails.email,
-      phone: userDetails.phone,
       participants,
       wood_type: woodType,
       products: cart.map(p => ({ product_id: p.id, _id: p._id || p.id, title: p.title, price: p.price, quantity: p.quantity || 1, addOnId: p.addOnId })),
@@ -175,28 +171,20 @@ export default function WorkshopBooking() {
         slot_id: s.id,
         date: s.date?.toISOString?.() || s.date,
         time: s.time,
-        // עבור CLASS booking - רק sessionId נדרש (שאר הפרטים מחושבים אוטומטית ע"י Wix)
         sessionId: s.sessionId || null
       })),
       total_price: cart.reduce((sum, p) => sum + p.price * (p.quantity || 1), 0),
       total_sessions: totalMeetings,
-      notes: userDetails.notes,
-      instagram: userDetails.instagram,
-      marketing_consent: userDetails.marketing_consent,
       status: 'pending'
     };
 
-    // שמירת נתוני ההזמנה ל-state כדי שמסך התודה יוכל להציג אותם
-    setBooking(bookingData);
-
-    // שליחה ל-Wix דרך postMessage
     addLog(`Submitting booking with ${cart.length} products, ${selectedSlots.length} slots`, 'info');
     submitBooking(bookingData);
 
-    // אם לא מתקבלת תגובה מ-Wix תוך 60 שניות - נציג שגיאת timeout ונפסיק את הטעינה
+    // אם לא מתקבלת תגובה מ-Wix תוך 60 שניות — timeout
     setTimeout(() => {
       setIsProcessing(prev => {
-        if (!prev) return prev; // כבר קיבלנו תגובה מ-Wix
+        if (!prev) return prev;
         setBookingError(prevError => prevError || 'timeout');
         return false;
       });
@@ -244,7 +232,6 @@ export default function WorkshopBooking() {
           setWoodType('');
           setCart([]);
           setSelectedSlots([]);
-          setUserDetails({});
           setBooking(null);
           setPaymentStatus('Successful');
         }}
@@ -268,7 +255,6 @@ export default function WorkshopBooking() {
     { id: 2, title: 'סוג העץ' },
     { id: 3, title: 'מה בונים?' },
     { id: 4, title: 'בחירת תאריכים' },
-    { id: 5, title: 'פרטים אישיים' }
   ];
 
   return (
@@ -342,19 +328,11 @@ export default function WorkshopBooking() {
                     totalMeetings={totalMeetings || 1}
                     availableSlots={wixSlots}
                     participants={participants}
-                    onContinue={() => completeSection(4)}
+                    onContinue={handleSubmit}
+                    continueLabel={isProcessing ? null : 'המשך לתשלום'}
+                    isSubmitting={isProcessing}
                     timerActive={timerActive}
                     setTimerActive={setTimerActive}
-                  />
-                )}
-                {section.id === 5 && (
-                  <PersonalDetailsSection
-                    userDetails={userDetails}
-                    setUserDetails={setUserDetails}
-                    onSubmit={handleSubmit}
-                    isSubmitting={isProcessing}
-                    bookingError={bookingError}
-                    onClearError={() => setBookingError(null)}
                   />
                 )}
               </AccordionSection>
