@@ -329,7 +329,7 @@ export default function WorkshopBooking() {
                     availableSlots={wixSlots}
                     participants={participants}
                     onContinue={handleSubmit}
-                    continueLabel={isProcessing ? null : 'המשך לתשלום'}
+                    continueLabel={isProcessing ? null : 'המשך לפרטים אישיים'}
                     isSubmitting={isProcessing}
                     timerActive={timerActive}
                     setTimerActive={setTimerActive}

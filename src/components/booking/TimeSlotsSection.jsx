@@ -350,15 +350,15 @@ export default function TimeSlotsSection({
           {isSubmitting ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              מכין את ההזמנה...
+              מעבר למילוי פרטים אישיים...
             </>
           ) : (
-            continueLabel || 'המשך לתשלום'
+            continueLabel || 'המשך לפרטים אישיים'
           )}
         </Button>
         {isSubmitting && (
           <p className="text-sm text-[#6B584C]/70 animate-pulse">
-            אנחנו יוצרים עבורך הזמנה — תועבר לדף התשלום בשניות
+            אנחנו מכינים עבורך הזמנה — תועבר בשניות
           </p>
         )}
       </div>
