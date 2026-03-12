@@ -8,7 +8,7 @@ import ProductSelectionSection from '../components/booking/ProductSelectionSecti
 import TimeSlotsSection from '../components/booking/TimeSlotsSection';
 import ThankYouScreen from '../components/booking/ThankYouScreen';
 import { submitBooking, subscribeToWix, notifyProgress, sendSummaryUpdate } from '@/api/wixBridge';
-import { addLog } from '@/components/VersionLogger';
+import { addLog, APP_VERSION } from '@/components/VersionLogger';
 
 export default function WorkshopBooking() {
   // State ראשי
@@ -344,6 +344,9 @@ export default function WorkshopBooking() {
       {/* Footer */}
       <footer className="py-6 pb-32 md:pb-6 text-center text-sm text-[#464646]/60">
         © 2024 הנגריה הפתוחה. כל הזכויות שמורות.
+        <span className="mr-2 px-2 py-0.5 bg-[#e8e8e8] rounded text-[10px] font-mono text-[#464646]/50">
+          v{APP_VERSION}
+        </span>
       </footer>
       
       {/* הערה: FloatingSummary כעת ב-iframe נפרד בנתיב /summary */}
