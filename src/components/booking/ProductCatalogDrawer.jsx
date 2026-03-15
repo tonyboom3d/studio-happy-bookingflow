@@ -219,6 +219,11 @@ export default function ProductCatalogDrawer({
     });
   }, [products, priceFilter, selectedWoodType, participants]);
 
+  const MAX_SESSIONS = 8;
+
+  // סה"כ מפגשים נוכחי בעגלה
+  const currentTotalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)) * (p.quantity || 1), 0);
+
   const toggleProduct = (product) => {
     // תמיכה גם ב-id וגם ב-_id מ-Wix CMS
     const productId = product._id || product.id;
@@ -228,6 +233,9 @@ export default function ProductCatalogDrawer({
     } else {
       // מגבלה של 21 מוצרים מקסימום
       if (cart.length >= MAX_PRODUCTS) return;
+      // מגבלה של 8 מפגשים מקסימום
+      const productMeetings = getLocalMeetings(product);
+      if (currentTotalMeetings + productMeetings > MAX_SESSIONS) return;
       setCart([...cart, { ...product, id: productId, meetings: getMeetings(product), quantity: 1 }]);
     }
   };
@@ -381,7 +389,7 @@ export default function ProductCatalogDrawer({
           <div className="flex items-center gap-2 mb-4 p-3 bg-[#fafafa] rounded-lg border border-[#e8e8e8]">
             <AlertCircle className="w-4 h-4 text-[#ADC178] flex-shrink-0" />
             <p className="text-xs text-[#464646]/70">
-              ניתן לבחור עד {MAX_PRODUCTS} מוצרים להזמנה ({cart.length}/{MAX_PRODUCTS}). ניתן לפצל הזמנות במידת הצורך.
+              מגבלה: עד {MAX_SESSIONS} מפגשים סה"כ ({currentTotalMeetings}/{MAX_SESSIONS}). מוצרים אפורים חורגים מהמגבלה.
             </p>
           </div>
 
@@ -390,14 +398,19 @@ export default function ProductCatalogDrawer({
               const productId = product._id || product.id;
               const cartItem = cart.find(p => (p._id || p.id) === productId);
               const isSelected = !!cartItem;
+              const productMeetings = getLocalMeetings(product);
+              const wouldExceedLimit = !isSelected && (currentTotalMeetings + productMeetings > MAX_SESSIONS);
               return (
                 <div 
                   key={productId} 
                   data-product-card 
                   onClick={() => {
+                    if (wouldExceedLimit) return;
                     toggleProduct(product);
                     setShowFilters(false);
                   }}
+                  className={wouldExceedLimit ? 'opacity-40 cursor-not-allowed' : ''}
+                  title={wouldExceedLimit ? `מוצר זה דורש ${productMeetings} מפגשים, חורג מהמגבלה של ${MAX_SESSIONS}` : ''}
                 >
                   <ProductGridCard
                     product={product}

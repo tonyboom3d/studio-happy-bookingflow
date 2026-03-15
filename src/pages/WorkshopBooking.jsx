@@ -107,16 +107,27 @@ export default function WorkshopBooking() {
     });
   }, [activeSection, participants, woodType, cart.length, selectedSlots.length]);
 
-  // עדכון כמות מוצר בעגלה (מינימום 1, מקסימום 5)
+  const MAX_SESSIONS = 8;
+
+  // עדכון כמות מוצר בעגלה (מינימום 1, עם הגבלת 8 מפגשים סה"כ)
   const updateQuantity = (productId, delta) => {
-    setCart(prev => prev.map(p => {
-      const pid = p._id || p.id;
-      if (pid === productId) {
-        const newQty = Math.min(5, Math.max(1, (p.quantity || 1) + delta));
-        return { ...p, quantity: newQty };
-      }
-      return p;
-    }));
+    setCart(prev => {
+      const currentTotal = prev.reduce((sum, p) => sum + (p.meetings || 3) * (p.quantity || 1), 0);
+      return prev.map(p => {
+        const pid = p._id || p.id;
+        if (pid === productId) {
+          const productMeetings = p.meetings || 3;
+          const newQty = Math.max(1, (p.quantity || 1) + delta);
+          // מניעת חריגה מ-8 מפגשים בעת הוספה
+          if (delta > 0) {
+            const meetingsAfterAdd = currentTotal + productMeetings;
+            if (meetingsAfterAdd > MAX_SESSIONS) return p;
+          }
+          return { ...p, quantity: newQty };
+        }
+        return p;
+      });
+    });
   };
 
   // חישוב סה"כ מפגשים (כולל כמויות)
@@ -252,7 +263,7 @@ export default function WorkshopBooking() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-white">
         {/* CSS animation במקום framer-motion repeat: Infinity */}
         <Loader2 className="w-12 h-12 text-[#ADC178] animate-spin" />
-        <p className="mt-4 text-lg text-[#6B584C]">שומר את ההזמנה...</p>
+        <p className="mt-4 text-lg text-[#6B584C]">דף התשלום נטען, כמה רגעים...</p>
       </div>
     );
   }
