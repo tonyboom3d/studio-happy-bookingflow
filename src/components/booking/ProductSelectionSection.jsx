@@ -4,8 +4,6 @@ import { ShoppingBag, Wrench, HelpCircle, Sparkles, X, Minus, Plus } from 'lucid
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import ProductCatalogDrawer from './ProductCatalogDrawer';
-import CustomBuildModal from './CustomBuildModal';
-import ConsultationModal from './ConsultationModal';
 
 const MAX_PRODUCTS = 21;
 
@@ -19,8 +17,6 @@ export default function ProductSelectionSection({
   updateQuantity // עדכון כמות מוצר בעגלה
 }) {
   const [showCatalog, setShowCatalog] = useState(false);
-  const [showCustomBuild, setShowCustomBuild] = useState(false);
-  const [showConsultation, setShowConsultation] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
 
   const getMeetings = (product) => {
@@ -36,9 +32,15 @@ export default function ProductSelectionSection({
 
   const handleOptionClick = (optionId) => {
     setSelectedOption(optionId);
-    if (optionId === 'catalog') setShowCatalog(true);
-    if (optionId === 'custom') setShowCustomBuild(true);
-    if (optionId === 'help') setShowConsultation(true);
+    if (optionId === 'catalog') {
+      setShowCatalog(true);
+    } else if (optionId === 'custom') {
+      // פתיחת Lightbox byMySelf דרך Wix VELO
+      window.parent.postMessage({ type: 'OPEN_LIGHTBOX', lightboxId: 'byMySelf' }, '*');
+    } else if (optionId === 'help') {
+      // פתיחת Lightbox needHelp דרך Wix VELO
+      window.parent.postMessage({ type: 'OPEN_LIGHTBOX', lightboxId: 'needHelp' }, '*');
+    }
   };
 
   const options = [
@@ -201,7 +203,7 @@ export default function ProductSelectionSection({
         </Button>
       </div>
 
-      {/* מודלים */}
+      {/* קטלוג מוצרים */}
       <ProductCatalogDrawer
         isOpen={showCatalog}
         onClose={() => setShowCatalog(false)}
@@ -212,14 +214,6 @@ export default function ProductSelectionSection({
         participants={participants}
         wixProducts={wixProducts}
         updateQuantity={updateQuantity}
-      />
-      <CustomBuildModal
-        isOpen={showCustomBuild}
-        onClose={() => setShowCustomBuild(false)}
-      />
-      <ConsultationModal
-        isOpen={showConsultation}
-        onClose={() => setShowConsultation(false)}
       />
     </div>
   );
