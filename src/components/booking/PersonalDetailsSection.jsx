@@ -7,16 +7,23 @@ function validateEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+/** טלפון ישראלי: בדיוק 10 ספרות, מתחיל ב-05, ללא תווים מיוחדים */
 function validatePhone(phone) {
+  if (!phone || typeof phone !== 'string') return false;
   const digits = phone.replace(/\D/g, '');
-  return digits.length >= 9 && digits.length <= 15;
+  return digits.length === 10 && digits.startsWith('05');
 }
 
 export default function PersonalDetailsSection({ userDetails, setUserDetails, onContinue, isSubmitting }) {
   const [touched, setTouched] = useState({ name: false, email: false, phone: false });
 
   const handleChange = (field, value) => {
-    setUserDetails(prev => ({ ...prev, [field]: value }));
+    if (field === 'phone') {
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
+      setUserDetails(prev => ({ ...prev, [field]: digitsOnly }));
+    } else {
+      setUserDetails(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const handleBlur = (field) => {
@@ -36,7 +43,7 @@ export default function PersonalDetailsSection({ userDetails, setUserDetails, on
     : null;
 
   const phoneError = touched.phone && !validatePhone(phone)
-    ? 'מספר טלפון לא תקין'
+    ? 'הזן מספר ישראלי בן 10 ספרות שמתחיל ב-05 (ללא מקפים או רווחים)'
     : null;
 
   const isValid =
@@ -135,7 +142,7 @@ export default function PersonalDetailsSection({ userDetails, setUserDetails, on
             value={phone}
             onChange={e => handleChange('phone', e.target.value)}
             onBlur={() => handleBlur('phone')}
-            placeholder="050-0000000"
+            placeholder="0500000000"
             dir="ltr"
             className={`w-full px-4 py-3 border rounded-lg text-[#464646] bg-white
               placeholder:text-[#464646]/40 focus:outline-none focus:ring-2
@@ -163,7 +170,7 @@ export default function PersonalDetailsSection({ userDetails, setUserDetails, on
       <div className="flex justify-center mt-8">
         <Button
           onClick={handleSubmit}
-          disabled={isSubmitting}
+          disabled={isSubmitting || !isValid}
           className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
                      transition-all duration-200 text-lg disabled:opacity-60 disabled:cursor-not-allowed"
         >
