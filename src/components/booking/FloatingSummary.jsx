@@ -63,7 +63,15 @@ export default function FloatingSummary({
       value: sessionsCount > 1 ? `₪${basePricePerSession} × ${sessionsCount}` : '',
       active: activeSection === 4
     },
-    // שורה 3: מוצרים - אם עץ ממוחזר לא מציג מחיר
+    // שורה 3: סוג עץ - לפני מוצרים. אם עץ חדש ויש תוספת, מציגים אותה ליד "עץ חדש"
+    {
+      show: woodType,
+      icon: TreeDeciduous,
+      label: woodType === 'recycled' ? 'עץ ממוחזר' : 'עץ חדש',
+      value: woodType === 'new' && woodExtra > 0 ? `+₪${Math.round(woodExtra)}` : '',
+      active: activeSection === 2
+    },
+    // שורה 4: מוצרים - מוצג אחרי סוג עץ. אם עץ ממוחזר לא מציג מחיר
     {
       show: cart.length > 0,
       icon: Package,
@@ -71,14 +79,6 @@ export default function FloatingSummary({
       label: `${totalItems} מוצרים`,
       value: woodType === 'recycled' ? '' : `₪${productsPrice}`,
       active: activeSection === 3
-    },
-    // שורה 4: סוג עץ - תמיד אחרון, בלי הצגת ערך (מחיר/אחוז)
-    {
-      show: woodType,
-      icon: TreeDeciduous,
-      label: woodType === 'recycled' ? 'עץ ממוחזר' : 'עץ חדש',
-      value: '',
-      active: activeSection === 2
     }
   ].filter(item => item.show);
 

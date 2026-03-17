@@ -172,6 +172,7 @@ export default function ProductCatalogDrawer({
   const [priceFilter, setPriceFilter] = useState([0, 1000]);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedWoodType, setSelectedWoodType] = useState(woodType || 'recycled');
+  const [meetingsFilter, setMeetingsFilter] = useState('all'); // 'all' | number-as-string
   const [enlargedImage, setEnlargedImage] = useState(null);
   const productsContainerRef = useRef(null);
 
@@ -206,18 +207,41 @@ export default function ProductCatalogDrawer({
   // שימוש במוצרים מ-Wix, אם אין - fallback
   const products = wixProducts && wixProducts.length > 0 ? wixProducts : FALLBACK_PRODUCTS;
 
-  const filteredProducts = useMemo(() => {
-    return products.filter(product => {
-      // סינון מוצרים שאין להם מפגשים עבור המצב הנוכחי
-      const meetings = getLocalMeetings(product);
-      if (meetings === 0) return false;
+  const meetingOptions = useMemo(() => {
+    const values = new Set();
+    for (const p of products) {
+      const m = getLocalMeetings(p);
+      if (m > 0) values.add(m);
+    }
+    return Array.from(values).sort((a, b) => a - b);
+  }, [products, selectedWoodType, participants]);
 
-      return (
-        (product.price || 0) >= priceFilter[0] &&
-        (product.price || 0) <= priceFilter[1]
-      );
-    });
-  }, [products, priceFilter, selectedWoodType, participants]);
+  const filteredProducts = useMemo(() => {
+    const selectedMeetings = meetingsFilter === 'all' ? null : Number(meetingsFilter);
+
+    return products
+      .filter(product => {
+        // סינון מוצרים שאין להם מפגשים עבור המצב הנוכחי
+        const meetings = getLocalMeetings(product);
+        if (meetings === 0) return false;
+
+        if (selectedMeetings && meetings !== selectedMeetings) return false;
+
+        return (
+          (product.price || 0) >= priceFilter[0] &&
+          (product.price || 0) <= priceFilter[1]
+        );
+      })
+      // מיון מוצרים לפי כמות מפגשים (מעט -> הרבה)
+      .sort((a, b) => {
+        const ma = getLocalMeetings(a);
+        const mb = getLocalMeetings(b);
+        if (ma !== mb) return ma - mb;
+        const ta = (a.title || '').toString();
+        const tb = (b.title || '').toString();
+        return ta.localeCompare(tb, 'he');
+      });
+  }, [products, priceFilter, meetingsFilter, selectedWoodType, participants]);
 
   const MAX_SESSIONS = 8;
 
@@ -336,6 +360,22 @@ export default function ProductCatalogDrawer({
                   {selectedWoodType === 'new' && <Check className="w-3 h-3 text-[#ADC178]" />}
                 </button>
               </div>
+
+              {/* סינון מפגשים - קומפקטי */}
+              <div className="flex items-center">
+                <select
+                  value={meetingsFilter}
+                  onChange={(e) => setMeetingsFilter(e.target.value)}
+                  className="h-8 text-xs px-2 rounded-md border border-[#e8e8e8] bg-white text-[#464646] focus:outline-none focus:ring-2 focus:ring-[#ADC178]/30"
+                  aria-label="סינון לפי מספר מפגשים"
+                >
+                  <option value="all">כל המפגשים</option>
+                  {meetingOptions.map((m) => (
+                    <option key={m} value={String(m)}>{m} מפגשים</option>
+                  ))}
+                </select>
+              </div>
+
               {selectedWoodType === 'new' && (
                 <button
                   onClick={() => setShowFilters(!showFilters)}
