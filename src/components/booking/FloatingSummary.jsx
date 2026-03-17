@@ -28,7 +28,10 @@ export default function FloatingSummary({
   const [isOpen, setIsOpen] = useState(true); // פתוח כברירת מחדל בדף Summary
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
 
-  const sessionsCount = totalMeetings || 0;
+  // מספר מפגשים בפועל (ממוצרים/סלוטים)
+  const rawSessionsCount = totalMeetings || 0;
+  // בדיפולט תמיד לפחות מפגש אחד כדי לשקף כרטיס מינימום
+  const sessionsCount = rawSessionsCount || 1;
   const basePricePerSession = PRICING[participants] || 300;
   // מחיר בסיס = מחיר כרטיס × מספר מפגשים (כרטיס הוא למפגש)
   const basePriceTotal = basePricePerSession * (sessionsCount || 1);
@@ -45,7 +48,7 @@ export default function FloatingSummary({
   // תוספת עץ חדש — 20% ממחיר המוצרים בלבד
   const woodExtra = woodType === 'new' ? Math.round(productsPrice * 0.2) : 0;
   // סכ"ה: כרטיס × מפגשים + מוצרים + תוספת עץ
-  const totalPrice = (sessionsCount > 0 ? basePriceTotal : 0) + productsPrice + woodExtra;
+  const totalPrice = basePriceTotal + productsPrice + woodExtra;
   // תוספת מוצרים+עץ לתצוגה בשורת המוצרים (ללא מחיר בסיס)
   const productsLinePrice = productsPrice + woodExtra;
 
@@ -58,9 +61,9 @@ export default function FloatingSummary({
       value: `₪${basePricePerSession} למפגש`,
       active: activeSection === 1
     },
-    // שורה 2: מספר מפגשים + מחיר בסיס כולל
+    // שורה 2: מספר מפגשים + מחיר בסיס כולל (מינימום מפגש 1)
     {
-      show: sessionsCount > 0,
+      show: true,
       icon: Calendar,
       label: selectedSlots.length > 0
         ? `${selectedSlots.length}/${sessionsCount} מפגשים`
