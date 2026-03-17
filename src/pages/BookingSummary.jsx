@@ -66,7 +66,10 @@ export default function BookingSummary() {
       margin: 0, 
       padding: 0,
       overflow: 'hidden',
-      background: 'transparent'
+      background: 'transparent',
+      display: 'flex',
+      alignItems: 'flex-end',
+      justifyContent: 'center',
     }}>
       <FloatingSummary
         participants={summaryData.participants}
