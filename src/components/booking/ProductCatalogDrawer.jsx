@@ -30,9 +30,9 @@ const MAX_PRODUCTS = 21;
 
 function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPrices, onZoom, quantity, onQuantityChange }) {
   const [showDimensions, setShowDimensions] = useState(false);
-  // אם עץ ממוחזר - "כולל במחיר", אם חדש - המחיר עם תוספת
+  // מחיר המוצר בלי תוספת (התוספת מחושבת בסיכום הכולל)
   const priceDisplay = showNewWoodPrices 
-    ? `₪${Math.round(product.price * 1.2)}` 
+    ? `₪${product.price}` 
     : 'כולל במחיר';
 
   return (
@@ -265,8 +265,8 @@ export default function ProductCatalogDrawer({
   };
 
   const totalPriceBase = cart.reduce((sum, p) => sum + p.price * (p.quantity || 1), 0);
-  // סה"כ לתצוגה: עץ חדש = +20%, עץ ממוחזר = כלול
-  const totalPrice = selectedWoodType === 'new' ? Math.round(totalPriceBase * 1.2) : totalPriceBase;
+  // מציג מחיר מוצרים ללא תוספת (התוספת מחושבת בחלונית הסיכום)
+  const totalPrice = totalPriceBase;
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)) * (p.quantity || 1), 0);
   const totalItems = cart.reduce((sum, p) => sum + (p.quantity || 1), 0);
 
