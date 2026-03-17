@@ -178,7 +178,7 @@ export default function WorkshopBooking() {
     const bookingData = {
       participants,
       wood_type: woodType,
-      products: cart.map(p => ({ product_id: p.id, _id: p._id || p.id, title: p.title, price: p.price, quantity: p.quantity || 1, addOnId: p.addOnId })),
+      products: cart.map(p => ({ product_id: p.id, _id: p._id || p.id, title: p.title, price: p.price, quantity: p.quantity || 1, addOnId: p.addOnId, image: p.image || null })),
       selected_slots: selectedSlots.map(s => ({
         slot_id: s.id,
         date: s.date?.toISOString?.() || s.date,
