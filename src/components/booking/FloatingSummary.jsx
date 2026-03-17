@@ -28,9 +28,10 @@ export default function FloatingSummary({
   const [isOpen, setIsOpen] = useState(true); // פתוח כברירת מחדל בדף Summary
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
 
-  const sessionsCount = totalMeetings || 1;
+  const sessionsCount = totalMeetings || 0;
   const basePricePerSession = PRICING[participants] || 300;
-  const basePriceTotal = basePricePerSession * sessionsCount;
+  // מחיר בסיס = מחיר כרטיס × מספר מפגשים (כרטיס הוא למפגש)
+  const basePriceTotal = basePricePerSession * (sessionsCount || 1);
   // כמות כוללת של יחידות (אם אותו מוצר נבחר כמה פעמים)
   const totalItems = cart.reduce((sum, p) => {
     const qty = typeof p.quantity === 'number' ? p.quantity : 1;
@@ -41,11 +42,15 @@ export default function FloatingSummary({
     const qty = typeof p.quantity === 'number' ? p.quantity : 1;
     return sum + (p.price || 0) * (qty > 0 ? qty : 1);
   }, 0);
-  const woodExtra = woodType === 'new' ? (productsPrice * 0.2) : 0;
-  const totalPrice = basePriceTotal + productsPrice + woodExtra;
+  // תוספת עץ חדש — 20% ממחיר המוצרים בלבד
+  const woodExtra = woodType === 'new' ? Math.round(productsPrice * 0.2) : 0;
+  // סכ"ה: כרטיס × מפגשים + מוצרים + תוספת עץ
+  const totalPrice = (sessionsCount > 0 ? basePriceTotal : 0) + productsPrice + woodExtra;
+  // תוספת מוצרים+עץ לתצוגה בשורת המוצרים (ללא מחיר בסיס)
+  const productsLinePrice = productsPrice + woodExtra;
 
   const items = [
-    // שורה 1: כמה תהיו - מציג את מחיר הכרטיס לפי הבחירה
+    // שורה 1: סוג כרטיס + מחיר למפגש
     {
       show: participants > 0,
       icon: Users,
@@ -53,22 +58,24 @@ export default function FloatingSummary({
       value: `₪${basePricePerSession} למפגש`,
       active: activeSection === 1
     },
-    // שורה 2: מספר מפגשים – מוצג מרגע שיש מוצרים (אז ידוע מספר המפגשים)
+    // שורה 2: מספר מפגשים + מחיר בסיס כולל
     {
-      show: (totalMeetings || 0) > 0,
+      show: sessionsCount > 0,
       icon: Calendar,
       label: selectedSlots.length > 0
-        ? `${selectedSlots.length}/${totalMeetings} מפגשים`
-        : `${totalMeetings} מפגשים`,
-      value: sessionsCount > 1 ? `₪${basePricePerSession} × ${sessionsCount}` : '',
+        ? `${selectedSlots.length}/${sessionsCount} מפגשים`
+        : `${sessionsCount} מפגשים`,
+      value: `₪${basePricePerSession} × ${sessionsCount} = ₪${basePriceTotal}`,
       active: activeSection === 4
     },
-    // שורה 3: מוצרים + סוג העץ בשורה אחת דינאמית, עם מחיר כולל
+    // שורה 3: מוצרים + סוג העץ — מציג תוספת מחיר מוצרים בלבד (ללא כפילות עם מחיר בסיס)
     {
       show: cart.length > 0 && woodType,
       icon: Package,
       label: `${totalItems} מוצרים - ${woodType === 'recycled' ? 'עץ ממוחזר' : 'עץ חדש'}`,
-      value: `₪${Math.round(totalPrice)}`,
+      value: woodType === 'recycled'
+        ? (productsPrice > 0 ? `₪${productsPrice}` : 'כלול')
+        : `₪${productsPrice}${woodExtra > 0 ? ` +₪${woodExtra} עץ` : ''}`,
       active: activeSection === 3
     },
   ].filter(item => item.show);
