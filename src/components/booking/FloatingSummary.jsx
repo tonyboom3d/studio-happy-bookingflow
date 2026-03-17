@@ -63,23 +63,14 @@ export default function FloatingSummary({
       value: sessionsCount > 1 ? `₪${basePricePerSession} × ${sessionsCount}` : '',
       active: activeSection === 4
     },
-    // שורה 3: סוג עץ - לפני מוצרים. אם עץ חדש ויש תוספת, מציגים אותה ליד "עץ חדש"
+    // שורה 3: מוצרים + סוג העץ בשורה אחת דינאמית, עם מחיר כולל
     {
-      show: woodType,
-      icon: TreeDeciduous,
-      label: woodType === 'recycled' ? 'עץ ממוחזר' : 'עץ חדש',
-      value: woodType === 'new' && woodExtra > 0 ? `+₪${Math.round(woodExtra)}` : '',
-      active: activeSection === 2
-    },
-    // שורה 4: מוצרים - מוצג אחרי סוג עץ. אם עץ ממוחזר לא מציג מחיר
-    {
-      show: cart.length > 0,
+      show: cart.length > 0 && woodType,
       icon: Package,
-      // מציגים מספר יחידות כולל, לא רק מספר שורות בעגלה
-      label: `${totalItems} מוצרים`,
-      value: woodType === 'recycled' ? '' : `₪${productsPrice}`,
+      label: `${totalItems} מוצרים - ${woodType === 'recycled' ? 'עץ ממוחזר' : 'עץ חדש'}`,
+      value: `₪${Math.round(totalPrice)}`,
       active: activeSection === 3
-    }
+    },
   ].filter(item => item.show);
 
   // אם אין פריטים, הצג את הסיכום הבסיסי (רק עבור iframe נפרד)

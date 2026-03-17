@@ -6,7 +6,7 @@ import WorkshopBooking from './pages/WorkshopBooking';
 import BookingSummary from './pages/BookingSummary';
 import { useEffect } from 'react';
 import { initWixBridge } from '@/api/wixBridge';
-import VersionLogger, { addLog } from '@/components/VersionLogger';
+import { addLog } from '@/components/VersionLogger';
 
 // Wrapper component to conditionally show VersionLogger
 function AppContent() {
@@ -28,7 +28,6 @@ function AppContent() {
         <Route path="*" element={<WorkshopBooking />} />
       </Routes>
       {!isSummaryPage && <Toaster />}
-      {!isSummaryPage && <VersionLogger />}
     </>
   );
 }

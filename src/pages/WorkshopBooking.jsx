@@ -369,12 +369,7 @@ export default function WorkshopBooking() {
       </main>
 
       {/* Footer */}
-      <footer className="py-6 pb-32 md:pb-6 text-center text-sm text-[#464646]/60">
-        © 2024 הנגריה הפתוחה. כל הזכויות שמורות.
-        <span className="mr-2 px-2 py-0.5 bg-[#e8e8e8] rounded text-[10px] font-mono text-[#464646]/50">
-          v{APP_VERSION}
-        </span>
-      </footer>
+      
       
       {/* הערה: FloatingSummary כעת ב-iframe נפרד בנתיב /summary */}
     </div>
