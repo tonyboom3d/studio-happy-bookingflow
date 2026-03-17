@@ -75,7 +75,7 @@ export default function FloatingSummary({
       label: `${totalItems} מוצרים - ${woodType === 'recycled' ? 'עץ ממוחזר' : 'עץ חדש'}`,
       value: woodType === 'recycled'
         ? (productsPrice > 0 ? `₪${productsPrice}` : 'כלול')
-        : `₪${productsPrice}${woodExtra > 0 ? ` +₪${woodExtra} עץ` : ''}`,
+        : `${productsLinePrice} ₪`,
       active: activeSection === 3
     },
   ].filter(item => item.show);
@@ -111,7 +111,7 @@ export default function FloatingSummary({
       style={{ direction: 'rtl' }}
     >
       <div className={cn(
-        "rounded-2xl shadow-xl border border-[#e8e8e8] overflow-hidden",
+        "rounded-2xl border border-[#e8e8e8] overflow-hidden",
         isSummaryPage ? "bg-white" : "bg-white/97 backdrop-blur-xl"
       )}>
         {/* כותרת */}

@@ -195,6 +195,9 @@ export default function WorkshopBooking() {
       }
     };
 
+    // לוג מפורט לבדיקת ה-booking בצד הפרונט
+    console.log('[Booking][Frontend] bookingData being sent to Wix:', JSON.stringify(bookingData, null, 2));
+
     addLog(`Submitting booking with ${cart.length} products, ${selectedSlots.length} slots`, 'info');
     submitBooking(bookingData);
 
