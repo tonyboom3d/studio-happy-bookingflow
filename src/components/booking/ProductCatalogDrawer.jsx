@@ -109,8 +109,8 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
           </button>
         </div>
 
-        <div className="p-4">
-          <h3 className="font-semibold text-[#6B584C] text-base mb-2">{product.title}</h3>
+        <div className="p-2.5 sm:p-4">
+          <h3 className="font-semibold text-[#6B584C] text-sm sm:text-base mb-1.5 sm:mb-2 leading-snug">{product.title}</h3>
 
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1 text-xs text-[#464646]/70">
@@ -327,46 +327,47 @@ export default function ProductCatalogDrawer({
         side="right"
         className="w-full sm:max-w-xl p-0 bg-white/95 backdrop-blur-xl"
       >
-        <SheetHeader className="p-4 border-b border-[#e8e8e8] sticky top-0 bg-white/95 backdrop-blur-xl z-10">
-          <div className="flex items-center justify-between mb-3">
-            <SheetTitle className="text-xl font-semibold text-[#6B584C]">קטלוג מוצרים</SheetTitle>
-            <div className="flex items-center gap-2">
-              {/* סינון עץ באותה שורה עם כפתור הסינון */}
-              <div className="flex gap-1.5">
+        <SheetHeader className="px-3 py-2.5 md:p-4 border-b border-[#e8e8e8] sticky top-0 bg-white/95 backdrop-blur-xl z-10 space-y-0">
+          {/* מובייל: כותרת בשורה אחת, פילטרים בשורה נפרדת וקומפקטית; מסכים רחבים: שורה אחת */}
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-3">
+            <SheetTitle className="text-right text-base font-bold text-[#6B584C] md:text-xl md:font-semibold whitespace-nowrap shrink-0 leading-tight">
+              קטלוג מוצרים
+            </SheetTitle>
+            <div className="flex flex-wrap items-center justify-end gap-1.5 md:gap-2 md:flex-nowrap md:min-w-0">
+              <div className="flex flex-wrap items-center justify-end gap-1 md:gap-1.5">
                 <button
                   onClick={() => setSelectedWoodType('recycled')}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200",
+                    "flex items-center gap-1 px-2 py-1 md:px-3 md:py-1.5 rounded-full border text-[11px] md:text-xs font-medium transition-all duration-200",
                     selectedWoodType === 'recycled'
                       ? "border-[#ADC178] bg-[#ADC178]/10 text-[#6B584C]"
                       : "border-[#e8e8e8] bg-white text-[#464646] hover:border-[#ADC178]/50"
                   )}
                 >
-                  <Recycle className="w-3.5 h-3.5" />
-                  <span>עץ ממוחזר</span>
-                  {selectedWoodType === 'recycled' && <Check className="w-3 h-3 text-[#ADC178]" />}
+                  <Recycle className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">עץ ממוחזר</span>
+                  {selectedWoodType === 'recycled' && <Check className="w-3 h-3 text-[#ADC178] shrink-0" />}
                 </button>
                 <button
                   onClick={() => setSelectedWoodType('new')}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200",
+                    "flex items-center gap-1 px-2 py-1 md:px-3 md:py-1.5 rounded-full border text-[11px] md:text-xs font-medium transition-all duration-200",
                     selectedWoodType === 'new'
                       ? "border-[#ADC178] bg-[#ADC178]/10 text-[#6B584C]"
                       : "border-[#e8e8e8] bg-white text-[#464646] hover:border-[#ADC178]/50"
                   )}
                 >
-                  <TreeDeciduous className="w-3.5 h-3.5" />
-                  <span>עץ חדש</span>
-                  {selectedWoodType === 'new' && <Check className="w-3 h-3 text-[#ADC178]" />}
+                  <TreeDeciduous className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">עץ חדש</span>
+                  {selectedWoodType === 'new' && <Check className="w-3 h-3 text-[#ADC178] shrink-0" />}
                 </button>
               </div>
 
-              {/* סינון מפגשים - קומפקטי */}
-              <div className="flex items-center">
+              <div className="flex items-center shrink-0">
                 <select
                   value={meetingsFilter}
                   onChange={(e) => setMeetingsFilter(e.target.value)}
-                  className="h-8 text-xs px-2 rounded-md border border-[#e8e8e8] bg-white text-[#464646] focus:outline-none focus:ring-2 focus:ring-[#ADC178]/30"
+                  className="h-7 md:h-8 max-w-[9.5rem] md:max-w-none text-[11px] md:text-xs px-1.5 md:px-2 rounded-md border border-[#ADC178]/40 bg-white text-[#464646] focus:outline-none focus:ring-2 focus:ring-[#ADC178]/30"
                   aria-label="סינון לפי מספר מפגשים"
                 >
                   <option value="all">כל המפגשים</option>
@@ -380,12 +381,12 @@ export default function ProductCatalogDrawer({
                 <button
                   onClick={() => setShowFilters(!showFilters)}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors",
+                    "flex items-center gap-1 md:gap-2 px-2 py-1 md:px-3 md:py-1.5 rounded-lg border text-[11px] md:text-sm transition-colors shrink-0",
                     showFilters ? "border-[#ADC178] bg-[#ADC178]/10" : "border-[#e8e8e8] hover:border-[#ADC178]"
                   )}
                 >
-                  <Filter className="w-4 h-4 text-[#6B584C]" />
-                  <span className="text-sm text-[#464646]">סינון</span>
+                  <Filter className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#6B584C]" />
+                  <span className="text-[#464646] whitespace-nowrap">סינון</span>
                 </button>
               )}
             </div>
@@ -424,16 +425,16 @@ export default function ProductCatalogDrawer({
         </SheetHeader>
 
         {/* גריד מוצרים */}
-        <div ref={productsContainerRef} className="flex-1 overflow-y-auto p-4 pb-32 h-[calc(100vh-200px)]">
+        <div ref={productsContainerRef} className="flex-1 overflow-y-auto px-2 py-2 pb-28 sm:p-4 sm:pb-32 h-[calc(100vh-200px)]">
           {/* הערה על מגבלה ופיצול */}
-          <div className="flex items-center gap-2 mb-4 p-3 bg-[#fafafa] rounded-lg border border-[#e8e8e8]">
+          <div className="flex items-center gap-2 mb-2 sm:mb-4 p-2 sm:p-3 bg-[#fafafa] rounded-lg border border-[#e8e8e8]">
             <AlertCircle className="w-4 h-4 text-[#ADC178] flex-shrink-0" />
             <p className="text-xs text-[#464646]/70">
               מגבלה: עד {MAX_SESSIONS} מפגשים סה"כ ({currentTotalMeetings}/{MAX_SESSIONS}). מוצרים אפורים חורגים מהמגבלה.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             {filteredProducts.map(product => {
               const productId = product._id || product.id;
               const cartItem = cart.find(p => (p._id || p.id) === productId);
@@ -473,9 +474,11 @@ export default function ProductCatalogDrawer({
           )}
         </div>
 
-        {/* סיכום תחתון */}
-        <div className="fixed bottom-0 right-0 w-full sm:max-w-xl p-4 bg-white border-t border-[#e8e8e8] shadow-lg">
-          <div className="flex items-center justify-between mb-3">
+        {/* סיכום תחתון — צמוד לתחתית המסך, ריווח מינימלי + safe-area */}
+        <div
+          className="fixed bottom-0 left-0 right-0 w-full sm:max-w-xl z-[60] bg-white border-t border-[#e8e8e8] shadow-lg pt-2 px-3 pb-[max(0.35rem,env(safe-area-inset-bottom,0px))]"
+        >
+          <div className="flex items-center justify-between mb-2 gap-2">
             <div className="flex gap-4 text-sm">
               <div className="flex items-center gap-1.5 text-[#464646]">
                 <Package className="w-4 h-4 text-[#ADC178]" />

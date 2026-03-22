@@ -281,23 +281,20 @@ export default function WorkshopBooking() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-[#fafafa]" dir="rtl">
-      {/* Header */}
-      <header className="py-8 px-8 text-center border-b border-[#e8e8e8] bg-white">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
+      {/* Header — קומפקטי במובייל, ללא אנימציה */}
+      <header
+        className="py-8 px-8 text-center border-b border-[#e8e8e8] bg-white"
+        style={{ paddingTop: 10, paddingBottom: 10 }}
+      >
+        <h1
           className="text-xl md:text-2xl font-bold text-[#6B584C]"
+          style={{ opacity: 1, transform: 'none' }}
         >
           הנגריה הפתוחה
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="mt-2 text-[#464646]"
-        >
+        </h1>
+        <p className="text-[#464646]" style={{ marginTop: 0 }}>
           הזמנת סדנת נגרות
-        </motion.p>
+        </p>
       </header>
 
       {/* Main Content */}
