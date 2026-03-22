@@ -33,7 +33,12 @@ export default function ProductCatalog({
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)), 0);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <DialogContent className="max-w-4xl h-[90vh] p-0 gap-0 overflow-hidden">
         <DialogHeader className="p-4 border-b border-[#e8e8e8] sticky top-0 bg-white z-10">
           <div className="flex items-center justify-between">

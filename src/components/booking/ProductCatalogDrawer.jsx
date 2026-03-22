@@ -356,7 +356,12 @@ export default function ProductCatalogDrawer({
   }, [showFilters]);
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <SheetContent
         side="right"
         hideCloseButton
