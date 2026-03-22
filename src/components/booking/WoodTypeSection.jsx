@@ -23,28 +23,28 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
   ];
 
   return (
-    <div className="py-4">
+    <div className="py-4" dir="rtl">
       {/* הנחייה */}
       <div className="text-right mb-2">
         <p className="text-sm text-[#464646]/70">בחרו סוג עץ</p>
       </div>
 
       {/* הסבר על ההבדלים */}
-      <div className="mb-6 p-4 bg-[#f5f5f5] rounded-xl">
-        <h3 className="text-base font-semibold text-[#6B584C] mb-3">מה ההבדל בין סוגי העצים?</h3>
-        <div className="space-y-2 text-sm text-[#464646]">
+      <div className="mb-4 p-3 bg-[#f5f5f5] rounded-lg md:mb-6 md:p-4 md:rounded-xl">
+        <h3 className="text-sm font-semibold text-[#6B584C] mb-2 md:text-base md:mb-3">מה ההבדל בין סוגי העצים?</h3>
+        <div className="space-y-2 text-xs text-[#464646] md:text-sm">
           <div>
             <span className="font-medium text-[#6B584C]">עץ ממוחזר:</span>
-            <p className="text-sm mt-0.5">עצים מפורקים ממשטחי העמסה (פלטות). עלותו העץ נמוכה אך הוא מחייב זמן עבודה נוסף של הכנה ושיוף.</p>
+            <p className="mt-0.5 leading-snug">עצים מפורקים ממשטחי העמסה (פלטות). עלותו העץ נמוכה אך הוא מחייב זמן עבודה נוסף של הכנה ושיוף.</p>
           </div>
           <div>
             <span className="font-medium text-[#6B584C]">עץ חדש:</span>
-            <p className="text-sm mt-0.5">עץ מוכן לעבודה, המאפשר הספקים מהירים. עלות העץ היא בתוספת לתשלום על הסדנה.</p>
+            <p className="mt-0.5 leading-snug">עץ מוכן לעבודה, המאפשר הספקים מהירים. עלות העץ היא בתוספת לתשלום על הסדנה.</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
         {options.map((option) => {
           const isSelected = woodType === option.id;
           const Icon = option.icon;
@@ -56,7 +56,8 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
               whileTap={{ scale: 0.98 }}
               onClick={() => setWoodType(option.id)}
               className={cn(
-                "relative p-6 rounded-xl border-2 text-right transition-all duration-300",
+                "relative rounded-xl border-2 text-right transition-all duration-300",
+                "p-3 md:p-6",
                 isSelected
                   ? "border-[#ADC178] bg-[#ADC178]/5"
                   : "border-[#e8e8e8] hover:border-[#ADC178]/50 bg-white"
@@ -66,28 +67,33 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[#ADC178] flex items-center justify-center"
+                  className="absolute top-2 left-2 md:top-3 md:left-3 w-5 h-5 md:w-6 md:h-6 rounded-full bg-[#ADC178] flex items-center justify-center"
                 >
-                  <Check className="w-4 h-4 text-white" />
+                  <Check className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
                 </motion.div>
               )}
 
-              <div className="flex flex-col items-center text-center gap-3">
+              {/* מובייל: שורה אחת — אייקון מימין, טקסטים משמאל; דסקטופ: מרכז */}
+              <div className="flex w-full flex-row items-center gap-3 text-right md:flex-col md:items-center md:text-center md:gap-3">
                 <div className={cn(
-                  "w-14 h-14 rounded-full flex items-center justify-center transition-colors",
+                  "shrink-0 rounded-full flex items-center justify-center transition-colors",
+                  "h-11 w-11 md:h-14 md:w-14",
                   isSelected ? "bg-[#ADC178] text-white" : "bg-[#f5f5f5] text-[#6B584C]"
                 )}>
-                  <Icon className="w-7 h-7" />
+                  <Icon className="h-6 w-6 md:h-7 md:w-7" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-[#6B584C]">{option.title}</h3>
-                  <p className={cn(
-                    "text-sm font-medium mt-1",
-                    option.id === 'recycled' ? "text-[#ADC178]" : "text-[#464646]"
-                  )}>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base font-semibold leading-tight text-[#6B584C] md:text-lg">{option.title}</h3>
+                  <p
+                    className={cn(
+                      "mt-0.5 text-xs font-medium leading-none md:mt-1 md:text-sm",
+                      option.id === 'recycled' ? "text-[#ADC178]" : "text-[#464646]",
+                      "whitespace-nowrap"
+                    )}
+                  >
                     {option.subtitle}
                   </p>
-                  <p className="text-sm text-[#464646]/70 mt-2">{option.description}</p>
+                  <p className="mt-1 text-xs leading-snug text-[#464646]/70 md:mt-2 md:text-sm">{option.description}</p>
                 </div>
               </div>
             </motion.button>
@@ -95,7 +101,7 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
         })}
       </div>
 
-      <div className="flex justify-center mt-8">
+      <div className="mt-6 flex justify-center md:mt-8">
         <motion.div
           animate={woodType ? {
             scale: [1, 1.05, 1],

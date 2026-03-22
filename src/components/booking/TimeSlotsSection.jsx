@@ -168,35 +168,38 @@ export default function TimeSlotsSection({
   };
 
   return (
-    <div className="py-4">
+    <div className="py-4" dir="rtl">
       {/* כותרת - רק תאריכים עם זמינות ב-API ניתנים לבחירה */}
-      <div className="flex items-center justify-center gap-2 mb-2" data-calendar-version="slots-only">
-        <Calendar className="w-5 h-5 text-[#6B584C]" />
-        <span className="text-lg font-medium text-[#6B584C]">
+      <div className="mb-2 flex items-center justify-end gap-2 text-right md:justify-center" data-calendar-version="slots-only">
+        <Calendar className="h-4 w-4 shrink-0 text-[#6B584C] md:h-5 md:w-5" />
+        <span className="text-base font-medium text-[#6B584C] md:text-lg">
           בחרו {totalMeetings} תאריכי מפגש
         </span>
       </div>
 
       {/* הערה חשובה */}
-      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
-        <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-        <div className="text-sm text-blue-900">
-          <p className="text-xs text-blue-700">לחצו על התאריכים הרצויים בלוח השנה • ניתן לשנות 48 שעות לפני באזור האישי</p>
+      <div className="mb-3 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5 md:mb-4 md:p-3">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600 md:h-4 md:w-4" />
+        <div className="min-w-0 text-right text-xs text-blue-900 md:text-sm">
+          <p className="text-[11px] leading-snug text-blue-700 md:text-xs">לחצו על התאריכים הרצויים בלוח השנה • ניתן לשנות 48 שעות לפני באזור האישי</p>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid gap-4 md:grid-cols-2 md:gap-6">
         {/* משבצות מפגשים */}
         <div>
-          <h3 className="text-sm font-medium text-[#6B584C] mb-3">המפגשים שלי:</h3>
-          <div className="grid grid-cols-2 gap-2">
+          <h3 className="mb-2 text-sm font-medium text-[#6B584C] md:mb-3">המפגשים שלי:</h3>
+          <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2 md:gap-2">
             {slots.map((slot, index) => (
               <motion.button
                 key={index}
+                type="button"
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleSlotClick(index)}
                 className={cn(
-                  "p-4 rounded-xl border-2 transition-all duration-200 relative",
+                  "relative rounded-xl border-2 text-right transition-all duration-200",
+                  "min-h-[3.25rem] p-2.5 max-md:flex max-md:items-center max-md:justify-between max-md:gap-2 max-md:pl-8",
+                  "md:min-h-0 md:p-4 md:block",
                   currentSlotIndex === index
                     ? "border-[#ADC178] bg-[#ADC178]/10 shadow-md"
                     : slot.date
@@ -204,41 +207,51 @@ export default function TimeSlotsSection({
                       : "border-[#e8e8e8] bg-[#fafafa]"
                 )}
               >
-                <div className="text-xs text-[#464646]/70 mb-1">מפגש {index + 1}</div>
                 {slot.date ? (
                   <>
-                    <div className="text-sm font-medium text-[#6B584C]">
-                      {format(slot.date, 'd/M/yy', { locale: he })}
-                    </div>
-                    <div className="text-xs text-[#464646]/70 mt-0.5">
-                      {format(slot.date, 'EEEE', { locale: he })}
+                    <div className="min-w-0 flex-1 md:block">
+                      <div className="text-[10px] leading-tight text-[#464646]/70 md:mb-1 md:text-xs">מפגש {index + 1}</div>
+                      <div className="flex flex-wrap items-baseline justify-end gap-x-1.5 md:flex-col md:items-stretch md:gap-0">
+                        <span className="text-sm font-semibold text-[#6B584C] md:font-medium">
+                          {format(slot.date, 'd/M/yy', { locale: he })}
+                        </span>
+                        <span className="text-[10px] leading-tight text-[#464646]/70 md:text-xs md:mt-0.5">
+                          {format(slot.date, 'EEEE', { locale: he })}
+                        </span>
+                      </div>
                     </div>
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         removeDate(index);
                       }}
-                      className="absolute top-2 left-2 w-5 h-5 rounded-full bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200 transition-colors"
+                      className="absolute left-2 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-red-100 text-red-600 transition-colors hover:bg-red-200 md:left-2 md:top-2 md:h-5 md:w-5 md:translate-y-0"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="h-3 w-3" />
                     </button>
                   </>
                 ) : (
-                  <div className="text-sm text-[#464646]/50">לחץ לבחירה</div>
-                )}
-                {currentSlotIndex === index && !slot.date && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#ADC178]"
-                  />
+                  <>
+                    <div className="w-full text-right">
+                      <div className="text-[10px] text-[#464646]/70 md:text-xs md:mb-1">מפגש {index + 1}</div>
+                      <div className="text-xs text-[#464646]/50 md:text-sm">לחץ לבחירה</div>
+                    </div>
+                    {currentSlotIndex === index && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[#ADC178] md:-right-1 md:-top-1 md:h-3 md:w-3"
+                      />
+                    )}
+                  </>
                 )}
               </motion.button>
             ))}
           </div>
 
-          <div className="mt-3 p-2 bg-[#fafafa] rounded-lg text-center">
-            <span className="text-sm text-[#464646]">
+          <div className="mt-2 rounded-lg bg-[#fafafa] p-1.5 text-center md:mt-3 md:p-2">
+            <span className="text-xs text-[#464646] md:text-sm">
               נבחרו {selectedDates.filter(Boolean).length} מתוך {totalMeetings}
             </span>
             {selectedDates.filter(Boolean).length === totalMeetings && (
@@ -249,9 +262,9 @@ export default function TimeSlotsSection({
 
         {/* לוח שנה */}
         <div>
-          <div className="bg-white rounded-xl border border-[#e8e8e8] p-4">
+          <div className="rounded-xl border border-[#e8e8e8] bg-white p-3 md:p-4">
             {/* כותרת חודש */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-3 flex items-center justify-between md:mb-4">
               <button
                 onClick={() => setCurrentMonth(addDays(currentMonth, -30))}
                 className="p-2 hover:bg-[#fafafa] rounded-lg transition-colors"

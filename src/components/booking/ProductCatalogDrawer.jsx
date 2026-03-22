@@ -28,8 +28,22 @@ const FALLBACK_PRODUCTS = [
 
 const MAX_PRODUCTS = 21;
 
+function hasProductDimensionInfo(product) {
+  const w = product?.width ?? product?.dimensions?.width;
+  const d = product?.depth ?? product?.dimensions?.depth;
+  const h = product?.height ?? product?.dimensions?.height;
+  const meaningful = (v) => {
+    if (v === undefined || v === null) return false;
+    if (typeof v === 'number') return !Number.isNaN(v) && v > 0;
+    const s = String(v).trim();
+    return s.length > 0;
+  };
+  return meaningful(w) || meaningful(d) || meaningful(h);
+}
+
 function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPrices, onZoom, quantity, onQuantityChange }) {
   const [showDimensions, setShowDimensions] = useState(false);
+  const showInfoButton = hasProductDimensionInfo(product);
   // מחיר המוצר בלי תוספת (התוספת מחושבת בסיכום הכולל)
   const priceDisplay = showNewWoodPrices 
     ? `₪${product.price}` 
@@ -55,39 +69,39 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
         </motion.div>
       )}
 
-      {/* כפתור מידע */}
-      <TooltipProvider>
-        <Tooltip open={showDimensions} onOpenChange={setShowDimensions}>
-          <TooltipTrigger asChild>
-            <button
-              className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center shadow-md hover:bg-white transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowDimensions(!showDimensions);
-              }}
-            >
-              <Info className="w-4 h-4 text-[#6B584C]" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="bg-white border border-[#e8e8e8] p-3">
-            <div className="text-sm text-[#464646]">
-              <p className="font-medium mb-1">מידות:</p>
-              {(product.width || product.dimensions?.width) && (
-                <p>רוחב: {product.width || product.dimensions?.width} ס״מ</p>
-              )}
-              {(product.depth || product.dimensions?.depth) && (
-                <p>עומק: {product.depth || product.dimensions?.depth} ס״מ</p>
-              )}
-              {(product.height || product.dimensions?.height) && (
-                <p>גובה: {product.height || product.dimensions?.height} ס״מ</p>
-              )}
-              {!product.width && !product.depth && !product.height && !product.dimensions && (
-                <p>אין מידע על מידות</p>
-              )}
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      {/* כפתור מידע — רק כשיש מידות להצגה */}
+      {showInfoButton && (
+        <TooltipProvider>
+          <Tooltip open={showDimensions} onOpenChange={setShowDimensions}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center shadow-md hover:bg-white transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDimensions(!showDimensions);
+                }}
+              >
+                <Info className="w-4 h-4 text-[#6B584C]" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="bg-white border border-[#e8e8e8] p-3">
+              <div className="text-sm text-[#464646]">
+                <p className="font-medium mb-1">מידות:</p>
+                {(product.width || product.dimensions?.width) && (
+                  <p>רוחב: {product.width || product.dimensions?.width} ס״מ</p>
+                )}
+                {(product.depth || product.dimensions?.depth) && (
+                  <p>עומק: {product.depth || product.dimensions?.depth} ס״מ</p>
+                )}
+                {(product.height || product.dimensions?.height) && (
+                  <p>גובה: {product.height || product.dimensions?.height} ס״מ</p>
+                )}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
 
       <button onClick={onClick} className="w-full text-right">
         <div className="aspect-[4/3] overflow-hidden bg-[#FEFAE0] flex items-center justify-center relative group">
@@ -126,28 +140,34 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
             {/* הוסר רמת קושי כבקשת המשתמש */}
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-[#e8e8e8]">
-            <span className={cn(
-              "text-lg font-bold",
-              showNewWoodPrices ? "text-[#ADC178]" : "text-[#6B584C]"
-            )}>{priceDisplay}</span>
+          <div className="flex flex-nowrap items-center justify-between gap-1 pt-2 border-t border-[#e8e8e8] min-w-0">
+            <span
+              className={cn(
+                "font-bold leading-tight min-w-0 shrink text-right",
+                showNewWoodPrices
+                  ? "text-sm sm:text-lg text-[#ADC178]"
+                  : "text-[11px] sm:text-sm text-[#6B584C] whitespace-nowrap"
+              )}
+            >
+              {priceDisplay}
+            </span>
             {isSelected && onQuantityChange && (
-              <div 
-                className="flex items-center gap-1.5"
+              <div
+                className="flex items-center gap-0.5 sm:gap-1.5 shrink-0"
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
                   onClick={(e) => { e.stopPropagation(); onQuantityChange(product._id || product.id, -1); }}
-                  className="w-6 h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#ADC178] hover:bg-[#ADC178]/10 transition-colors"
+                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#ADC178] hover:bg-[#ADC178]/10 transition-colors"
                 >
-                  <Minus className="w-3 h-3 text-[#6B584C]" />
+                  <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#6B584C]" />
                 </button>
-                <span className="text-sm font-bold text-[#6B584C] min-w-[20px] text-center">{quantity || 1}</span>
+                <span className="text-xs sm:text-sm font-bold text-[#6B584C] min-w-[18px] sm:min-w-[20px] text-center tabular-nums">{quantity || 1}</span>
                 <button
                   onClick={(e) => { e.stopPropagation(); onQuantityChange(product._id || product.id, 1); }}
-                  className="w-6 h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#ADC178] hover:bg-[#ADC178]/10 transition-colors"
+                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#ADC178] hover:bg-[#ADC178]/10 transition-colors"
                 >
-                  <Plus className="w-3 h-3 text-[#6B584C]" />
+                  <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#6B584C]" />
                 </button>
               </div>
             )}
@@ -474,11 +494,11 @@ export default function ProductCatalogDrawer({
           )}
         </div>
 
-        {/* סיכום תחתון — צמוד לתחתית המסך, ריווח מינימלי + safe-area */}
+        {/* סיכום תחתון — כפתור המשך צמוד ככל האפשר לתחתית המסך */}
         <div
-          className="fixed bottom-0 left-0 right-0 w-full sm:max-w-xl z-[60] bg-white border-t border-[#e8e8e8] shadow-lg pt-2 px-3 pb-[max(0.35rem,env(safe-area-inset-bottom,0px))]"
+          className="fixed bottom-0 left-0 right-0 w-full sm:max-w-xl z-[60] bg-white border-t border-[#e8e8e8] shadow-lg pt-1 px-3 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))]"
         >
-          <div className="flex items-center justify-between mb-2 gap-2">
+          <div className="flex items-center justify-between mb-1.5 gap-2">
             <div className="flex gap-4 text-sm">
               <div className="flex items-center gap-1.5 text-[#464646]">
                 <Package className="w-4 h-4 text-[#ADC178]" />
@@ -502,7 +522,7 @@ export default function ProductCatalogDrawer({
           <Button
             onClick={onClose}
             disabled={cart.length === 0}
-            className={`w-full text-white transition-all h-12 text-lg font-medium shadow-md ${cart.length > 0
+            className={`w-full text-white transition-all h-11 text-base font-medium shadow-md mt-0 ${cart.length > 0
               ? 'bg-[#ADC178] hover:bg-[#9ab569] hover:scale-[1.02]'
               : 'bg-gray-300 cursor-not-allowed'
               }`}
@@ -512,21 +532,31 @@ export default function ProductCatalogDrawer({
         </div>
       </SheetContent>
 
-      {/* מודל להגדלת תמונה - Fixed consistent sizing */}
+      {/* מודל להגדלת תמונה — מותאם לרוחב/גובה המסך (מובייל) */}
       <Dialog open={!!enlargedImage} onOpenChange={() => setEnlargedImage(null)}>
-        <DialogContent hideCloseButton className="max-w-2xl bg-transparent border-none p-0 shadow-none">
-          <div className="relative flex items-center justify-center">
+        <DialogContent
+          hideCloseButton
+          className={cn(
+            "z-[100] w-[calc(100vw-1rem)] max-w-[min(100vw-1rem,42rem)] max-h-[92dvh] p-2 sm:p-4",
+            "border-none bg-transparent shadow-none",
+            "left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]",
+            "flex flex-col items-center justify-center gap-0 overflow-visible"
+          )}
+        >
+          <div className="relative w-full max-h-[88dvh] flex flex-col items-center justify-center">
             <button
+              type="button"
               onClick={() => setEnlargedImage(null)}
-              className="absolute -top-10 right-0 bg-white/20 hover:bg-white/40 rounded-full p-2 text-white transition-colors"
+              className="absolute top-1 right-1 z-20 rounded-full p-2 bg-black/55 text-white hover:bg-black/70 sm:top-2 sm:right-2"
+              aria-label="סגור"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
-            <div className="w-[500px] h-[500px] flex items-center justify-center bg-white rounded-lg shadow-2xl overflow-hidden">
+            <div className="w-full max-h-[min(85dvh,calc(100vw))] flex items-center justify-center rounded-lg bg-white shadow-2xl overflow-hidden p-2 sm:p-4">
               <img
                 src={enlargedImage}
-                alt="Enlarged product"
-                className="w-full h-full object-contain p-4"
+                alt=""
+                className="max-h-[min(80dvh,calc(100vw-2rem))] w-full max-w-full object-contain"
               />
             </div>
           </div>

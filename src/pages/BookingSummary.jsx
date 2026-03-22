@@ -60,17 +60,10 @@ export default function BookingSummary() {
   }, []);
 
   return (
-    <div style={{ 
-      width: '100%', 
-      height: '100vh', 
-      margin: 0, 
-      padding: 0,
-      overflow: 'hidden',
-      background: 'transparent',
-      display: 'flex',
-      alignItems: 'flex-end',
-      justifyContent: 'center',
-    }}>
+    <div
+      className="hidden md:flex w-full h-screen m-0 p-0 overflow-hidden bg-transparent items-end justify-center"
+      style={{ minHeight: '100vh' }}
+    >
       <FloatingSummary
         participants={summaryData.participants}
         woodType={summaryData.woodType}

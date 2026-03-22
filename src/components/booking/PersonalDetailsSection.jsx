@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { User, Mail, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { OrderSummaryCard } from './FloatingSummary';
 
 function validateEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -14,7 +15,18 @@ function validatePhone(phone) {
   return digits.length === 10 && digits.startsWith('05');
 }
 
-export default function PersonalDetailsSection({ userDetails, setUserDetails, onContinue, isSubmitting }) {
+export default function PersonalDetailsSection({
+  userDetails,
+  setUserDetails,
+  onContinue,
+  isSubmitting,
+  participants = 1,
+  woodType = '',
+  cart = [],
+  selectedSlots = [],
+  totalMeetings = 0,
+  activeSection = 5
+}) {
   const [touched, setTouched] = useState({ name: false, email: false, phone: false });
 
   const handleChange = (field, value) => {
@@ -167,15 +179,29 @@ export default function PersonalDetailsSection({ userDetails, setUserDetails, on
         </div>
       </div>
 
-      <div className="flex justify-center mt-8">
+      <div className="flex flex-col items-center mt-8 w-full max-w-md mx-auto gap-4">
         <Button
           onClick={handleSubmit}
           disabled={isSubmitting || !isValid}
           className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
-                     transition-all duration-200 text-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                     transition-all duration-200 text-lg disabled:opacity-60 disabled:cursor-not-allowed w-full sm:w-auto"
         >
           {isSubmitting ? 'שומר...' : 'המשך לתשלום'}
         </Button>
+
+        {/* במובייל: סיכום מתחת לכפתור (חלונית הסיכום ב-iframe מוסתרת) */}
+        <div className="w-full md:hidden">
+          <OrderSummaryCard
+            inline
+            participants={participants}
+            woodType={woodType}
+            cart={cart}
+            selectedSlots={selectedSlots}
+            totalMeetings={totalMeetings}
+            activeSection={activeSection}
+            className="bg-white shadow-sm"
+          />
+        </div>
       </div>
     </div>
   );

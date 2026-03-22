@@ -360,6 +360,12 @@ export default function WorkshopBooking() {
                     setUserDetails={setUserDetails}
                     onContinue={handleSubmit}
                     isSubmitting={isProcessing}
+                    participants={participants}
+                    woodType={woodType}
+                    cart={cart}
+                    selectedSlots={selectedSlots}
+                    totalMeetings={totalMeetings}
+                    activeSection={activeSection}
                   />
                 )}
               </AccordionSection>
