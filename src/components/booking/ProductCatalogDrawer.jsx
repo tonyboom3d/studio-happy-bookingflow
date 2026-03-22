@@ -365,7 +365,7 @@ export default function ProductCatalogDrawer({
       <SheetContent
         side="right"
         hideCloseButton
-        className="relative flex h-full max-h-[100dvh] w-full flex-col overflow-hidden p-0 sm:max-w-xl bg-white/95 backdrop-blur-xl"
+        className="flex h-full max-h-[100dvh] w-full flex-col overflow-hidden p-0 sm:max-w-xl bg-white"
       >
         <SheetClose
           type="button"
@@ -374,7 +374,7 @@ export default function ProductCatalogDrawer({
         >
           <X className="h-5 w-5" />
         </SheetClose>
-        <SheetHeader className="shrink-0 space-y-0 border-b border-[#e8e8e8] bg-white/95 px-3 py-2.5 pl-12 backdrop-blur-xl md:p-4 md:pl-14 sticky top-0 z-10">
+        <SheetHeader className="shrink-0 space-y-0 border-b border-[#e8e8e8] bg-white px-3 py-2.5 pl-12 md:p-4 md:pl-14 sticky top-0 z-10">
           {/* מובייל: כותרת בשורה אחת, פילטרים בשורה נפרדת וקומפקטית; מסכים רחבים: שורה אחת */}
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-3">
             <SheetTitle className="text-right text-base font-bold text-[#6B584C] md:text-xl md:font-semibold whitespace-nowrap shrink-0 leading-tight">
