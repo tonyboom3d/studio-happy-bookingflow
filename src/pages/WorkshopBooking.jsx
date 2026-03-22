@@ -276,7 +276,11 @@ export default function WorkshopBooking() {
     { id: 2, title: 'סוג העץ' },
     { id: 3, title: 'מה בונים?' },
     { id: 4, title: 'בחירת תאריכים' },
-    { id: 5, title: 'פרטים אישיים' },
+    {
+      id: 5,
+      title: 'פרטים אישיים',
+      titleMobile: 'פרטים אישיים וסיכום הזמנה'
+    },
   ];
 
   return (
@@ -309,6 +313,7 @@ export default function WorkshopBooking() {
               <AccordionSection
                 key={section.id}
                 title={section.title}
+                titleMobile={section.titleMobile}
                 stepNumber={section.id}
                 isActive={isActive}
                 isCompleted={isCompleted}

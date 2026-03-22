@@ -27,13 +27,16 @@ export function computeOrderSummary({
     const qty = typeof p.quantity === 'number' ? p.quantity : 1;
     return sum + (qty > 0 ? qty : 1);
   }, 0);
-  const productsPrice = cart.reduce((sum, p) => {
+  /** סכום מחירי קטלוג (לתוספת 20% בעץ חדש בלבד) */
+  const catalogProductsSum = cart.reduce((sum, p) => {
     const qty = typeof p.quantity === 'number' ? p.quantity : 1;
     return sum + (p.price || 0) * (qty > 0 ? qty : 1);
   }, 0);
-  const woodExtra = woodType === 'new' ? Math.round(productsPrice * 0.2) : 0;
-  const totalPrice = basePriceTotal + productsPrice + woodExtra;
-  const productsLinePrice = productsPrice + woodExtra;
+  const woodExtra = woodType === 'new' ? Math.round(catalogProductsSum * 0.2) : 0;
+  /** בעץ ממוחזר המוצרים כלולים במחיר המפגשים — לא מוסיפים מחיר קטלוג */
+  const productsCharged = woodType === 'recycled' ? 0 : catalogProductsSum;
+  const totalPrice = basePriceTotal + productsCharged + woodExtra;
+  const productsLinePrice = catalogProductsSum + woodExtra;
 
   const items = [
     {
@@ -57,7 +60,7 @@ export function computeOrderSummary({
       icon: Package,
       label: `${totalItems} מוצרים - ${woodType === 'recycled' ? 'עץ ממוחזר' : 'עץ חדש'}`,
       value: woodType === 'recycled'
-        ? (productsPrice > 0 ? `₪${productsPrice}` : 'כלול')
+        ? 'כלול במחיר'
         : `${productsLinePrice} ₪`,
       active: activeSection === 3
     },

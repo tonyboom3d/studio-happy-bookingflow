@@ -26,16 +26,17 @@ export default function ThankYouScreen({ booking, paymentStatus = 'Successful', 
   const basePricePerSession = PRICING[participants] || 300;
   const basePriceTotal = basePricePerSession * totalMeetings;
   
-  // מחיר מוצרים כולל כמות
-  const productsPrice = (booking?.products || []).reduce((sum, p) => {
+  // מחיר מוצרים מהקטלוג — בעץ ממוחזר לא מתווסף לסה"כ (כלול במחיר המפגשים)
+  const catalogProductsSum = (booking?.products || []).reduce((sum, p) => {
     const qty = p.quantity || 1;
     return sum + (p.price || 0) * qty;
   }, 0);
-  
-  const woodExtra = woodType === 'new' ? (productsPrice * 0.2) : 0;
+
+  const woodExtra = woodType === 'new' ? Math.round(catalogProductsSum * 0.2) : 0;
+  const productsCharged = woodType === 'recycled' ? 0 : catalogProductsSum;
   const totalPrice = isFromEcomOrder
     ? (booking?.orderTotal || 0)
-    : (basePriceTotal + productsPrice + woodExtra);
+    : (basePriceTotal + productsCharged + woodExtra);
   const addToGoogleCalendar = () => {
     const firstSlot = booking.selected_slots?.[0];
     if (!firstSlot) return;
@@ -214,7 +215,7 @@ END:VCALENDAR`;
             </div>
             
             {/* מוצרים */}
-            {productsPrice > 0 && (
+            {catalogProductsSum > 0 && (
               <div className="flex justify-between items-center text-sm">
                 <div className="flex items-center gap-1">
                   <span className="text-[#464646]/80">מוצרים</span>
@@ -223,7 +224,7 @@ END:VCALENDAR`;
                   )}
                 </div>
                 <span className="font-medium text-[#464646]">
-                  {woodType === 'recycled' ? 'כלול במחיר' : `₪${productsPrice}`}
+                  {woodType === 'recycled' ? 'כלול במחיר' : `₪${catalogProductsSum}`}
                 </span>
               </div>
             )}

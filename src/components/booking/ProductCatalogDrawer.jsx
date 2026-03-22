@@ -28,6 +28,12 @@ const FALLBACK_PRODUCTS = [
 
 const MAX_PRODUCTS = 21;
 
+function hasProductImage(product) {
+  const u = product?.image;
+  if (u == null) return false;
+  return String(u).trim().length > 0;
+}
+
 function hasProductDimensionInfo(product) {
   const w = product?.width ?? product?.dimensions?.width;
   const d = product?.depth ?? product?.dimensions?.depth;
@@ -44,6 +50,7 @@ function hasProductDimensionInfo(product) {
 function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPrices, onZoom, quantity, onQuantityChange }) {
   const [showDimensions, setShowDimensions] = useState(false);
   const showInfoButton = hasProductDimensionInfo(product);
+  const showImage = hasProductImage(product);
   // מחיר המוצר בלי תוספת (התוספת מחושבת בסיכום הכולל)
   const priceDisplay = showNewWoodPrices 
     ? `₪${product.price}` 
@@ -105,22 +112,29 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
 
       <button onClick={onClick} className="w-full text-right">
         <div className="aspect-[4/3] overflow-hidden bg-[#FEFAE0] flex items-center justify-center relative group">
-          <img
-            src={product.image || "https://images.unsplash.com/photo-1588117472556-1ddf8c5c3c68?w=400"}
-            alt={product.title}
-            className="w-full h-full object-contain transition-transform duration-300 hover:scale-105"
-          />
-
-          {/* כפתור הגדלה - תמיד מוצג */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onZoom(product.image || "https://images.unsplash.com/photo-1588117472556-1ddf8c5c3c68?w=400");
-            }}
-            className="absolute bottom-2 left-2 p-1.5 bg-white/80 rounded-full hover:bg-white transition-colors"
-          >
-            <ZoomIn className="w-4 h-4 text-[#6B584C]" />
-          </button>
+          {showImage ? (
+            <>
+              <img
+                src={product.image}
+                alt={product.title}
+                className="h-full w-full object-contain transition-transform duration-300 hover:scale-105"
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onZoom(product.image);
+                }}
+                className="absolute bottom-2 left-2 rounded-full bg-white/80 p-1.5 transition-colors hover:bg-white"
+              >
+                <ZoomIn className="h-4 w-4 text-[#6B584C]" />
+              </button>
+            </>
+          ) : (
+            <span className="px-2 text-center text-xs leading-snug text-[#464646]/60">
+              אין תמונה זמינה
+            </span>
+          )}
         </div>
 
         <div className="p-2.5 sm:p-4">
@@ -345,9 +359,9 @@ export default function ProductCatalogDrawer({
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-xl p-0 bg-white/95 backdrop-blur-xl"
+        className="flex h-full max-h-[100dvh] w-full flex-col overflow-hidden p-0 sm:max-w-xl bg-white/95 backdrop-blur-xl"
       >
-        <SheetHeader className="px-3 py-2.5 md:p-4 border-b border-[#e8e8e8] sticky top-0 bg-white/95 backdrop-blur-xl z-10 space-y-0">
+        <SheetHeader className="shrink-0 px-3 py-2.5 md:p-4 border-b border-[#e8e8e8] sticky top-0 bg-white/95 backdrop-blur-xl z-10 space-y-0">
           {/* מובייל: כותרת בשורה אחת, פילטרים בשורה נפרדת וקומפקטית; מסכים רחבים: שורה אחת */}
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-3">
             <SheetTitle className="text-right text-base font-bold text-[#6B584C] md:text-xl md:font-semibold whitespace-nowrap shrink-0 leading-tight">
@@ -445,7 +459,10 @@ export default function ProductCatalogDrawer({
         </SheetHeader>
 
         {/* גריד מוצרים */}
-        <div ref={productsContainerRef} className="flex-1 overflow-y-auto px-2 py-2 pb-28 sm:p-4 sm:pb-32 h-[calc(100vh-200px)]">
+        <div
+          ref={productsContainerRef}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 pb-[calc(9.5rem+env(safe-area-inset-bottom,0px))] sm:p-4 sm:pb-[calc(10rem+env(safe-area-inset-bottom,0px))]"
+        >
           {/* הערה על מגבלה ופיצול */}
           <div className="flex items-center gap-2 mb-2 sm:mb-4 p-2 sm:p-3 bg-[#fafafa] rounded-lg border border-[#e8e8e8]">
             <AlertCircle className="w-4 h-4 text-[#ADC178] flex-shrink-0" />
@@ -494,11 +511,11 @@ export default function ProductCatalogDrawer({
           )}
         </div>
 
-        {/* סיכום תחתון — כפתור המשך צמוד ככל האפשר לתחתית המסך */}
+        {/* סיכום תחתון — מעל ה-safe-area, ריווח נוח לכפתור */}
         <div
-          className="fixed bottom-0 left-0 right-0 w-full sm:max-w-xl z-[60] bg-white border-t border-[#e8e8e8] shadow-lg pt-1 px-3 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))]"
+          className="fixed bottom-0 left-0 right-0 z-[60] w-full shrink-0 border-t border-[#e8e8e8] bg-white px-3 pt-2 shadow-lg sm:max-w-xl pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
         >
-          <div className="flex items-center justify-between mb-1.5 gap-2">
+          <div className="mb-2 flex items-center justify-between gap-2">
             <div className="flex gap-4 text-sm">
               <div className="flex items-center gap-1.5 text-[#464646]">
                 <Package className="w-4 h-4 text-[#ADC178]" />
@@ -522,9 +539,9 @@ export default function ProductCatalogDrawer({
           <Button
             onClick={onClose}
             disabled={cart.length === 0}
-            className={`w-full text-white transition-all h-11 text-base font-medium shadow-md mt-0 ${cart.length > 0
+            className={`mt-0 h-12 w-full text-base font-medium text-white shadow-md transition-all ${cart.length > 0
               ? 'bg-[#ADC178] hover:bg-[#9ab569] hover:scale-[1.02]'
-              : 'bg-gray-300 cursor-not-allowed'
+              : 'cursor-not-allowed bg-gray-300'
               }`}
           >
             המשך

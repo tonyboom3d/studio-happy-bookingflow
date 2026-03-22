@@ -4,7 +4,9 @@ import { Check, Lock, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function AccordionSection({ 
-  title, 
+  title,
+  /** כותרת חלופית למסכים צרים (מוצגת מתחת ל־md) */
+  titleMobile,
   stepNumber, 
   isActive, 
   isCompleted, 
@@ -42,7 +44,14 @@ export default function AccordionSection({
             "text-lg font-medium",
             isActive ? "text-[#6B584C]" : "text-[#464646]"
           )}>
-            {title}
+            {titleMobile ? (
+              <>
+                <span className="md:hidden">{titleMobile}</span>
+                <span className="hidden md:inline">{title}</span>
+              </>
+            ) : (
+              title
+            )}
           </span>
         </div>
         <motion.div
