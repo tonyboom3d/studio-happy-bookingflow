@@ -19,7 +19,7 @@ import {
   subMonths
 } from 'date-fns';
 import { he } from 'date-fns/locale';
-import { toast } from '@/components/ui/use-toast';
+import { toast, dismissToast } from '@/components/ui/use-toast';
 import {
   Carousel,
   CarouselContent,
@@ -91,9 +91,20 @@ function getChronologyMinDate(selectedDates, firstEmptyIndex) {
   return max(prior.map((d) => startOfDay(d)));
 }
 
+/** טיימר להודעת לוח שנה — הודעה אחת בלבד, נסגרת אוטומטית אחרי מספר שניות */
+let calendarToastHideTimer = null;
+
 function showToastForSeconds(description, seconds = 4) {
-  const t = toast({ description });
-  window.setTimeout(() => t.dismiss(), seconds * 1000);
+  if (calendarToastHideTimer != null) {
+    clearTimeout(calendarToastHideTimer);
+    calendarToastHideTimer = null;
+  }
+  dismissToast();
+  const handle = toast({ description });
+  calendarToastHideTimer = window.setTimeout(() => {
+    calendarToastHideTimer = null;
+    handle.dismiss();
+  }, seconds * 1000);
 }
 
 export default function TimeSlotsSection({
@@ -520,7 +531,7 @@ export default function TimeSlotsSection({
                     whileTap={{ scale: 0.92 }}
                     onClick={() => handleCalendarDayClick(day)}
                     className={cn(
-                      'relative aspect-square overflow-hidden rounded-lg text-sm font-medium transition-all duration-200',
+                      'relative aspect-square overflow-visible rounded-lg text-sm font-medium transition-all duration-200',
                       !isCurrentMonth && 'pointer-events-none text-[#464646]/25',
                       isUnavailableNoData &&
                         isCurrentMonth &&
@@ -542,7 +553,7 @@ export default function TimeSlotsSection({
                   >
                     {showChronoBlockVisual && (
                       <span
-                        className="pointer-events-none absolute inset-0 opacity-35"
+                        className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-lg opacity-35"
                         style={{
                           background:
                             'repeating-linear-gradient(135deg, transparent, transparent 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4px)'
@@ -552,7 +563,7 @@ export default function TimeSlotsSection({
                     )}
                     <span className="relative z-[1]">{format(day, 'd')}</span>
                     {isSelected && selectionNumber && (
-                      <div className="absolute right-0 top-0 z-20 flex min-w-[2rem] -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full bg-[#6B584C] px-1.5 py-0.5 text-[8px] font-medium text-white shadow-sm">
+                      <div className="absolute left-1/2 top-0 z-[25] flex min-w-[2rem] -translate-x-1/2 -translate-y-[45%] items-center justify-center rounded-full bg-[#6B584C] px-1.5 py-0.5 text-[8px] font-medium text-white shadow-md ring-1 ring-white/60">
                         מפגש {selectionNumber}
                       </div>
                     )}

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { addLog } from '@/components/VersionLogger';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -359,9 +359,17 @@ export default function ProductCatalogDrawer({
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent
         side="right"
-        className="flex h-full max-h-[100dvh] w-full flex-col overflow-hidden p-0 sm:max-w-xl bg-white/95 backdrop-blur-xl"
+        hideCloseButton
+        className="relative flex h-full max-h-[100dvh] w-full flex-col overflow-hidden p-0 sm:max-w-xl bg-white/95 backdrop-blur-xl"
       >
-        <SheetHeader className="shrink-0 px-3 py-2.5 md:p-4 border-b border-[#e8e8e8] sticky top-0 bg-white/95 backdrop-blur-xl z-10 space-y-0">
+        <SheetClose
+          type="button"
+          className="absolute left-3 top-3 z-[70] flex h-9 w-9 items-center justify-center rounded-full border border-[#e8e8e8] bg-white text-[#6B584C] shadow-sm transition-colors hover:bg-[#fafafa] focus:outline-none focus:ring-2 focus:ring-[#ADC178]/40"
+          aria-label="סגור קטלוג"
+        >
+          <X className="h-5 w-5" />
+        </SheetClose>
+        <SheetHeader className="shrink-0 space-y-0 border-b border-[#e8e8e8] bg-white/95 px-3 py-2.5 pl-12 backdrop-blur-xl md:p-4 md:pl-14 sticky top-0 z-10">
           {/* מובייל: כותרת בשורה אחת, פילטרים בשורה נפרדת וקומפקטית; מסכים רחבים: שורה אחת */}
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-3">
             <SheetTitle className="text-right text-base font-bold text-[#6B584C] md:text-xl md:font-semibold whitespace-nowrap shrink-0 leading-tight">
@@ -461,7 +469,7 @@ export default function ProductCatalogDrawer({
         {/* גריד מוצרים */}
         <div
           ref={productsContainerRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 pb-[calc(9.5rem+env(safe-area-inset-bottom,0px))] sm:p-4 sm:pb-[calc(10rem+env(safe-area-inset-bottom,0px))]"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 pb-[calc(9.5rem+20px+env(safe-area-inset-bottom,0px))] sm:p-4 sm:pb-[calc(10rem+20px+env(safe-area-inset-bottom,0px))]"
         >
           {/* הערה על מגבלה ופיצול */}
           <div className="flex items-center gap-2 mb-2 sm:mb-4 p-2 sm:p-3 bg-[#fafafa] rounded-lg border border-[#e8e8e8]">
@@ -513,7 +521,7 @@ export default function ProductCatalogDrawer({
 
         {/* סיכום תחתון — מעל ה-safe-area, ריווח נוח לכפתור */}
         <div
-          className="fixed bottom-0 left-0 right-0 z-[60] w-full shrink-0 border-t border-[#e8e8e8] bg-white px-3 pt-2 shadow-lg sm:max-w-xl pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+          className="fixed bottom-5 left-0 right-0 z-[60] w-full shrink-0 border-t border-[#e8e8e8] bg-white px-3 pt-2 shadow-lg sm:max-w-xl pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
         >
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="flex gap-4 text-sm">
