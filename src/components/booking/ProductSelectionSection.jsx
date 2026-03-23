@@ -86,13 +86,12 @@ export default function ProductSelectionSection({
           const Icon = option.icon;
           const isSelected = selectedOption === option.id;
           return (
-            <motion.button
+            <button
               key={option.id}
-              whileHover={{ y: -4 }}
-              whileTap={{ scale: 0.98 }}
+              type="button"
               onClick={() => handleOptionClick(option.id)}
               className={cn(
-                "relative rounded-xl border-2 text-right transition-all duration-300",
+                "relative rounded-xl border-2 text-right",
                 "p-3 md:p-5",
                 isSelected
                   ? "border-[#ADC178] bg-[#ADC178]/5 shadow-lg"
@@ -115,7 +114,7 @@ export default function ProductSelectionSection({
                   <p className="mt-0.5 text-xs leading-snug text-[#464646]/70 md:mt-1 md:text-sm">{option.description}</p>
                 </div>
               </div>
-            </motion.button>
+            </button>
           );
         })}
       </div>

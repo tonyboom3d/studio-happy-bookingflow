@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import {
   X, Filter, Check, Info, Package, Calendar, CreditCard,
-  TreeDeciduous, Minus, Plus, ZoomIn, Recycle, AlertCircle
+  TreeDeciduous, Minus, Plus, ZoomIn, Recycle
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from '@/components/ui/switch';
@@ -141,7 +141,7 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
           <h3 className="font-semibold text-[#6B584C] text-sm sm:text-base mb-1.5 sm:mb-2 leading-snug">{product.title}</h3>
 
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1 text-xs text-[#464646]/70">
+            <div className="flex items-center gap-1 text-xs text-[#464646]">
               <Calendar className="w-3.5 h-3.5" />
               {/* מציג מפגשים × כמות אם יש יותר מיחידה אחת */}
               <span>
@@ -374,10 +374,10 @@ export default function ProductCatalogDrawer({
         >
           <X className="h-5 w-5" />
         </SheetClose>
-        <SheetHeader className="shrink-0 space-y-0 border-b border-[#e8e8e8] bg-white px-3 py-2.5 pl-12 md:p-4 md:pl-14 sticky top-0 z-10">
-          {/* מובייל: כותרת בשורה אחת, פילטרים בשורה נפרדת וקומפקטית; מסכים רחבים: שורה אחת */}
+        <SheetHeader className="flex flex-col text-center sm:text-left shrink-0 space-y-0 border-b border-[#e8e8e8] bg-white pt-0 pr-1.5 pb-[5px] pl-[98px] md:p-4 md:pl-14 sticky top-0 z-10">
+          {/* מובייל: כותרת, מתחתיה שורת צ'יפים; מסכים רחבים: שורה אחת */}
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-3">
-            <SheetTitle className="text-right text-base font-bold text-[#6B584C] md:text-xl md:font-semibold whitespace-nowrap shrink-0 leading-tight">
+            <SheetTitle className="w-full text-right text-base font-bold text-[#6B584C] md:text-xl md:font-semibold whitespace-nowrap shrink-0 leading-tight">
               קטלוג מוצרים
             </SheetTitle>
             <div className="flex flex-wrap items-center justify-end gap-1.5 md:gap-2 md:flex-nowrap md:min-w-0">
@@ -460,7 +460,7 @@ export default function ProductCatalogDrawer({
                       step={50}
                       className="mt-2"
                     />
-                    <div className="flex justify-between text-xs text-[#464646]/70 mt-1">
+                    <div className="flex justify-between text-xs text-[#464646] mt-1">
                       <span>₪{priceFilter[0]}</span>
                       <span>₪{priceFilter[1]}</span>
                     </div>
@@ -474,14 +474,24 @@ export default function ProductCatalogDrawer({
         {/* גריד מוצרים */}
         <div
           ref={productsContainerRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 pb-[calc(9.5rem+20px+env(safe-area-inset-bottom,0px))] sm:p-4 sm:pb-[calc(10rem+20px+env(safe-area-inset-bottom,0px))]"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] sm:p-4 sm:pb-4"
         >
-          {/* הערה על מגבלה ופיצול */}
-          <div className="flex items-center gap-2 mb-2 sm:mb-4 p-2 sm:p-3 bg-[#fafafa] rounded-lg border border-[#e8e8e8]">
-            <AlertCircle className="w-4 h-4 text-[#ADC178] flex-shrink-0" />
-            <p className="text-xs text-[#464646]/70">
-              מגבלה: עד {MAX_SESSIONS} מפגשים סה"כ ({currentTotalMeetings}/{MAX_SESSIONS}). מוצרים אפורים חורגים מהמגבלה.
-            </p>
+          {/* סיכום קומפקטי — מובייל בלבד (הפוטר הקבוע מכיל רק "המשך") */}
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#e8e8e8] bg-[#fafafa] p-2 text-sm text-[#464646] sm:hidden">
+            <div className="flex flex-wrap gap-3">
+              <span className="flex items-center gap-1">
+                <Package className="h-4 w-4 shrink-0 text-[#ADC178]" />
+                {cart.length} מוצרים{totalItems > cart.length ? ` (${totalItems} יח')` : ''}
+              </span>
+              <span className="flex items-center gap-1">
+                <Calendar className="h-4 w-4 shrink-0 text-[#ADC178]" />
+                {totalMeetings} מפגשים
+              </span>
+            </div>
+            <span className="flex items-center gap-1 font-medium text-[#6B584C]">
+              <CreditCard className="h-4 w-4 text-[#ADC178]" />
+              {selectedWoodType === 'recycled' ? 'כלול במחיר' : `₪${totalPrice}`}
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:gap-4">
@@ -518,16 +528,30 @@ export default function ProductCatalogDrawer({
             })}
           </div>
           {filteredProducts.length === 0 && (
-            <div className="text-center py-12 text-[#464646]/70">
+            <div className="text-center py-12 text-[#464646]">
               לא נמצאו מוצרים התואמים לסינון
             </div>
           )}
         </div>
 
-        {/* סיכום תחתון — מעל ה-safe-area, ריווח נוח לכפתור */}
+        {/* מובייל: פס תחתון קבוע — רק כפתור המשך */}
         <div
-          className="fixed bottom-5 left-0 right-0 z-[60] w-full shrink-0 border-t border-[#e8e8e8] bg-white px-3 pt-2 shadow-lg sm:max-w-xl pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+          className="fixed bottom-5 left-0 right-0 z-[60] w-full shrink-0 border-t border-[#e8e8e8] bg-white px-3 pt-2 shadow-lg sm:max-w-xl pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:hidden"
         >
+          <Button
+            onClick={onClose}
+            disabled={cart.length === 0}
+            className={`h-12 w-full text-base font-medium text-white shadow-md transition-all ${cart.length > 0
+              ? 'bg-[#ADC178] hover:bg-[#9ab569] hover:scale-[1.02]'
+              : 'cursor-not-allowed bg-gray-300'
+              }`}
+          >
+            המשך
+          </Button>
+        </div>
+
+        {/* טאבלט ומעלה: סיכום + המשך בגוף הדף */}
+        <div className="hidden sm:block shrink-0 border-t border-[#e8e8e8] bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="flex gap-4 text-sm">
               <div className="flex items-center gap-1.5 text-[#464646]">
@@ -548,11 +572,10 @@ export default function ProductCatalogDrawer({
               )}
             </div>
           </div>
-          {/* הסרת אנימציה אינסופית לחיסכון בזיכרון - שימוש ב-CSS hover במקום */}
           <Button
             onClick={onClose}
             disabled={cart.length === 0}
-            className={`mt-0 h-12 w-full text-base font-medium text-white shadow-md transition-all ${cart.length > 0
+            className={`h-12 w-full text-base font-medium text-white shadow-md transition-all ${cart.length > 0
               ? 'bg-[#ADC178] hover:bg-[#9ab569] hover:scale-[1.02]'
               : 'cursor-not-allowed bg-gray-300'
               }`}

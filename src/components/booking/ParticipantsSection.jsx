@@ -30,16 +30,16 @@ export default function ParticipantsSection({ participants, setParticipants, onC
       </div>
       
       <div className="flex items-center gap-6">
-        <motion.button
-          whileTap={{ scale: 0.95 }}
+        <button
+          type="button"
           onClick={handleDecrease}
           disabled={participants <= 1}
           className="w-12 h-12 rounded-full border-2 border-[#ADC178] flex items-center justify-center
-                     text-[#ADC178] hover:bg-[#ADC178] hover:text-white transition-all duration-200
+                     text-[#ADC178] hover:bg-[#ADC178] hover:text-white
                      disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#ADC178]"
         >
           <Minus className="w-5 h-5" />
-        </motion.button>
+        </button>
         
         <motion.div
           key={participants}
@@ -50,16 +50,16 @@ export default function ParticipantsSection({ participants, setParticipants, onC
           {participants}
         </motion.div>
         
-        <motion.button
-          whileTap={{ scale: 0.95 }}
+        <button
+          type="button"
           onClick={handleIncrease}
           disabled={participants >= 3}
           className="w-12 h-12 rounded-full border-2 border-[#ADC178] flex items-center justify-center
-                     text-[#ADC178] hover:bg-[#ADC178] hover:text-white transition-all duration-200
+                     text-[#ADC178] hover:bg-[#ADC178] hover:text-white
                      disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#ADC178]"
         >
           <Plus className="w-5 h-5" />
-        </motion.button>
+        </button>
       </div>
       
       <div className="mt-4 text-center">

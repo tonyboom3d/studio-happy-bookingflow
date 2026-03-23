@@ -14,6 +14,7 @@ import {
   isBefore,
   startOfDay,
   max,
+  min,
   compareAsc,
   addMonths,
   subMonths
@@ -83,12 +84,30 @@ function getAvailabilityInfo(availableSlots, requiredSpots = 1) {
   return { availableDates, partialDates, spotsMap, sessionMap };
 }
 
-/** תאריך מינימלי למפגש הבא — לא לפני כל המפגשים שכבר נקבעו (סדר כרונולוגי) */
-function getChronologyMinDate(selectedDates, firstEmptyIndex) {
-  if (firstEmptyIndex <= 0) return null;
-  const prior = selectedDates.slice(0, firstEmptyIndex).filter(Boolean);
-  if (prior.length === 0) return null;
-  return max(prior.map((d) => startOfDay(d)));
+/** גבולות תאריך למשבצת ריקה: אחרי כל המפגשים לפניה, לפני כל המפגשים אחריה (סדר עולה מלא) */
+function getStrictChronoBounds(selectedDates, slotIndex, totalMeetings) {
+  if (slotIndex < 0 || slotIndex >= totalMeetings) return { lower: null, upper: null };
+  const prior = [];
+  for (let j = 0; j < slotIndex; j++) {
+    if (selectedDates[j]) prior.push(startOfDay(selectedDates[j]));
+  }
+  const later = [];
+  for (let j = slotIndex + 1; j < totalMeetings; j++) {
+    if (selectedDates[j]) later.push(startOfDay(selectedDates[j]));
+  }
+  return {
+    lower: prior.length ? max(prior) : null,
+    upper: later.length ? min(later) : null
+  };
+}
+
+function isDateValidForStrictChrono(date, bounds) {
+  if (!bounds) return true;
+  const { lower, upper } = bounds;
+  const d = startOfDay(date);
+  if (lower && compareAsc(d, lower) <= 0) return false;
+  if (upper && compareAsc(d, upper) >= 0) return false;
+  return true;
 }
 
 /** טיימר להודעת לוח שנה — הודעה אחת בלבד, נסגרת אוטומטית אחרי מספר שניות */
@@ -173,9 +192,13 @@ export default function TimeSlotsSection({
       const firstEmptyIndex = baseDates.findIndex((d) => !d);
       if (firstEmptyIndex === -1) return;
 
-      const minChrono = getChronologyMinDate(baseDates, firstEmptyIndex);
-      if (minChrono && compareAsc(startOfDay(date), minChrono) < 0) {
-        showToastForSeconds('לא ניתן לבחור תאריך מוקדם יותר למפגש האחרון שבחרת');
+      const chronoBounds = getStrictChronoBounds(baseDates, firstEmptyIndex, totalMeetings);
+      if (!isDateValidForStrictChrono(date, chronoBounds)) {
+        if (chronoBounds.lower && compareAsc(startOfDay(date), chronoBounds.lower) <= 0) {
+          showToastForSeconds('יש לבחור תאריך אחרי המפגשים הקודמים (סדר עולה)');
+        } else {
+          showToastForSeconds('יש לבחור תאריך לפני המפגשים הבאים (סדר עולה)');
+        }
         return;
       }
 
@@ -209,10 +232,10 @@ export default function TimeSlotsSection({
 
   const firstEmptyIndexLive = useMemo(() => selectedDates.findIndex((d) => !d), [selectedDates]);
 
-  const chronologyMinDate = useMemo(() => {
-    if (firstEmptyIndexLive <= 0) return null;
-    return getChronologyMinDate(selectedDates, firstEmptyIndexLive);
-  }, [selectedDates, firstEmptyIndexLive]);
+  const strictChronoBounds = useMemo(() => {
+    if (firstEmptyIndexLive < 0) return { lower: null, upper: null };
+    return getStrictChronoBounds(selectedDates, firstEmptyIndexLive, totalMeetings);
+  }, [selectedDates, firstEmptyIndexLive, totalMeetings]);
 
   const handleCalendarDayClick = useCallback(
     (day) => {
@@ -229,8 +252,16 @@ export default function TimeSlotsSection({
 
       const alreadySelected = selectedDates.some((d) => d && isSameDay(d, day));
 
-      if (!alreadySelected && chronologyMinDate && compareAsc(sod, chronologyMinDate) < 0) {
-        showToastForSeconds('לא ניתן לבחור תאריך מוקדם יותר למפגש האחרון שבחרת');
+      if (
+        !alreadySelected &&
+        firstEmptyIndexLive >= 0 &&
+        !isDateValidForStrictChrono(day, strictChronoBounds)
+      ) {
+        if (strictChronoBounds.lower && compareAsc(sod, strictChronoBounds.lower) <= 0) {
+          showToastForSeconds('יש לבחור תאריך אחרי המפגשים הקודמים (סדר עולה)');
+        } else {
+          showToastForSeconds('יש לבחור תאריך לפני המפגשים הבאים (סדר עולה)');
+        }
         return;
       }
 
@@ -253,7 +284,8 @@ export default function TimeSlotsSection({
       partialDates,
       spotsMap,
       selectedDates,
-      chronologyMinDate,
+      firstEmptyIndexLive,
+      strictChronoBounds,
       handleDateSelect
     ]
   );
@@ -327,12 +359,11 @@ export default function TimeSlotsSection({
                       key={index}
                       className="basis-[88%] pl-2 sm:basis-[48%] md:basis-[48%] md:pl-4"
                     >
-                      <motion.button
+                      <button
                         type="button"
-                        whileTap={{ scale: 0.95 }}
                         onClick={() => handleSlotClick(index)}
                         className={cn(
-                          'relative w-full rounded-xl border-2 text-right transition-all duration-200',
+                          'relative w-full rounded-xl border-2 text-right',
                           'min-h-[3.25rem] p-2.5 max-md:flex max-md:items-center max-md:justify-between max-md:gap-2 max-md:pl-8',
                           'md:min-h-0 md:p-4 md:block',
                           currentSlotIndex === index
@@ -383,7 +414,7 @@ export default function TimeSlotsSection({
                             )}
                           </>
                         )}
-                      </motion.button>
+                      </button>
                     </CarouselItem>
                   ))}
                 </CarouselContent>
@@ -394,13 +425,12 @@ export default function TimeSlotsSection({
           ) : (
             <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2 md:gap-2">
               {slots.map((slot, index) => (
-                <motion.button
+                <button
                   key={index}
                   type="button"
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleSlotClick(index)}
                   className={cn(
-                    'relative rounded-xl border-2 text-right transition-all duration-200',
+                    'relative rounded-xl border-2 text-right',
                     'min-h-[3.25rem] p-2.5 max-md:flex max-md:items-center max-md:justify-between max-md:gap-2 max-md:pl-8',
                     'md:min-h-0 md:p-4 md:block',
                     currentSlotIndex === index
@@ -449,7 +479,7 @@ export default function TimeSlotsSection({
                       )}
                     </>
                   )}
-                </motion.button>
+                </button>
               ))}
             </div>
           )}
@@ -516,8 +546,8 @@ export default function TimeSlotsSection({
                 const chronoBlocked =
                   !isPast &&
                   !alreadySelected &&
-                  chronologyMinDate &&
-                  compareAsc(sod, chronologyMinDate) < 0;
+                  firstEmptyIndexLive >= 0 &&
+                  !isDateValidForStrictChrono(sod, strictChronoBounds);
                 /** כרונולוגיה רק כשיש סדנה — בלי סדנה נשאר עיצוב "אין סדנה" (מספר בהיר בלבד) */
                 const showChronoBlockVisual =
                   chronoBlocked && hasWorkshopDay && isCurrentMonth && !isSelected;
@@ -525,13 +555,12 @@ export default function TimeSlotsSection({
                 const isUnavailableNoData = (isPast || isNoSession) && !isSelected;
 
                 return (
-                  <motion.button
+                  <button
                     key={i}
                     type="button"
-                    whileTap={{ scale: 0.92 }}
                     onClick={() => handleCalendarDayClick(day)}
                     className={cn(
-                      'relative aspect-square overflow-visible rounded-lg text-sm font-medium transition-all duration-200',
+                      'relative aspect-square overflow-visible rounded-lg text-sm font-medium',
                       !isCurrentMonth && 'pointer-events-none text-[#464646]/25',
                       isUnavailableNoData &&
                         isCurrentMonth &&
@@ -568,7 +597,7 @@ export default function TimeSlotsSection({
                         <span className="tabular-nums leading-none">{selectionNumber}</span>
                       </div>
                     )}
-                  </motion.button>
+                  </button>
                 );
               })}
             </div>
@@ -595,12 +624,11 @@ export default function TimeSlotsSection({
             onContinue();
           }}
           disabled={selectedDates.filter(Boolean).length !== totalMeetings || isSubmitting}
-          className="bg-[#ADC178] hover:bg-[#9ab569] hover:scale-[1.02] text-white px-8 py-3 rounded-lg
-                     transition-all duration-200 text-lg disabled:opacity-50 flex items-center gap-2"
+          className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg text-lg disabled:opacity-50 flex items-center gap-2"
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-5 h-5" />
               מעבר למילוי פרטים אישיים...
             </>
           ) : (
@@ -608,7 +636,7 @@ export default function TimeSlotsSection({
           )}
         </Button>
         {isSubmitting && (
-          <p className="text-sm text-[#6B584C]/70 animate-pulse">
+          <p className="text-sm text-[#6B584C]/70">
             אנחנו מכינים עבורך הזמנה — תועבר בשניות
           </p>
         )}

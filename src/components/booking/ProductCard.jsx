@@ -32,12 +32,11 @@ function DifficultyStars({ difficulty }) {
 
 export default function ProductCard({ product, isSelected, onClick, meetings }) {
   return (
-    <motion.button
-      whileHover={{ y: -4 }}
-      whileTap={{ scale: 0.98 }}
+    <button
+      type="button"
       onClick={onClick}
       className={cn(
-        "relative bg-white rounded-xl overflow-hidden border-2 transition-all duration-300 text-right",
+        "relative bg-white rounded-xl overflow-hidden border-2 text-right",
         isSelected 
           ? "border-[#ADC178] shadow-lg" 
           : "border-[#e8e8e8] hover:border-[#ADC178]/50 hover:shadow-md"
@@ -73,6 +72,6 @@ export default function ProductCard({ product, isSelected, onClick, meetings }) 
           <span className="text-lg font-bold text-[#ADC178]">₪{product.price}</span>
         </div>
       </div>
-    </motion.button>
+    </button>
   );
 }

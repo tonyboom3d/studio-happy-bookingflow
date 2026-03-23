@@ -50,13 +50,12 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
           const Icon = option.icon;
 
           return (
-            <motion.button
+            <button
               key={option.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              type="button"
               onClick={() => setWoodType(option.id)}
               className={cn(
-                "relative rounded-xl border-2 text-right transition-all duration-300",
+                "relative rounded-xl border-2 text-right",
                 "p-3 md:p-6",
                 isSelected
                   ? "border-[#ADC178] bg-[#ADC178]/5"
@@ -96,7 +95,7 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
                   <p className="mt-1 text-xs leading-snug text-[#464646]/70 md:mt-2 md:text-sm">{option.description}</p>
                 </div>
               </div>
-            </motion.button>
+            </button>
           );
         })}
       </div>
