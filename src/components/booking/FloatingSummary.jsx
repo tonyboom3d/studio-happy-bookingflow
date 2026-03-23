@@ -91,7 +91,7 @@ export function OrderSummaryCard({
   initiallyExpanded = true,
   /**
    * שלב סיכום באקורדיון: כותרת + פירוט תמיד גלויים, ללא כפתור כיווץ,
-   * רקע חום וטקסט לבן (לא משפיע על חלונית צפה / iframe)
+   * רקע לבן וטקסט כהה (לא משפיע על חלונית צפה / iframe)
    */
   variant = 'default',
   className
@@ -116,11 +116,27 @@ export function OrderSummaryCard({
 
   const headerInner = (
     <>
-      <span className="font-semibold text-sm">סיכום הזמנה</span>
+      <span
+        className={cn(
+          'font-semibold text-sm',
+          isStepVariant ? 'text-black' : ''
+        )}
+      >
+        סיכום הזמנה
+      </span>
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1.5">
-          <CreditCard className="w-4 h-4" />
-          <span className="font-bold text-base">₪{Math.round(totalPrice)}</span>
+          <CreditCard
+            className={cn('w-4 h-4', isStepVariant ? 'text-[#6B584C]' : '')}
+          />
+          <span
+            className={cn(
+              'font-bold text-base',
+              isStepVariant ? 'text-black tabular-nums' : ''
+            )}
+          >
+            ₪{Math.round(totalPrice)}
+          </span>
         </div>
         {expandable && (
           <div className="shrink-0">
@@ -137,7 +153,7 @@ export function OrderSummaryCard({
         <div
           className={cn(
             'py-2 text-center text-sm',
-            isStepVariant ? 'text-white/80' : 'text-gray-500'
+            isStepVariant ? 'text-gray-600' : 'text-gray-500'
           )}
         >
           ממתין לנתוני הזמנה...
@@ -154,39 +170,22 @@ export function OrderSummaryCard({
                 exit={{ opacity: 0, x: 10 }}
                 className={cn(
                   'flex items-center justify-between rounded-lg p-2 text-sm transition-colors',
-                  isStepVariant
-                    ? item.active
-                      ? 'bg-white/15'
-                      : 'bg-white/10'
-                    : item.active
-                      ? 'bg-[#ADC178]/20'
-                      : 'bg-[#fafafa]'
+                  item.active
+                    ? 'bg-[#ADC178]/20'
+                    : 'bg-[#fafafa]'
                 )}
               >
                 <div className="flex items-center gap-2">
                   <Icon
                     className={cn(
                       'w-4 h-4',
-                      isStepVariant
-                        ? item.active
-                          ? 'text-[#C8E6A0]'
-                          : 'text-white/90'
-                        : item.active
-                          ? 'text-[#ADC178]'
-                          : 'text-[#6B584C]'
+                      item.active ? 'text-[#ADC178]' : 'text-[#6B584C]'
                     )}
                   />
-                  <span className={isStepVariant ? 'text-white' : 'text-[#464646]'}>{item.label}</span>
+                  <span className="text-[#464646]">{item.label}</span>
                 </div>
                 {item.value && (
-                  <span
-                    className={cn(
-                      'font-semibold',
-                      isStepVariant ? 'text-white' : 'text-[#6B584C]'
-                    )}
-                  >
-                    {item.value}
-                  </span>
+                  <span className="font-semibold text-[#6B584C]">{item.value}</span>
                 )}
               </motion.div>
             );
@@ -197,15 +196,17 @@ export function OrderSummaryCard({
   );
 
   const headerBarClass = cn(
-    'flex w-full items-center justify-between px-4 py-2.5 text-white',
-    isStepVariant ? 'bg-[#5a4d42]' : 'bg-[#6B584C]'
+    'flex w-full items-center justify-between px-4 py-2.5',
+    isStepVariant
+      ? 'border-b border-[#e8e8e8] bg-white text-black'
+      : 'bg-[#6B584C] text-white'
   );
 
   return (
     <div
       className={cn(
         'overflow-hidden rounded-2xl border',
-        isStepVariant ? 'border-white/20' : 'border-[#e8e8e8]',
+        isStepVariant ? 'border-[#e8e8e8] bg-white' : 'border-[#e8e8e8]',
         className
       )}
       style={{ direction: 'rtl' }}

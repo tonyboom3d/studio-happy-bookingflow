@@ -14,7 +14,7 @@ export default function OrderSummarySection({
 }) {
   return (
     <div className="flex flex-col pb-2 md:pb-4" dir="rtl">
-      <p className="mb-3 text-right text-sm leading-relaxed text-white/90">
+      <p className="mb-3 text-right text-sm leading-relaxed text-black">
         כאן מוצגים כל רכיבי העלות לפי הבחירות שלך. אפשר לחזור לשלבים הקודמים לעדכון בכל עת.
       </p>
 

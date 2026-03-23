@@ -25,8 +25,8 @@ export default function AccordionSection({
       "border rounded-xl overflow-hidden transition-all duration-300",
       isSummary
         ? isActive
-          ? "border-[#6B584C] shadow-lg"
-          : "border-[#5a4d42]"
+          ? "border-[#e8e8e8] shadow-lg"
+          : "border-[#e8e8e8]"
         : isActive
           ? "border-[#ADC178] shadow-lg"
           : "border-[#e8e8e8]",
@@ -110,7 +110,7 @@ export default function AccordionSection({
             <div
               className={cn(
                 'p-4 pt-0 md:p-6 md:pt-0',
-                isSummary ? 'bg-[#6B584C]' : 'bg-white'
+                isSummary ? 'bg-white text-black' : 'bg-white'
               )}
             >
               {children}

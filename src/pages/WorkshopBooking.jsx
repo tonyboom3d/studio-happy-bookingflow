@@ -164,9 +164,9 @@ export default function WorkshopBooking() {
     addLog(`Section ${sectionNum} completed, moving to section ${sectionNum + 1}`, 'success');
   };
 
-  /** סיכום הזמנה (6) נפתח אחרי בחירת תאריכים (4), בלי חובה להשלים פרטים אישיים */
+  /** סיכום הזמנה (6) — ניתן לפתוח בכל עת */
   const canOpenSection = (sectionNum) => {
-    if (sectionNum === 6 && completedSections.includes(4)) return true;
+    if (sectionNum === 6) return true;
     if (sectionNum <= activeSection) return true;
     if (completedSections.includes(sectionNum - 1)) return true;
     return false;
@@ -314,7 +314,7 @@ export default function WorkshopBooking() {
           {sections.map((section) => {
             const isLocked =
               section.id === 6
-                ? !completedSections.includes(4)
+                ? false
                 : section.id > 1 && !completedSections.includes(section.id - 1);
             const isCompleted = completedSections.includes(section.id);
             const isActive = activeSection === section.id;
