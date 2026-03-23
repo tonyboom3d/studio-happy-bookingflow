@@ -212,6 +212,31 @@ export function isInWix() {
 }
 
 /**
+ * זיהוי עורך Wix / תצוגה מקדימה — לדילוג על מסך טעינה מלא בזמן עריכה (לא מכביד על העורך).
+ * מסתמך בעיקר על document.referrer כשהאפליקציה ב-iframe בתוך editor.wix.com וכו'.
+ */
+export function isWixEditorOrPreview() {
+    if (typeof window === 'undefined') return false;
+    try {
+        const href = window.location.href || '';
+        const ref = document.referrer || '';
+        const combined = `${href} ${ref}`;
+
+        // Override ידני לבדיקות
+        if (/[?&](noLoadScreen|skipBookingLoader|wixEditor)=1\b/i.test(href)) return true;
+
+        if (/editor\.wix\.com|manage\.wix\.com|editorx\.wix\.com/i.test(combined)) return true;
+
+        if (/\.wix\.com\/(editor|preview|html)/i.test(ref)) return true;
+
+        if (/[?&]preview=/i.test(href) && /wixsite\.com/i.test(href)) return true;
+    } catch (e) {
+        return false;
+    }
+    return false;
+}
+
+/**
  * Send summary data to Wix for the external booking-summary Custom Element
  * עם Debounce למניעת שליחות מיותרות
  */

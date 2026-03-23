@@ -9,7 +9,7 @@ import TimeSlotsSection from '../components/booking/TimeSlotsSection';
 import PersonalDetailsSection from '../components/booking/PersonalDetailsSection';
 import OrderSummarySection from '../components/booking/OrderSummarySection';
 import ThankYouScreen from '../components/booking/ThankYouScreen';
-import { submitBooking, subscribeToWix, notifyProgress } from '@/api/wixBridge';
+import { submitBooking, subscribeToWix, notifyProgress, isWixEditorOrPreview } from '@/api/wixBridge';
 import { computeOrderSummary } from '@/components/booking/FloatingSummary';
 import { addLog, APP_VERSION } from '@/components/VersionLogger';
 
@@ -38,13 +38,20 @@ export default function WorkshopBooking() {
   const [timerActive, setTimerActive] = useState(true);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
 
-  // טיימר מינימום 3 שניות לטעינה
+  /** בעורך Wix — לא מציגים מסך טעינה מלא (מפריע לעריכה) */
+  const skipInitialLoadingScreen = useMemo(() => isWixEditorOrPreview(), []);
+
+  // טיימר מינימום 3 שניות לטעינה (מושבת כשמדלגים על מסך הטעינה)
   useEffect(() => {
+    if (skipInitialLoadingScreen) {
+      setMinTimeElapsed(true);
+      return;
+    }
     const timer = setTimeout(() => {
       setMinTimeElapsed(true);
     }, 3000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [skipInitialLoadingScreen]);
 
   // האזנה לנתונים מ-Wix
   useEffect(() => {
@@ -207,7 +214,8 @@ export default function WorkshopBooking() {
   };
 
   // מסך טעינה ראשוני - שימוש ב-CSS animations במקום framer-motion לחיסכון בזיכרון
-  if (!minTimeElapsed || !wixProducts) {
+  // בעורך: מדלגים כשאין מוצרים מ-Wix עדיין — הקטלוג משתמש ב-fallback מקומי
+  if (!skipInitialLoadingScreen && (!minTimeElapsed || wixProducts == null)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white" dir="rtl">
         <motion.div
