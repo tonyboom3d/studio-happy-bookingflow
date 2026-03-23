@@ -563,8 +563,9 @@ export default function TimeSlotsSection({
                     )}
                     <span className="relative z-[1]">{format(day, 'd')}</span>
                     {isSelected && selectionNumber && (
-                      <div className="absolute left-1/2 top-0 z-[25] flex min-w-[2rem] -translate-x-1/2 -translate-y-[45%] items-center justify-center rounded-full bg-[#6B584C] px-1.5 py-0.5 text-[8px] font-medium text-white shadow-md ring-1 ring-white/60">
-                        מפגש {selectionNumber}
+                      <div className="absolute left-1/2 top-0 z-[25] flex min-w-[2.6rem] -translate-x-1/2 -translate-y-[45%] items-center justify-center gap-0.5 whitespace-nowrap rounded-full bg-[#6B584C] px-1.5 py-0.5 text-[8px] font-medium text-white shadow-md ring-1 ring-white/60">
+                        <span className="leading-none">מפגש</span>
+                        <span className="tabular-nums leading-none">{selectionNumber}</span>
                       </div>
                     )}
                   </motion.button>
