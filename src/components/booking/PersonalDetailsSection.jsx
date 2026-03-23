@@ -16,7 +16,7 @@ function validatePhone(phone) {
 export default function PersonalDetailsSection({
   userDetails,
   setUserDetails,
-  onContinue,
+  onPay,
   isSubmitting
 }) {
   const [touched, setTouched] = useState({ name: false, email: false, phone: false });
@@ -55,11 +55,10 @@ export default function PersonalDetailsSection({
     validateEmail(email) &&
     validatePhone(phone);
 
-  const handleSubmit = () => {
+  const handlePayClick = () => {
     setTouched({ name: true, email: true, phone: true });
-    if (isValid) {
-      onContinue();
-    }
+    if (!isValid) return;
+    onPay();
   };
 
   return (
@@ -173,12 +172,13 @@ export default function PersonalDetailsSection({
 
       <div className="flex flex-col items-center mt-8 w-full max-w-md mx-auto gap-4">
         <Button
-          onClick={handleSubmit}
+          type="button"
+          onClick={handlePayClick}
           disabled={isSubmitting || !isValid}
-          className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
-                     transition-all duration-200 text-lg disabled:opacity-60 disabled:cursor-not-allowed w-full sm:w-auto"
+          className="w-full bg-[#ADC178] px-8 py-3 text-lg text-white hover:bg-[#9ab569] sm:w-auto
+                     transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 rounded-lg"
         >
-          {isSubmitting ? 'שומר...' : 'המשך לסיכום הזמנה'}
+          {isSubmitting ? 'מעביר לתשלום...' : 'המשך לתשלום'}
         </Button>
       </div>
     </div>

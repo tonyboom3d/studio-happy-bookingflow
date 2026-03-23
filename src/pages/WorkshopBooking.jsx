@@ -164,17 +164,24 @@ export default function WorkshopBooking() {
     addLog(`Section ${sectionNum} completed, moving to section ${sectionNum + 1}`, 'success');
   };
 
-  // פתיחת סקשן
+  /** סיכום הזמנה (6) נפתח אחרי בחירת תאריכים (4), בלי חובה להשלים פרטים אישיים */
+  const canOpenSection = (sectionNum) => {
+    if (sectionNum === 6 && completedSections.includes(4)) return true;
+    if (sectionNum <= activeSection) return true;
+    if (completedSections.includes(sectionNum - 1)) return true;
+    return false;
+  };
+
   const openSection = (sectionNum) => {
-    if (sectionNum <= activeSection || completedSections.includes(sectionNum - 1)) {
-      setActiveSection(sectionNum);
-    }
+    if (!canOpenSection(sectionNum)) return;
+    setActiveSection(sectionNum);
   };
 
   // שליחת ההזמנה — מפעיל את תהליך ה-checkout ב-Wix
   const handleSubmit = async () => {
     setBookingError(null);
     addLog('Starting booking submission...', 'info');
+    setCompletedSections((prev) => (prev.includes(5) ? prev : [...prev, 5]));
     setIsProcessing(true);
 
     const bookingData = {
@@ -305,14 +312,17 @@ export default function WorkshopBooking() {
       <main className="max-w-2xl mx-auto p-4 md:p-6">
         <div className="space-y-4">
           {sections.map((section) => {
-            const isLocked = section.id > 1 && !completedSections.includes(section.id - 1);
+            const isLocked =
+              section.id === 6
+                ? !completedSections.includes(4)
+                : section.id > 1 && !completedSections.includes(section.id - 1);
             const isCompleted = completedSections.includes(section.id);
             const isActive = activeSection === section.id;
 
             const headerRight =
               section.id === 6 ? (
-                <span className="flex items-center gap-1 text-sm font-bold text-[#ADC178] tabular-nums">
-                  <CreditCard className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="flex items-center gap-1 text-sm font-bold tabular-nums text-white">
+                  <CreditCard className="h-4 w-4 shrink-0 opacity-95" aria-hidden />
                   ₪{Math.round(orderTotalPreview)}
                 </span>
               ) : null;
@@ -323,6 +333,7 @@ export default function WorkshopBooking() {
                 title={section.title}
                 titleMobile={section.titleMobile}
                 headerRight={headerRight}
+                variant={section.id === 6 ? 'summary' : 'default'}
                 stepNumber={section.id}
                 isActive={isActive}
                 isCompleted={isCompleted}
@@ -372,8 +383,8 @@ export default function WorkshopBooking() {
                   <PersonalDetailsSection
                     userDetails={userDetails}
                     setUserDetails={setUserDetails}
-                    onContinue={() => completeSection(5)}
-                    isSubmitting={false}
+                    onPay={handleSubmit}
+                    isSubmitting={isProcessing}
                   />
                 )}
                 {section.id === 6 && (
@@ -384,8 +395,6 @@ export default function WorkshopBooking() {
                     selectedSlots={selectedSlots}
                     totalMeetings={totalMeetings}
                     activeSection={activeSection}
-                    onPay={handleSubmit}
-                    isSubmitting={isProcessing}
                   />
                 )}
               </AccordionSection>

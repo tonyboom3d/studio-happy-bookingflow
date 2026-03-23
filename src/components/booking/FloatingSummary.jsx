@@ -89,8 +89,16 @@ export function OrderSummaryCard({
   inline = false,
   /** כשלא inline: מצב התחלתי של פירוט השורות (ברירת מחדל פתוח — תואם חלונית צפה) */
   initiallyExpanded = true,
+  /**
+   * שלב סיכום באקורדיון: כותרת + פירוט תמיד גלויים, ללא כפתור כיווץ,
+   * רקע חום וטקסט לבן (לא משפיע על חלונית צפה / iframe)
+   */
+  variant = 'default',
   className
 }) {
+  const isStepVariant = variant === 'step';
+  const expandable = !inline && !isStepVariant;
+
   const { items, totalPrice, showEmptyState } = useMemo(
     () =>
       computeOrderSummary({
@@ -104,7 +112,7 @@ export function OrderSummaryCard({
     [participants, woodType, cart, selectedSlots, totalMeetings, activeSection]
   );
 
-  const [isOpen, setIsOpen] = useState(initiallyExpanded);
+  const [isOpen, setIsOpen] = useState(isStepVariant ? true : initiallyExpanded);
 
   const headerInner = (
     <>
@@ -114,7 +122,7 @@ export function OrderSummaryCard({
           <CreditCard className="w-4 h-4" />
           <span className="font-bold text-base">₪{Math.round(totalPrice)}</span>
         </div>
-        {!inline && (
+        {expandable && (
           <div className="shrink-0">
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </div>
@@ -124,9 +132,16 @@ export function OrderSummaryCard({
   );
 
   const body = (
-    <div className="p-3 space-y-2">
+    <div className={cn('p-3 space-y-2', isStepVariant && 'pt-1')}>
       {showEmptyState ? (
-        <div className="text-center text-sm text-gray-500 py-2">ממתין לנתוני הזמנה...</div>
+        <div
+          className={cn(
+            'py-2 text-center text-sm',
+            isStepVariant ? 'text-white/80' : 'text-gray-500'
+          )}
+        >
+          ממתין לנתוני הזמנה...
+        </div>
       ) : (
         <AnimatePresence>
           {items.map((item, idx) => {
@@ -138,18 +153,40 @@ export function OrderSummaryCard({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 10 }}
                 className={cn(
-                  'flex items-center justify-between text-sm p-2 rounded-lg transition-colors',
-                  item.active ? 'bg-[#ADC178]/20' : 'bg-[#fafafa]'
+                  'flex items-center justify-between rounded-lg p-2 text-sm transition-colors',
+                  isStepVariant
+                    ? item.active
+                      ? 'bg-white/15'
+                      : 'bg-white/10'
+                    : item.active
+                      ? 'bg-[#ADC178]/20'
+                      : 'bg-[#fafafa]'
                 )}
               >
                 <div className="flex items-center gap-2">
                   <Icon
-                    className={cn('w-4 h-4', item.active ? 'text-[#ADC178]' : 'text-[#6B584C]')}
+                    className={cn(
+                      'w-4 h-4',
+                      isStepVariant
+                        ? item.active
+                          ? 'text-[#C8E6A0]'
+                          : 'text-white/90'
+                        : item.active
+                          ? 'text-[#ADC178]'
+                          : 'text-[#6B584C]'
+                    )}
                   />
-                  <span className="text-[#464646]">{item.label}</span>
+                  <span className={isStepVariant ? 'text-white' : 'text-[#464646]'}>{item.label}</span>
                 </div>
                 {item.value && (
-                  <span className="font-semibold text-[#6B584C]">{item.value}</span>
+                  <span
+                    className={cn(
+                      'font-semibold',
+                      isStepVariant ? 'text-white' : 'text-[#6B584C]'
+                    )}
+                  >
+                    {item.value}
+                  </span>
                 )}
               </motion.div>
             );
@@ -159,13 +196,28 @@ export function OrderSummaryCard({
     </div>
   );
 
+  const headerBarClass = cn(
+    'flex w-full items-center justify-between px-4 py-2.5 text-white',
+    isStepVariant ? 'bg-[#5a4d42]' : 'bg-[#6B584C]'
+  );
+
   return (
-    <div className={cn('rounded-2xl border border-[#e8e8e8] overflow-hidden', className)} style={{ direction: 'rtl' }}>
+    <div
+      className={cn(
+        'overflow-hidden rounded-2xl border',
+        isStepVariant ? 'border-white/20' : 'border-[#e8e8e8]',
+        className
+      )}
+      style={{ direction: 'rtl' }}
+    >
       {inline ? (
         <>
-          <div className="w-full bg-[#6B584C] text-white px-4 py-2.5 flex items-center justify-between">
-            {headerInner}
-          </div>
+          <div className={headerBarClass}>{headerInner}</div>
+          {body}
+        </>
+      ) : isStepVariant ? (
+        <>
+          <div className={headerBarClass}>{headerInner}</div>
           {body}
         </>
       ) : (
@@ -173,7 +225,7 @@ export function OrderSummaryCard({
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className="flex w-full cursor-pointer items-center justify-between bg-[#6B584C] px-4 py-2.5 text-white"
+            className={cn(headerBarClass, 'cursor-pointer')}
           >
             {headerInner}
           </button>

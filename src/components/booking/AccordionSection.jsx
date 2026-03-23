@@ -9,6 +9,8 @@ export default function AccordionSection({
   titleMobile,
   /** תוכן אופציונלי לימין הכותרת (למשל מחיר בשלב סיכום) */
   headerRight,
+  /** שלב סיכום הזמנה — כותרת חומה וטקסט לבן */
+  variant = 'default',
   stepNumber, 
   isActive, 
   isCompleted, 
@@ -16,25 +18,47 @@ export default function AccordionSection({
   onClick, 
   children 
 }) {
+  const isSummary = variant === 'summary';
+
   return (
     <div className={cn(
       "border rounded-xl overflow-hidden transition-all duration-300",
-      isActive ? "border-[#ADC178] shadow-lg" : "border-[#e8e8e8]",
+      isSummary
+        ? isActive
+          ? "border-[#6B584C] shadow-lg"
+          : "border-[#5a4d42]"
+        : isActive
+          ? "border-[#ADC178] shadow-lg"
+          : "border-[#e8e8e8]",
       isLocked && "opacity-60"
     )}>
       <button
+        type="button"
         onClick={onClick}
         disabled={isLocked}
         className={cn(
           "w-full flex items-center justify-between p-4 md:p-5 text-right transition-colors duration-200",
-          isActive ? "bg-[#fafafa]" : "bg-white hover:bg-[#fafafa]",
-          isLocked && "cursor-not-allowed"
+          isSummary
+            ? cn(
+                isActive ? "bg-[#6B584C] text-white" : "bg-[#5a4d42] text-white hover:bg-[#6B584C]",
+                isLocked && "cursor-not-allowed"
+              )
+            : cn(
+                isActive ? "bg-[#fafafa]" : "bg-white hover:bg-[#fafafa]",
+                isLocked && "cursor-not-allowed"
+              )
         )}
       >
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 shrink-0",
-            isCompleted ? "bg-[#ADC178] text-white" : 
+            isSummary
+              ? isCompleted
+                ? "bg-white/25 text-white"
+                : isActive
+                  ? "bg-white/20 text-white"
+                  : "bg-white/15 text-white"
+              : isCompleted ? "bg-[#ADC178] text-white" : 
             isActive ? "bg-[#6B584C] text-white" : 
             "bg-[#e8e8e8] text-[#464646]"
           )}>
@@ -44,7 +68,9 @@ export default function AccordionSection({
           </div>
           <span className={cn(
             "text-lg font-medium min-w-0 truncate",
-            isActive ? "text-[#6B584C]" : "text-[#464646]"
+            isSummary
+              ? "text-white"
+              : isActive ? "text-[#6B584C]" : "text-[#464646]"
           )}>
             {titleMobile ? (
               <>
@@ -64,7 +90,9 @@ export default function AccordionSection({
           >
             <ChevronDown className={cn(
               "w-5 h-5 transition-colors",
-              isActive ? "text-[#ADC178]" : "text-[#464646]"
+              isSummary
+                ? "text-white/90"
+                : isActive ? "text-[#ADC178]" : "text-[#464646]"
             )} />
           </motion.div>
         </div>
@@ -79,7 +107,12 @@ export default function AccordionSection({
             transition={{ duration: 0.35, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="p-4 md:p-6 pt-0 bg-white">
+            <div
+              className={cn(
+                'p-4 pt-0 md:p-6 md:pt-0',
+                isSummary ? 'bg-[#6B584C]' : 'bg-white'
+              )}
+            >
               {children}
             </div>
           </motion.div>
