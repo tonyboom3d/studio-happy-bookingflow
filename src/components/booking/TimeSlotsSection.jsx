@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar, Info, X, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -21,13 +21,6 @@ import {
 } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { toast, dismissToast } from '@/components/ui/use-toast';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious
-} from '@/components/ui/carousel';
 
 // מחזיר מידע על תאריכים זמינים
 // availableDates: Set של תאריכים עם מספיק מקומות (openSpots >= requiredSpots)
@@ -290,13 +283,6 @@ export default function TimeSlotsSection({
     ]
   );
 
-  const [carouselApi, setCarouselApi] = useState(null);
-
-  useEffect(() => {
-    if (!carouselApi || totalMeetings <= 3) return;
-    carouselApi.scrollTo(currentSlotIndex);
-  }, [carouselApi, currentSlotIndex, totalMeetings]);
-
   const handleSlotClick = (index) => {
     setCurrentSlotIndex(index);
   };
@@ -346,143 +332,65 @@ export default function TimeSlotsSection({
         {/* משבצות מפגשים */}
         <div>
           <h3 className="mb-2 text-sm font-medium text-[#6B584C] md:mb-3">המפגשים שלי:</h3>
-          {totalMeetings > 3 ? (
-            <div className="relative px-1">
-              <Carousel
-                setApi={setCarouselApi}
-                opts={{ direction: 'rtl', align: 'start', containScroll: 'trimSnaps' }}
-                className="w-full"
+          <div className="flex flex-col gap-1.5 md:grid md:grid-cols-2 md:gap-2">
+            {slots.map((slot, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => handleSlotClick(index)}
+                className={cn(
+                  'relative rounded-xl border-2 text-right',
+                  'min-h-[3.25rem] p-2.5 max-md:flex max-md:items-center max-md:justify-between max-md:gap-2 max-md:pl-8',
+                  'md:min-h-0 md:p-4 md:block',
+                  currentSlotIndex === index
+                    ? 'border-[#ADC178] bg-[#ADC178]/10 shadow-md'
+                    : slot.date
+                      ? 'border-[#ADC178]/50 bg-white'
+                      : 'border-[#e8e8e8] bg-[#fafafa]'
+                )}
               >
-                <CarouselContent className="-ml-2 md:-ml-4">
-                  {slots.map((slot, index) => (
-                    <CarouselItem
-                      key={index}
-                      className="basis-[88%] pl-2 sm:basis-[48%] md:basis-[48%] md:pl-4"
+                {slot.date ? (
+                  <>
+                    <div className="min-w-0 flex-1 md:block">
+                      <div className="text-[10px] leading-tight text-[#464646]/70 md:mb-1 md:text-xs">מפגש {index + 1}</div>
+                      <div className="flex flex-wrap items-baseline max-md:justify-start md:justify-end gap-x-1.5 md:flex-col md:items-stretch md:gap-0">
+                        <span className="text-sm font-semibold text-[#6B584C] md:font-medium">
+                          {format(slot.date, 'd/M/yy', { locale: he })}
+                        </span>
+                        <span className="text-[10px] leading-tight text-[#464646]/70 md:text-xs md:mt-0.5">
+                          {format(slot.date, 'EEEE', { locale: he })}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeDate(index);
+                      }}
+                      className="absolute left-2 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-red-100 text-red-600 transition-colors hover:bg-red-200 md:left-2 md:top-2 md:h-5 md:w-5 md:translate-y-0"
                     >
-                      <button
-                        type="button"
-                        onClick={() => handleSlotClick(index)}
-                        className={cn(
-                          'relative w-full rounded-xl border-2 text-right',
-                          'min-h-[3.25rem] p-2.5 max-md:flex max-md:items-center max-md:justify-between max-md:gap-2 max-md:pl-8',
-                          'md:min-h-0 md:p-4 md:block',
-                          currentSlotIndex === index
-                            ? 'border-[#ADC178] bg-[#ADC178]/10 shadow-md'
-                            : slot.date
-                              ? 'border-[#ADC178]/50 bg-white'
-                              : 'border-[#e8e8e8] bg-[#fafafa]'
-                        )}
-                      >
-                        {slot.date ? (
-                          <>
-                            <div className="min-w-0 flex-1 md:block">
-                              <div className="text-[10px] leading-tight text-[#464646]/70 md:mb-1 md:text-xs">
-                                מפגש {index + 1}
-                              </div>
-                              <div className="flex flex-wrap items-baseline max-md:justify-start md:justify-end gap-x-1.5 md:flex-col md:items-stretch md:gap-0">
-                                <span className="text-sm font-semibold text-[#6B584C] md:font-medium">
-                                  {format(slot.date, 'd/M/yy', { locale: he })}
-                                </span>
-                                <span className="text-[10px] leading-tight text-[#464646]/70 md:text-xs md:mt-0.5">
-                                  {format(slot.date, 'EEEE', { locale: he })}
-                                </span>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeDate(index);
-                              }}
-                              className="absolute left-2 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-red-100 text-red-600 transition-colors hover:bg-red-200 md:left-2 md:top-2 md:h-5 md:w-5 md:translate-y-0"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <div className="w-full text-right">
-                              <div className="text-[10px] text-[#464646]/70 md:text-xs md:mb-1">מפגש {index + 1}</div>
-                              <div className="text-xs text-[#464646]/50 md:text-sm">לחץ לבחירה</div>
-                            </div>
-                            {currentSlotIndex === index && (
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[#ADC178] md:-right-1 md:-top-1 md:h-3 md:w-3"
-                              />
-                            )}
-                          </>
-                        )}
-                      </button>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                <CarouselPrevious className="-left-1 top-1/2 -translate-y-1/2 border-[#e8e8e8] bg-white text-[#6B584C] hover:bg-[#fafafa] md:-left-2" />
-                <CarouselNext className="-right-1 top-1/2 -translate-y-1/2 border-[#e8e8e8] bg-white text-[#6B584C] hover:bg-[#fafafa] md:-right-2" />
-              </Carousel>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2 md:gap-2">
-              {slots.map((slot, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => handleSlotClick(index)}
-                  className={cn(
-                    'relative rounded-xl border-2 text-right',
-                    'min-h-[3.25rem] p-2.5 max-md:flex max-md:items-center max-md:justify-between max-md:gap-2 max-md:pl-8',
-                    'md:min-h-0 md:p-4 md:block',
-                    currentSlotIndex === index
-                      ? 'border-[#ADC178] bg-[#ADC178]/10 shadow-md'
-                      : slot.date
-                        ? 'border-[#ADC178]/50 bg-white'
-                        : 'border-[#e8e8e8] bg-[#fafafa]'
-                  )}
-                >
-                  {slot.date ? (
-                    <>
-                      <div className="min-w-0 flex-1 md:block">
-                        <div className="text-[10px] leading-tight text-[#464646]/70 md:mb-1 md:text-xs">מפגש {index + 1}</div>
-                        <div className="flex flex-wrap items-baseline max-md:justify-start md:justify-end gap-x-1.5 md:flex-col md:items-stretch md:gap-0">
-                          <span className="text-sm font-semibold text-[#6B584C] md:font-medium">
-                            {format(slot.date, 'd/M/yy', { locale: he })}
-                          </span>
-                          <span className="text-[10px] leading-tight text-[#464646]/70 md:text-xs md:mt-0.5">
-                            {format(slot.date, 'EEEE', { locale: he })}
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeDate(index);
-                        }}
-                        className="absolute left-2 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-red-100 text-red-600 transition-colors hover:bg-red-200 md:left-2 md:top-2 md:h-5 md:w-5 md:translate-y-0"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-full text-right">
-                        <div className="text-[10px] text-[#464646]/70 md:text-xs md:mb-1">מפגש {index + 1}</div>
-                        <div className="text-xs text-[#464646]/50 md:text-sm">לחץ לבחירה</div>
-                      </div>
-                      {currentSlotIndex === index && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[#ADC178] md:-right-1 md:-top-1 md:h-3 md:w-3"
-                        />
-                      )}
-                    </>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
+                      <X className="h-3 w-3" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-full text-right">
+                      <div className="text-[10px] text-[#464646]/70 md:text-xs md:mb-1">מפגש {index + 1}</div>
+                      <div className="text-xs text-[#464646]/50 md:text-sm">לחץ לבחירה</div>
+                    </div>
+                    {currentSlotIndex === index && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[#ADC178] md:-right-1 md:-top-1 md:h-3 md:w-3"
+                      />
+                    )}
+                  </>
+                )}
+              </button>
+            ))}
+          </div>
 
           <div className="mt-2 rounded-lg bg-[#fafafa] p-1.5 text-center md:mt-3 md:p-2">
             <span className="text-xs text-[#464646] md:text-sm">
