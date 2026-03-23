@@ -71,24 +71,12 @@ export default function ParticipantsSection({ participants, setParticipants, onC
         </p>
       </div>
       
-      <motion.div
-        animate={{
-          scale: [1, 1.05, 1],
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          repeatDelay: 1
-        }}
+      <Button
+        onClick={onContinue}
+        className="mt-8 bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg text-lg"
       >
-        <Button
-          onClick={onContinue}
-          className="mt-8 bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
-                     transition-all duration-200 text-lg"
-        >
-          המשך לבחירת סוג עץ
-        </Button>
-      </motion.div>
+        המשך לבחירת סוג עץ
+      </Button>
     </div>
   );
 }
