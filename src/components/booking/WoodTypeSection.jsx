@@ -101,25 +101,16 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
       </div>
 
       <div className="mt-6 flex justify-center md:mt-8">
-        <motion.div
-          animate={woodType ? {
-            scale: [1, 1.05, 1],
-          } : {}}
-          transition={{
-            duration: 2,
-            repeat: woodType ? Infinity : 0,
-            repeatDelay: 1
-          }}
-        >
+        <div>
           <Button
             onClick={onContinue}
             disabled={!woodType}
-            className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
-                       transition-all duration-200 text-lg disabled:opacity-50"
+            className="shadow-none animate-none bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
+                       transition-colors duration-150 text-lg disabled:opacity-50"
           >
             המשך לבחירת מוצרים
           </Button>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

@@ -324,7 +324,7 @@ export default function TimeSlotsSection({
       <div className="mb-3 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5 md:mb-4 md:p-3">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600 md:h-4 md:w-4" />
         <div className="min-w-0 text-right text-xs text-blue-900 md:text-sm">
-          <p className="text-[11px] leading-snug text-blue-700 md:text-xs">לחצו על התאריכים הרצויים בלוח השנה • ניתן לשנות 48 שעות לפני באזור האישי</p>
+          <p className="text-[11px] leading-snug text-blue-700 md:text-xs">לחצו על התאריכים הרצויים בלוח השנה • ניתן לשנות 48 שעות לפני</p>
         </div>
       </div>
 

@@ -368,22 +368,22 @@ export default function ProductCatalogDrawer({
       >
         <SheetClose
           type="button"
-          className="absolute left-3 top-3 z-[70] flex h-9 w-9 items-center justify-center rounded-full border border-[#e8e8e8] bg-white text-[#6B584C] shadow-sm transition-colors hover:bg-[#fafafa] focus:outline-none focus:ring-2 focus:ring-[#ADC178]/40"
+          className="absolute left-2 top-1.5 z-[70] flex h-9 w-9 items-center justify-center rounded-full border border-[#e8e8e8] bg-white text-[#6B584C] shadow-sm transition-colors hover:bg-[#fafafa] focus:outline-none focus:ring-2 focus:ring-[#ADC178]/40 sm:left-3 sm:top-3"
           aria-label="סגור קטלוג"
         >
           <X className="h-5 w-5" />
         </SheetClose>
         <SheetHeader className="flex flex-col text-center sm:text-left shrink-0 space-y-0 border-b border-[#e8e8e8] bg-white pt-0 pr-1.5 pb-[5px] pl-[98px] md:p-4 md:pl-14 sticky top-0 z-10">
-          <div className="flex flex-wrap items-center justify-end gap-1.5 md:gap-2">
-            <SheetTitle className="text-right text-base font-bold text-[#6B584C] md:text-xl md:font-semibold whitespace-nowrap shrink-0 leading-tight">
+          <div className="flex min-w-0 flex-nowrap items-center justify-end gap-1.5 overflow-x-auto [scrollbar-width:thin] md:gap-2">
+            <SheetTitle className="shrink-0 text-right text-base font-bold leading-tight text-[#6B584C] whitespace-nowrap md:text-xl md:font-semibold">
               קטלוג מוצרים
             </SheetTitle>
 
-            <div className="flex items-center shrink-0">
+            <div className="flex shrink-0 items-center">
               <select
                 value={selectedWoodType}
                 onChange={(e) => setSelectedWoodType(e.target.value)}
-                className="h-7 md:h-8 max-w-[9.5rem] md:max-w-none text-[11px] md:text-xs px-1.5 md:px-2 rounded-md border border-[#ADC178]/40 bg-white text-[#464646] focus:outline-none focus:ring-2 focus:ring-[#ADC178]/30"
+                className="h-7 max-w-[9rem] text-[11px] md:h-8 md:max-w-[10rem] md:text-xs px-1.5 md:px-2 rounded-md border border-[#ADC178]/40 bg-white text-[#464646] focus:outline-none focus:ring-2 focus:ring-[#ADC178]/30"
                 aria-label="סוג עץ"
               >
                 <option value="recycled">עץ ממוחזר</option>
@@ -391,11 +391,11 @@ export default function ProductCatalogDrawer({
               </select>
             </div>
 
-            <div className="flex items-center shrink-0">
+            <div className="flex shrink-0 items-center">
               <select
                 value={meetingsFilter}
                 onChange={(e) => setMeetingsFilter(e.target.value)}
-                className="h-7 md:h-8 max-w-[9.5rem] md:max-w-none text-[11px] md:text-xs px-1.5 md:px-2 rounded-md border border-[#ADC178]/40 bg-white text-[#464646] focus:outline-none focus:ring-2 focus:ring-[#ADC178]/30"
+                className="h-7 max-w-[9rem] text-[11px] md:h-8 md:max-w-[10rem] md:text-xs px-1.5 md:px-2 rounded-md border border-[#ADC178]/40 bg-white text-[#464646] focus:outline-none focus:ring-2 focus:ring-[#ADC178]/30"
                 aria-label="סינון לפי מספר מפגשים"
               >
                 <option value="all">כל המפגשים</option>
@@ -452,13 +452,9 @@ export default function ProductCatalogDrawer({
           </AnimatePresence>
         </SheetHeader>
 
-        {/* גריד מוצרים */}
-        <div
-          ref={productsContainerRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 pb-3 sm:p-4 sm:pb-4"
-        >
-          {/* מובייל: סיכום עליון עם כפתור המשך */}
-          <div className="mb-2 rounded-lg border border-[#e8e8e8] bg-[#fafafa] p-2 text-sm text-[#464646] sm:hidden">
+        {/* מובייל: סיכום + המשך מחוץ לאזור הגלילה — נשארים קבועים למעלה בזמן גלילת המוצרים */}
+        <div className="shrink-0 border-b border-[#e8e8e8] bg-white px-2 pb-2 pt-0 sm:hidden">
+          <div className="rounded-lg border border-[#e8e8e8] bg-[#fafafa] p-2 text-sm text-[#464646]">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap gap-3">
                 <span className="flex items-center gap-1">
@@ -486,7 +482,13 @@ export default function ProductCatalogDrawer({
               המשך
             </Button>
           </div>
+        </div>
 
+        {/* גריד מוצרים */}
+        <div
+          ref={productsContainerRef}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 sm:p-4 sm:pb-4"
+        >
           <div className="grid grid-cols-2 gap-2 sm:gap-4">
             {filteredProducts.map(product => {
               const productId = product._id || product.id;
