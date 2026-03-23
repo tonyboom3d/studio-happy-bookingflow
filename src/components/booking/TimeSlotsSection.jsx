@@ -348,7 +348,7 @@ export default function TimeSlotsSection({
                               <div className="text-[10px] leading-tight text-[#464646]/70 md:mb-1 md:text-xs">
                                 מפגש {index + 1}
                               </div>
-                              <div className="flex flex-wrap items-baseline justify-end gap-x-1.5 md:flex-col md:items-stretch md:gap-0">
+                              <div className="flex flex-wrap items-baseline max-md:justify-start md:justify-end gap-x-1.5 md:flex-col md:items-stretch md:gap-0">
                                 <span className="text-sm font-semibold text-[#6B584C] md:font-medium">
                                   {format(slot.date, 'd/M/yy', { locale: he })}
                                 </span>
@@ -414,7 +414,7 @@ export default function TimeSlotsSection({
                     <>
                       <div className="min-w-0 flex-1 md:block">
                         <div className="text-[10px] leading-tight text-[#464646]/70 md:mb-1 md:text-xs">מפגש {index + 1}</div>
-                        <div className="flex flex-wrap items-baseline justify-end gap-x-1.5 md:flex-col md:items-stretch md:gap-0">
+                        <div className="flex flex-wrap items-baseline max-md:justify-start md:justify-end gap-x-1.5 md:flex-col md:items-stretch md:gap-0">
                           <span className="text-sm font-semibold text-[#6B584C] md:font-medium">
                             {format(slot.date, 'd/M/yy', { locale: he })}
                           </span>
