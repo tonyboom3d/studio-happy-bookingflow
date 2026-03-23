@@ -563,11 +563,17 @@ export default function ProductCatalogDrawer({
       </SheetContent>
 
       {/* מודל להגדלת תמונה — מותאם לרוחב/גובה המסך (מובייל) */}
-      <Dialog open={!!enlargedImage} onOpenChange={() => setEnlargedImage(null)}>
+      <Dialog
+        open={!!enlargedImage}
+        onOpenChange={(open) => {
+          // חשוב: סוגרים רק כשה-Radix מדווח שה-dialog נסגר (open=false)
+          if (!open) setEnlargedImage(null);
+        }}
+      >
         <DialogContent
           hideCloseButton
           className={cn(
-            "z-[100] w-[calc(100vw-1rem)] max-w-[min(100vw-1rem,42rem)] max-h-[92dvh] p-2 sm:p-4",
+            "z-[300] w-[calc(100vw-1rem)] max-w-[min(100vw-1rem,42rem)] max-h-[92dvh] p-2 sm:p-4",
             "border-none bg-transparent shadow-none",
             "left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]",
             "flex flex-col items-center justify-center gap-0 overflow-visible"
