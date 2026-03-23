@@ -87,6 +87,8 @@ export function OrderSummaryCard({
   activeSection,
   /** true: ללא כפתור כותרת מתרחב, תמיד פתוח — מתחת ל"המשך לתשלום" */
   inline = false,
+  /** כשלא inline: מצב התחלתי של פירוט השורות (ברירת מחדל פתוח — תואם חלונית צפה) */
+  initiallyExpanded = true,
   className
 }) {
   const { items, totalPrice, showEmptyState } = useMemo(
@@ -102,7 +104,7 @@ export function OrderSummaryCard({
     [participants, woodType, cart, selectedSlots, totalMeetings, activeSection]
   );
 
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(initiallyExpanded);
 
   const headerInner = (
     <>
@@ -113,8 +115,8 @@ export function OrderSummaryCard({
           <span className="font-bold text-base">₪{Math.round(totalPrice)}</span>
         </div>
         {!inline && (
-          <div className="md:hidden">
-            {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+          <div className="shrink-0">
+            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </div>
         )}
       </div>
@@ -171,18 +173,18 @@ export function OrderSummaryCard({
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className="w-full bg-[#6B584C] text-white px-4 py-2.5 flex items-center justify-between md:cursor-default"
+            className="flex w-full cursor-pointer items-center justify-between bg-[#6B584C] px-4 py-2.5 text-white"
           >
             {headerInner}
           </button>
           <AnimatePresence>
-            {(isOpen || (typeof window !== 'undefined' && window.innerWidth >= 768)) && (
+            {isOpen && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.25 }}
-                className="overflow-hidden md:!h-auto md:!opacity-100"
+                className="overflow-hidden"
               >
                 {body}
               </motion.div>

@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { User, Mail, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { OrderSummaryCard } from './FloatingSummary';
-
 function validateEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -19,13 +17,7 @@ export default function PersonalDetailsSection({
   userDetails,
   setUserDetails,
   onContinue,
-  isSubmitting,
-  participants = 1,
-  woodType = '',
-  cart = [],
-  selectedSlots = [],
-  totalMeetings = 0,
-  activeSection = 5
+  isSubmitting
 }) {
   const [touched, setTouched] = useState({ name: false, email: false, phone: false });
 
@@ -186,22 +178,8 @@ export default function PersonalDetailsSection({
           className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
                      transition-all duration-200 text-lg disabled:opacity-60 disabled:cursor-not-allowed w-full sm:w-auto"
         >
-          {isSubmitting ? 'שומר...' : 'המשך לתשלום'}
+          {isSubmitting ? 'שומר...' : 'המשך לסיכום הזמנה'}
         </Button>
-
-        {/* במובייל: סיכום מתחת לכפתור (חלונית הסיכום ב-iframe מוסתרת) */}
-        <div className="w-full md:hidden">
-          <OrderSummaryCard
-            inline
-            participants={participants}
-            woodType={woodType}
-            cart={cart}
-            selectedSlots={selectedSlots}
-            totalMeetings={totalMeetings}
-            activeSection={activeSection}
-            className="bg-white shadow-sm"
-          />
-        </div>
       </div>
     </div>
   );

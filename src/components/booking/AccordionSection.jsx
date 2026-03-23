@@ -7,6 +7,8 @@ export default function AccordionSection({
   title,
   /** כותרת חלופית למסכים צרים (מוצגת מתחת ל־md) */
   titleMobile,
+  /** תוכן אופציונלי לימין הכותרת (למשל מחיר בשלב סיכום) */
+  headerRight,
   stepNumber, 
   isActive, 
   isCompleted, 
@@ -29,9 +31,9 @@ export default function AccordionSection({
           isLocked && "cursor-not-allowed"
         )}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className={cn(
-            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300",
+            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 shrink-0",
             isCompleted ? "bg-[#ADC178] text-white" : 
             isActive ? "bg-[#6B584C] text-white" : 
             "bg-[#e8e8e8] text-[#464646]"
@@ -41,7 +43,7 @@ export default function AccordionSection({
              stepNumber}
           </div>
           <span className={cn(
-            "text-lg font-medium",
+            "text-lg font-medium min-w-0 truncate",
             isActive ? "text-[#6B584C]" : "text-[#464646]"
           )}>
             {titleMobile ? (
@@ -54,15 +56,18 @@ export default function AccordionSection({
             )}
           </span>
         </div>
-        <motion.div
-          animate={{ rotate: isActive ? 180 : 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <ChevronDown className={cn(
-            "w-5 h-5 transition-colors",
-            isActive ? "text-[#ADC178]" : "text-[#464646]"
-          )} />
-        </motion.div>
+        <div className="flex shrink-0 items-center gap-2">
+          {headerRight}
+          <motion.div
+            animate={{ rotate: isActive ? 180 : 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <ChevronDown className={cn(
+              "w-5 h-5 transition-colors",
+              isActive ? "text-[#ADC178]" : "text-[#464646]"
+            )} />
+          </motion.div>
+        </div>
       </button>
       
       <AnimatePresence>

@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CreditCard } from 'lucide-react';
 import AccordionSection from '../components/booking/AccordionSection';
 import ParticipantsSection from '../components/booking/ParticipantsSection';
 import WoodTypeSection from '../components/booking/WoodTypeSection';
 import ProductSelectionSection from '../components/booking/ProductSelectionSection';
 import TimeSlotsSection from '../components/booking/TimeSlotsSection';
 import PersonalDetailsSection from '../components/booking/PersonalDetailsSection';
+import OrderSummarySection from '../components/booking/OrderSummarySection';
 import ThankYouScreen from '../components/booking/ThankYouScreen';
-import { submitBooking, subscribeToWix, notifyProgress, sendSummaryUpdate } from '@/api/wixBridge';
+import { submitBooking, subscribeToWix, notifyProgress } from '@/api/wixBridge';
+import { computeOrderSummary } from '@/components/booking/FloatingSummary';
 import { addLog, APP_VERSION } from '@/components/VersionLogger';
 
 export default function WorkshopBooking() {
@@ -133,25 +135,18 @@ export default function WorkshopBooking() {
   // חישוב סה"כ מפגשים (כולל כמויות)
   const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || 3) * (p.quantity || 1), 0);
 
-  // שליחת נתוני סיכום ל-Wix VELO (שיעביר ל-summary iframe)
-  useEffect(() => {
-    const summaryData = {
-      participants,
-      woodType,
-      cart: cart.map(p => ({ id: p.id, title: p.title, price: p.price, meetings: p.meetings, quantity: p.quantity || 1 })),
-      selectedSlots,
-      totalMeetings,
-      activeSection,
-      // מידע עבור שליטה על התנהגות חלונית הסיכום
-      isProcessing,
-      isComplete,
-      hasPaymentError: !!bookingError
-    };
-    
-    // שליחה ל-Wix VELO דרך window.parent.postMessage
-    // Wix VELO יעביר את הנתונים ל-summary iframe (htmlComponent2)
-    sendSummaryUpdate(summaryData);
-  }, [participants, woodType, cart, selectedSlots, totalMeetings, activeSection, isProcessing, isComplete, bookingError]);
+  const orderTotalPreview = useMemo(
+    () =>
+      computeOrderSummary({
+        participants,
+        woodType,
+        cart,
+        selectedSlots,
+        totalMeetings,
+        activeSection
+      }).totalPrice,
+    [participants, woodType, cart, selectedSlots, totalMeetings, activeSection]
+  );
 
   // מעבר לסקשן הבא
   const completeSection = (sectionNum) => {
@@ -276,11 +271,8 @@ export default function WorkshopBooking() {
     { id: 2, title: 'סוג העץ' },
     { id: 3, title: 'מה בונים?' },
     { id: 4, title: 'בחירת תאריכים' },
-    {
-      id: 5,
-      title: 'פרטים אישיים',
-      titleMobile: 'פרטים אישיים וסיכום הזמנה'
-    },
+    { id: 5, title: 'פרטים אישיים' },
+    { id: 6, title: 'סיכום הזמנה' }
   ];
 
   return (
@@ -309,11 +301,20 @@ export default function WorkshopBooking() {
             const isCompleted = completedSections.includes(section.id);
             const isActive = activeSection === section.id;
 
+            const headerRight =
+              section.id === 6 ? (
+                <span className="flex items-center gap-1 text-sm font-bold text-[#ADC178] tabular-nums">
+                  <CreditCard className="h-4 w-4 shrink-0" aria-hidden />
+                  ₪{Math.round(orderTotalPreview)}
+                </span>
+              ) : null;
+
             return (
               <AccordionSection
                 key={section.id}
                 title={section.title}
                 titleMobile={section.titleMobile}
+                headerRight={headerRight}
                 stepNumber={section.id}
                 isActive={isActive}
                 isCompleted={isCompleted}
@@ -363,14 +364,20 @@ export default function WorkshopBooking() {
                   <PersonalDetailsSection
                     userDetails={userDetails}
                     setUserDetails={setUserDetails}
-                    onContinue={handleSubmit}
-                    isSubmitting={isProcessing}
+                    onContinue={() => completeSection(5)}
+                    isSubmitting={false}
+                  />
+                )}
+                {section.id === 6 && (
+                  <OrderSummarySection
                     participants={participants}
                     woodType={woodType}
                     cart={cart}
                     selectedSlots={selectedSlots}
                     totalMeetings={totalMeetings}
                     activeSection={activeSection}
+                    onPay={handleSubmit}
+                    isSubmitting={isProcessing}
                   />
                 )}
               </AccordionSection>
@@ -382,7 +389,7 @@ export default function WorkshopBooking() {
       {/* Footer */}
       
       
-      {/* הערה: FloatingSummary כעת ב-iframe נפרד בנתיב /summary */}
+      {/* סיכום ההזמנה משולב בשלב 6; חלונית iframe חיצונית אופציונלית ב־/summary */}
     </div>
   );
 }
