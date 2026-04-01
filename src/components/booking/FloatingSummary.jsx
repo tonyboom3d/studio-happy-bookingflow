@@ -5,9 +5,10 @@ import { Users, Package, Calendar, CreditCard, ChevronUp, ChevronDown } from 'lu
 import { cn } from '@/lib/utils';
 
 const PRICING = {
-  1: 300,
-  2: 500,
-  3: 650
+  1: 340,
+  2: 600,
+  3: 795,
+  4: 980
 };
 
 /** חישוב שורות סיכום + סכום — משותף לחלונית הצפה ולתצוגה inline */
@@ -21,7 +22,7 @@ export function computeOrderSummary({
 }) {
   const rawSessionsCount = totalMeetings || 0;
   const sessionsCount = rawSessionsCount || 1;
-  const basePricePerSession = PRICING[participants] || 300;
+  const basePricePerSession = PRICING[participants] || 340;
   const basePriceTotal = basePricePerSession * (sessionsCount || 1);
   const totalItems = cart.reduce((sum, p) => {
     const qty = typeof p.quantity === 'number' ? p.quantity : 1;
@@ -42,7 +43,7 @@ export function computeOrderSummary({
     {
       show: participants > 0,
       icon: Users,
-      label: participants === 1 ? 'יחיד' : participants === 2 ? 'זוגי' : 'שלישייה',
+      label: participants === 1 ? 'יחיד' : participants === 2 ? 'זוגי' : participants === 3 ? 'שלישייה' : 'רביעייה',
       value: `₪${basePricePerSession} למפגש`,
       active: activeSection === 1
     },

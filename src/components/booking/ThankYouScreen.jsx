@@ -7,9 +7,10 @@ import { he } from 'date-fns/locale';
 
 // מחירים לפי סוג כרטיס
 const PRICING = {
-  1: 300,
-  2: 500,
-  3: 650
+  1: 340,
+  2: 600,
+  3: 795,
+  4: 980
 };
 
 export default function ThankYouScreen({ booking, paymentStatus = 'Successful', onGoHome }) {
@@ -23,7 +24,7 @@ export default function ThankYouScreen({ booking, paymentStatus = 'Successful', 
   const participants = booking?.participants || 1;
   const woodType = booking?.wood_type || 'recycled';
   const totalMeetings = booking?.total_sessions || 1;
-  const basePricePerSession = PRICING[participants] || 300;
+  const basePricePerSession = PRICING[participants] || 340;
   const basePriceTotal = basePricePerSession * totalMeetings;
   
   // מחיר מוצרים מהקטלוג — בעץ ממוחזר לא מתווסף לסה"כ (כלול במחיר המפגשים)
@@ -154,7 +155,7 @@ END:VCALENDAR`;
           <div className="flex items-center gap-2 text-sm">
             <Users className="w-5 h-5 text-[#ADC178]" />
             <span className="font-medium text-[#464646]">
-              {participants === 1 ? 'יחיד' : participants === 2 ? 'זוגי' : 'שלישייה'}
+              {participants === 1 ? 'יחיד' : participants === 2 ? 'זוגי' : participants === 3 ? 'שלישייה' : 'רביעייה'}
             </span>
             <span className="text-[#464646]/60">
               ({participants} {participants === 1 ? 'משתתף' : 'משתתפים'})
