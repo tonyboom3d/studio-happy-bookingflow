@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, CreditCard } from 'lucide-react';
+import { ArrowRight, CreditCard, Loader2 } from 'lucide-react';
 import AccordionSection from '../components/booking/AccordionSection';
 import ParticipantsSection from '../components/booking/ParticipantsSection';
 import WoodTypeSection from '../components/booking/WoodTypeSection';
@@ -297,6 +297,17 @@ export default function WorkshopBooking() {
         className="py-8 px-8 text-center border-b border-[#e8e8e8] bg-white"
         style={{ paddingTop: 10, paddingBottom: 10 }}
       >
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            className="inline-flex items-center gap-2 text-sm font-medium text-[#6B584C] hover:text-[#5a4940] transition-colors"
+          >
+            <ArrowRight className="h-4 w-4" aria-hidden />
+            חזרה לדף הקודם
+          </button>
+          <div className="w-[1px]" aria-hidden />
+        </div>
         <h1
           className="text-xl md:text-2xl font-bold text-[#6B584C]"
           style={{ opacity: 1, transform: 'none' }}

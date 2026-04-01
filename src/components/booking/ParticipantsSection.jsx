@@ -13,12 +13,14 @@ const PRICING = {
 export default function ParticipantsSection({ participants, setParticipants, onContinue }) {
   const isGroupTooLarge = participants > 4;
   const ticketPrice = PRICING[participants] || 340;
+  const displayParticipants = isGroupTooLarge ? '4+' : participants;
 
   const handleDecrease = () => {
     if (participants > 1) setParticipants(participants - 1);
   };
 
   const handleIncrease = () => {
+    if (participants >= 5) return;
     setParticipants(participants + 1);
   };
 
@@ -44,19 +46,21 @@ export default function ParticipantsSection({ participants, setParticipants, onC
         </button>
         
         <motion.div
-          key={participants}
+          key={displayParticipants}
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           className="text-5xl font-bold text-[#6B584C] w-16 text-center"
         >
-          {participants}
+          {displayParticipants}
         </motion.div>
         
         <button
           type="button"
           onClick={handleIncrease}
+          disabled={participants >= 5}
           className="w-12 h-12 rounded-full border-2 border-[#ADC178] flex items-center justify-center
-                     text-[#ADC178] hover:bg-[#ADC178] hover:text-white"
+                     text-[#ADC178] hover:bg-[#ADC178] hover:text-white
+                     disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#ADC178]"
         >
           <Plus className="w-5 h-5" />
         </button>

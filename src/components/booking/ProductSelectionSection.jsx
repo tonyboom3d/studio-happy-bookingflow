@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ShoppingBag, Wrench, HelpCircle, Sparkles, X, Minus, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -18,6 +18,14 @@ export default function ProductSelectionSection({
 }) {
   const [showCatalog, setShowCatalog] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
+  const [pendingLightbox, setPendingLightbox] = useState(null); // 'custom' | 'help' | null
+  const pendingTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
+    };
+  }, []);
 
   const getMeetings = (product) => {
     const isCouple = participants >= 2;
@@ -31,15 +39,24 @@ export default function ProductSelectionSection({
   };
 
   const handleOptionClick = (optionId) => {
+    // אם כבר בתהליך טעינה לפתיחת לייטבוקס – לא מאפשרים קליקים נוספים
+    if (pendingLightbox) return;
+
     setSelectedOption(optionId);
+
     if (optionId === 'catalog') {
       setShowCatalog(true);
-    } else if (optionId === 'custom') {
-      // פתיחת Lightbox byMySelf דרך Wix VELO
-      window.parent.postMessage({ type: 'OPEN_LIGHTBOX', lightboxId: 'byMySelf' }, '*');
-    } else if (optionId === 'help') {
-      // פתיחת Lightbox needHelp דרך Wix VELO
-      window.parent.postMessage({ type: 'OPEN_LIGHTBOX', lightboxId: 'needHelp' }, '*');
+      return;
+    }
+
+    if (optionId === 'custom' || optionId === 'help') {
+      setPendingLightbox(optionId);
+      pendingTimerRef.current = setTimeout(() => {
+        const lightboxId = optionId === 'custom' ? 'byMySelf' : 'needHelp';
+        window.parent.postMessage({ type: 'OPEN_LIGHTBOX', lightboxId }, '*');
+        setPendingLightbox(null);
+        pendingTimerRef.current = null;
+      }, 2000);
     }
   };
 
@@ -85,17 +102,21 @@ export default function ProductSelectionSection({
         {options.map((option) => {
           const Icon = option.icon;
           const isSelected = selectedOption === option.id;
+          const isPending = pendingLightbox === option.id;
+          const disableWhilePending = Boolean(pendingLightbox) && !isPending;
           return (
             <button
               key={option.id}
               type="button"
               onClick={() => handleOptionClick(option.id)}
+              disabled={disableWhilePending || isPending}
               className={cn(
                 "relative rounded-xl border-2 text-right",
                 "p-3 md:p-5",
                 isSelected
                   ? "border-[#ADC178] bg-[#ADC178]/5 shadow-lg"
-                  : "border-[#e8e8e8] hover:border-[#ADC178] bg-white hover:shadow-lg"
+                  : "border-[#e8e8e8] hover:border-[#ADC178] bg-white hover:shadow-lg",
+                (disableWhilePending || isPending) && "disabled:opacity-70 disabled:cursor-not-allowed"
               )}
             >
               {option.recommended && (
@@ -114,6 +135,15 @@ export default function ProductSelectionSection({
                   <p className="mt-0.5 text-xs leading-snug text-[#464646]/70 md:mt-1 md:text-sm">{option.description}</p>
                 </div>
               </div>
+
+              {isPending && (
+                <div className="absolute inset-0 rounded-xl bg-white/70 backdrop-blur-[1px] flex items-center justify-center">
+                  <div className="flex items-center gap-2 text-[#6B584C]">
+                    <span className="h-4 w-4 rounded-full border-2 border-[#6B584C]/25 border-t-[#6B584C] animate-spin" />
+                    <span className="text-xs font-medium">טוען…</span>
+                  </div>
+                </div>
+              )}
             </button>
           );
         })}
