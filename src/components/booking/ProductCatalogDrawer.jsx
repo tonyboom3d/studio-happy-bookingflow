@@ -37,19 +37,21 @@ function hasProductDimensionInfo(product) {
   const w = product?.width ?? product?.dimensions?.width;
   const d = product?.depth ?? product?.dimensions?.depth;
   const h = product?.height ?? product?.dimensions?.height;
+  const dimText = typeof product?.dimensions === 'string' ? product.dimensions.trim() : '';
   const meaningful = (v) => {
     if (v === undefined || v === null) return false;
     if (typeof v === 'number') return !Number.isNaN(v) && v > 0;
     const s = String(v).trim();
     return s.length > 0;
   };
-  return meaningful(w) || meaningful(d) || meaningful(h);
+  return meaningful(dimText) || meaningful(w) || meaningful(d) || meaningful(h);
 }
 
 function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPrices, onZoom, quantity, onQuantityChange }) {
   const [showDimensions, setShowDimensions] = useState(false);
   const showInfoButton = hasProductDimensionInfo(product);
   const showImage = hasProductImage(product);
+  const dimText = typeof product?.dimensions === 'string' ? product.dimensions.trim() : '';
   // מחיר המוצר בלי תוספת (התוספת מחושבת בסיכום הכולל)
   const priceDisplay = showNewWoodPrices 
     ? `₪${product.price}` 
@@ -91,9 +93,10 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
                 <Info className="w-4 h-4 text-[#6B584C]" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="bg-white border border-[#e8e8e8] p-3">
+            <TooltipContent side="bottom" className="z-[500] bg-white border border-[#e8e8e8] p-3">
               <div className="text-sm text-[#464646]">
                 <p className="font-medium mb-1">מידות:</p>
+                {dimText && <p className="whitespace-pre-wrap">{dimText}</p>}
                 {(product.width || product.dimensions?.width) && (
                   <p>רוחב: {product.width || product.dimensions?.width} ס״מ</p>
                 )}

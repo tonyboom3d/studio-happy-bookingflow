@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
 import { Calendar, Info, X, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -158,6 +157,24 @@ export default function TimeSlotsSection({
     () => getAvailabilityInfo(Array.isArray(availableSlots) ? availableSlots : [], participants),
     [availableSlots, participants]
   );
+
+  const selectedMeetingsCount = useMemo(
+    () => selectedDates.filter(Boolean).length,
+    [selectedDates]
+  );
+
+  const missingSessionIdCount = useMemo(() => {
+    const filled = selectedDates.filter(Boolean);
+    if (filled.length !== totalMeetings) return 0;
+    let missing = 0;
+    for (const date of filled) {
+      const dateStr = format(date, 'yyyy-MM-dd');
+      const wixSlot = sessionMap.get(dateStr);
+      const sessionId = wixSlot?.sessionId || wixSlot?._id || null;
+      if (!sessionId) missing += 1;
+    }
+    return missing;
+  }, [selectedDates, totalMeetings, sessionMap]);
 
   // יצירת משבצות למפגשים
   const slots = Array.from({ length: totalMeetings }, (_, i) => ({
@@ -515,8 +532,19 @@ export default function TimeSlotsSection({
 
       {/* כפתור המשך לתשלום */}
       <div className="flex flex-col items-center mt-6 gap-3">
-        <Button
+        <button
+          type="button"
           onClick={() => {
+            if (selectedMeetingsCount !== totalMeetings) {
+              showToastForSeconds('יש לבחור תאריך לכל מפגש לפני שממשיכים');
+              return;
+            }
+
+            if (missingSessionIdCount > 0) {
+              showToastForSeconds('יש לבחור תאריכים זמינים — חסרה התאמה למפגש באחד התאריכים');
+              return;
+            }
+
             const slotsWithSession = selectedDates.filter(Boolean).map((date, i) => {
               const dateStr = format(date, 'yyyy-MM-dd');
               const wixSlot = sessionMap.get(dateStr);
@@ -531,7 +559,11 @@ export default function TimeSlotsSection({
             setSelectedSlots(slotsWithSession);
             onContinue();
           }}
-          disabled={selectedDates.filter(Boolean).length !== totalMeetings || isSubmitting}
+          disabled={
+            selectedMeetingsCount !== totalMeetings ||
+            missingSessionIdCount > 0 ||
+            isSubmitting
+          }
           className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg text-lg disabled:opacity-50 flex items-center gap-2"
         >
           {isSubmitting ? (
@@ -542,7 +574,12 @@ export default function TimeSlotsSection({
           ) : (
             continueLabel || 'המשך לפרטים אישיים'
           )}
-        </Button>
+        </button>
+        {missingSessionIdCount > 0 && (
+          <p className="text-sm text-red-600 text-center max-w-[28rem]">
+            נראה שנבחר תאריך שאין לו מפגש זמין. נסו לבחור תאריך אחר.
+          </p>
+        )}
         {isSubmitting && (
           <p className="text-sm text-[#6B584C]/70">
             אנחנו מכינים עבורך הזמנה — תועבר בשניות
