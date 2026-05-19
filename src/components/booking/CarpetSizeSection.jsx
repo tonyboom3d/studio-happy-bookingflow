@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Ruler, User, Baby, Info } from 'lucide-react';
+import { Ruler, User, Baby, Info, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -30,10 +30,37 @@ export default function CarpetSizeSection({
   setCarpetSizes,
   onContinue
 }) {
-  // אתחול ברירות מחדל - כל מבוגר מתחיל עם 60x60
+  // חישוב יחידות שטיח: כל מבוגר = שטיח אחד (הורה+ילד עובדים יחד על אותו שטיח)
+  const parentChildPairs = Math.min(adults, children);
+  const soloAdults = adults - parentChildPairs;
+  const totalCarpets = adults; // מספר השטיחים = מספר המבוגרים
+
+  // יצירת מבנה של יחידות השטיח
+  const carpetUnits = useMemo(() => {
+    const units = [];
+    let childrenAssigned = 0;
+
+    for (let i = 0; i < adults; i++) {
+      const hasChild = childrenAssigned < children;
+      units.push({
+        index: i,
+        isParentChild: hasChild,
+        label: hasChild 
+          ? `הורה + ילד ${units.filter(u => u.isParentChild).length + 1}`
+          : soloAdults === 1 && parentChildPairs === 0 
+            ? 'המשתתף'
+            : `משתתף ${i + 1 - childrenAssigned}`
+      });
+      if (hasChild) childrenAssigned++;
+    }
+
+    return units;
+  }, [adults, children, soloAdults, parentChildPairs]);
+
+  // אתחול ברירות מחדל - כל יחידה מתחילה עם 60x60
   useEffect(() => {
     const defaultSizes = {};
-    for (let i = 0; i < adults; i++) {
+    for (let i = 0; i < totalCarpets; i++) {
       if (!carpetSizes[i]) {
         defaultSizes[i] = '60x60';
       }
@@ -41,12 +68,12 @@ export default function CarpetSizeSection({
     if (Object.keys(defaultSizes).length > 0) {
       setCarpetSizes(prev => ({ ...prev, ...defaultSizes }));
     }
-  }, [adults, carpetSizes, setCarpetSizes]);
+  }, [totalCarpets, carpetSizes, setCarpetSizes]);
 
-  const handleSizeChange = (adultIndex, sizeId) => {
+  const handleSizeChange = (unitIndex, sizeId) => {
     setCarpetSizes(prev => ({
       ...prev,
-      [adultIndex]: sizeId
+      [unitIndex]: sizeId
     }));
   };
 
@@ -55,13 +82,8 @@ export default function CarpetSizeSection({
     .filter(size => size === '90x90')
     .length * 100;
 
-  // האם כל המבוגרים בחרו גודל
-  const allSelected = Array.from({ length: adults }, (_, i) => carpetSizes[i])
-    .every(size => size);
-
-  // חישוב כמה ילדים מצטרפים לכל מבוגר
-  const childrenPerAdult = Math.floor(children / adults);
-  const extraChildren = children % adults;
+  // האם כל היחידות בחרו גודל
+  const allSelected = carpetUnits.every((_, i) => carpetSizes[i]);
 
   return (
     <div className="py-6" dir="rtl">
@@ -72,7 +94,7 @@ export default function CarpetSizeSection({
           <h3 className="text-lg font-medium text-[#581E83]">ביחרו את גודל השטיח שלכם</h3>
         </div>
         <p className="text-sm text-[#464646]/70">
-          כל משתתף בוחר את גודל השטיח שירצה ליצור
+          {totalCarpets === 1 ? 'בחרו את גודל השטיח' : `${totalCarpets} שטיחים להכנה`}
         </p>
       </div>
 
@@ -87,83 +109,77 @@ export default function CarpetSizeSection({
         </div>
       </div>
 
-      {/* בחירה לכל מבוגר */}
+      {/* בחירה לכל יחידת שטיח */}
       <div className="space-y-4">
-        {Array.from({ length: adults }, (_, adultIndex) => {
-          const hasChild = adultIndex < (childrenPerAdult > 0 ? adults : extraChildren) || 
-                          (childrenPerAdult > 0);
-          const childCount = childrenPerAdult + (adultIndex < extraChildren ? 1 : 0);
-          const actualHasChild = childCount > 0 && adultIndex < adults;
-          const showChild = children > 0 && adultIndex < Math.min(adults, children);
-
-          return (
-            <motion.div
-              key={adultIndex}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: adultIndex * 0.1 }}
-              className="rounded-xl border border-[#e8e8e8] bg-white p-4"
-            >
-              {/* כותרת משתתף */}
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex items-center gap-1.5">
+        {carpetUnits.map((unit, unitIndex) => (
+          <motion.div
+            key={unitIndex}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: unitIndex * 0.1 }}
+            className="rounded-xl border border-[#e8e8e8] bg-white p-4"
+          >
+            {/* כותרת יחידה */}
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-1.5">
+                {unit.isParentChild ? (
+                  <Users className="w-4 h-4 text-[#581E83]" />
+                ) : (
                   <User className="w-4 h-4 text-[#581E83]" />
-                  <span className="font-medium text-[#581E83]">
-                    {adults === 1 ? 'המשתתף' : `משתתף ${adultIndex + 1}`}
-                  </span>
-                </div>
-                {showChild && (
-                  <div className="flex items-center gap-1 bg-[#5E2F88]/10 rounded-full px-2 py-0.5">
-                    <Baby className="w-3 h-3 text-[#5E2F88]" />
-                    <span className="text-xs text-[#5E2F88]">+ ילד (ביחד)</span>
-                  </div>
                 )}
+                <span className="font-medium text-[#581E83]">{unit.label}</span>
               </div>
+              {unit.isParentChild && (
+                <div className="flex items-center gap-1 bg-[#5E2F88]/10 rounded-full px-2 py-0.5">
+                  <Baby className="w-3 h-3 text-[#5E2F88]" />
+                  <span className="text-xs text-[#5E2F88]">שטיח משותף</span>
+                </div>
+              )}
+            </div>
 
-              {/* אפשרויות גודל */}
-              <div className="grid grid-cols-2 gap-2">
-                {CARPET_SIZES.map((size) => {
-                  const isSelected = carpetSizes[adultIndex] === size.id;
-                  return (
-                    <button
-                      key={size.id}
-                      type="button"
-                      onClick={() => handleSizeChange(adultIndex, size.id)}
-                      className={cn(
-                        'relative rounded-lg border-2 p-3 text-right transition-all',
-                        isSelected
-                          ? 'border-[#5E2F88] bg-[#5E2F88]/10'
-                          : 'border-[#e8e8e8] hover:border-[#5E2F88]/50'
-                      )}
-                    >
-                      {size.recommended && (
-                        <span className="absolute -top-2 right-2 text-[10px] bg-[#5E2F88] text-white px-2 py-0.5 rounded-full">
-                          מומלץ
-                        </span>
-                      )}
-                      <div className="font-medium text-[#581E83]">{size.label}</div>
-                      <div className={cn(
-                        'text-sm mt-1',
-                        size.price === 0 ? 'text-green-600' : 'text-[#5E2F88]'
-                      )}>
-                        {size.priceLabel}
-                      </div>
-                      <div className="text-xs text-[#464646]/60 mt-1">{size.note}</div>
-                      {isSelected && (
-                        <motion.div
-                          layoutId={`check-${adultIndex}`}
-                          className="absolute top-2 left-2 w-5 h-5 bg-[#5E2F88] rounded-full flex items-center justify-center"
-                        >
-                          <span className="text-white text-xs">✓</span>
-                        </motion.div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          );
-        })}
+            {/* אפשרויות גודל */}
+            <div className="grid grid-cols-2 gap-2">
+              {CARPET_SIZES.map((size) => {
+                const isSelected = carpetSizes[unitIndex] === size.id;
+                return (
+                  <button
+                    key={size.id}
+                    type="button"
+                    onClick={() => handleSizeChange(unitIndex, size.id)}
+                    className={cn(
+                      'relative rounded-lg border-2 p-3 text-right transition-all',
+                      isSelected
+                        ? 'border-[#5E2F88] bg-[#5E2F88]/10'
+                        : 'border-[#e8e8e8] hover:border-[#5E2F88]/50'
+                    )}
+                  >
+                    {size.recommended && (
+                      <span className="absolute -top-2 right-2 text-[10px] bg-[#5E2F88] text-white px-2 py-0.5 rounded-full">
+                        מומלץ
+                      </span>
+                    )}
+                    <div className="font-medium text-[#581E83]">{size.label}</div>
+                    <div className={cn(
+                      'text-sm mt-1',
+                      size.price === 0 ? 'text-green-600' : 'text-[#5E2F88]'
+                    )}>
+                      {size.priceLabel}
+                    </div>
+                    <div className="text-xs text-[#464646]/60 mt-1">{size.note}</div>
+                    {isSelected && (
+                      <motion.div
+                        layoutId={`check-${unitIndex}`}
+                        className="absolute top-2 left-2 w-5 h-5 bg-[#5E2F88] rounded-full flex items-center justify-center"
+                      >
+                        <span className="text-white text-xs">✓</span>
+                      </motion.div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        ))}
       </div>
 
       {/* סיכום תוספת */}

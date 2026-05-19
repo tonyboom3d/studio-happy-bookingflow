@@ -118,6 +118,8 @@ export default function WorkshopBooking() {
 
   // חישוב מספר יחידות (מבוגר+ילד = יחידה אחת)
   const totalUnits = adults; // כל מבוגר = יחידה, ילדים מצטרפים להורה
+  const parentChildPairs = Math.min(adults, children); // זוגות הורה+ילד
+  const soloAdults = adults - parentChildPairs; // מבוגרים בלי ילד
 
   // חישוב תוספת מחיר עבור שטיחים 90x90
   const carpetSizeUpgradePrice = useMemo(() => {
@@ -125,13 +127,18 @@ export default function WorkshopBooking() {
     return upgradeCount * 100;
   }, [carpetSizes]);
 
-  // מחיר בסיס לפי שירות ומספר מבוגרים
+  // מחיר בסיס לפי שירות ומספר מבוגרים + זוגות הורה+ילד
   const basePrice = useMemo(() => {
     if (!selectedSlot || !pricingByService) return 0;
     const servicePricing = pricingByService[selectedSlot.serviceId];
     if (!servicePricing) return 0;
-    return servicePricing[adults] || servicePricing[1] * adults;
-  }, [selectedSlot, pricingByService, adults]);
+    
+    const pricePerAdult = servicePricing[1] || 250;
+    const parentChildPrice = servicePricing.parentChild || pricePerAdult;
+    
+    // מחיר מבוגרים רגילים + מחיר זוגות הורה+ילד
+    return (soloAdults * pricePerAdult) + (parentChildPairs * parentChildPrice);
+  }, [selectedSlot, pricingByService, soloAdults, parentChildPairs]);
 
   const orderTotalPreview = useMemo(
     () => basePrice + carpetSizeUpgradePrice,
@@ -369,9 +376,22 @@ export default function WorkshopBooking() {
                   <ProductSelectionSection
                     cart={cart}
                     setCart={setCart}
-                    participants={adults + children}
+                    adults={adults}
+                    children={children}
                     wixProducts={wixProducts}
                     onContinue={() => completeSection(4)}
+                    updateQuantity={(productId, delta) => {
+                      setCart(prevCart => {
+                        const totalItems = prevCart.reduce((sum, p) => sum + (p.quantity || 1), 0);
+                        return prevCart.map(p => {
+                          if ((p._id || p.id) !== productId) return p;
+                          const newQty = (p.quantity || 1) + delta;
+                          if (newQty < 1) return null;
+                          if (delta > 0 && totalItems >= adults) return p;
+                          return { ...p, quantity: newQty };
+                        }).filter(Boolean);
+                      });
+                    }}
                   />
                 )}
                 {section.id === 5 && (

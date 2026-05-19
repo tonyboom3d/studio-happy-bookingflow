@@ -1,15 +1,10 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { addLog } from '@/components/VersionLogger';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from '@/components/ui/sheet';
-import { Slider } from '@/components/ui/slider';
-import { Label } from '@/components/ui/label';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import {
-  X, Filter, Check, Info, Package, Calendar, CreditCard,
-  Minus, Plus, ZoomIn
-} from 'lucide-react';
+import { X, Check, Info, Package, ZoomIn, Minus, Plus } from 'lucide-react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -18,14 +13,28 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// Fallback products אם Wix עדיין לא שלח נתונים
 const FALLBACK_PRODUCTS = [
-  { id: 'fallback-1', title: 'טוען מוצרים...', price: 0, difficulty: 1, image: null, meetings_single_recycled: 1, meetings_couple_recycled: 1, meetings_single_new: 1, meetings_couple_new: 1 }
+  { id: 'fallback-1', title: 'טוען שטיחים...', price: 0, difficulty: 'קל', image: null }
 ];
 
-// Difficulty functions removed as requested
+const DIFFICULTY_LABELS = {
+  1: 'קל',
+  2: 'בינוני',
+  3: 'מאתגר',
+  easy: 'קל',
+  medium: 'בינוני',
+  hard: 'מאתגר'
+};
 
-const MAX_PRODUCTS = 21;
+function getDifficultyLabel(product) {
+  if (product.difficulty) {
+    if (typeof product.difficulty === 'string') {
+      return DIFFICULTY_LABELS[product.difficulty.toLowerCase()] || product.difficulty;
+    }
+    return DIFFICULTY_LABELS[product.difficulty] || 'קל';
+  }
+  return 'קל';
+}
 
 function hasProductImage(product) {
   const u = product?.image;
@@ -47,15 +56,12 @@ function hasProductDimensionInfo(product) {
   return meaningful(dimText) || meaningful(w) || meaningful(d) || meaningful(h);
 }
 
-function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPrices, onZoom, quantity, onQuantityChange }) {
+function ProductGridCard({ product, isSelected, onClick, onZoom, quantity, onQuantityChange, canIncrease }) {
   const [showDimensions, setShowDimensions] = useState(false);
   const showInfoButton = hasProductDimensionInfo(product);
   const showImage = hasProductImage(product);
   const dimText = typeof product?.dimensions === 'string' ? product.dimensions.trim() : '';
-  // מחיר המוצר בלי תוספת (התוספת מחושבת בסיכום הכולל)
-  const priceDisplay = showNewWoodPrices 
-    ? `₪${product.price}` 
-    : 'כולל במחיר';
+  const difficultyLabel = getDifficultyLabel(product);
 
   return (
     <motion.div
@@ -77,7 +83,6 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
         </motion.div>
       )}
 
-      {/* כפתור מידע — רק כשיש מידות להצגה */}
       {showInfoButton && (
         <TooltipProvider>
           <Tooltip open={showDimensions} onOpenChange={setShowDimensions}>
@@ -113,7 +118,7 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
       )}
 
       <button onClick={onClick} className="w-full text-right">
-        <div className="aspect-[4/3] overflow-hidden bg-[#FEFAE0] flex items-center justify-center relative group">
+        <div className="aspect-[4/3] overflow-hidden bg-[#E4C1F9]/30 flex items-center justify-center relative group">
           {showImage ? (
             <>
               <img
@@ -142,30 +147,9 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
         <div className="p-2.5 sm:p-4">
           <h3 className="font-semibold text-[#581E83] text-sm sm:text-base mb-1.5 sm:mb-2 leading-snug">{product.title}</h3>
 
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1 text-xs text-[#464646]">
-              <Calendar className="w-3.5 h-3.5" />
-              {/* מציג מפגשים × כמות אם יש יותר מיחידה אחת */}
-              <span>
-                {isSelected && quantity > 1 
-                  ? `${meetings * quantity} מפגשים` 
-                  : `${meetings} מפגשים`}
-              </span>
-            </div>
-
-            {/* הוסר רמת קושי כבקשת המשתמש */}
-          </div>
-
           <div className="flex flex-nowrap items-center justify-between gap-1 pt-2 border-t border-[#e8e8e8] min-w-0">
-            <span
-              className={cn(
-                "font-bold leading-tight min-w-0 shrink text-right",
-                showNewWoodPrices
-                  ? "text-sm sm:text-lg text-[#5E2F88]"
-                  : "text-[11px] sm:text-sm text-[#581E83] whitespace-nowrap"
-              )}
-            >
-              {priceDisplay}
+            <span className="text-xs sm:text-sm text-[#464646]/70">
+              רמת קושי: {difficultyLabel}
             </span>
             {isSelected && onQuantityChange && (
               <div
@@ -180,8 +164,9 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
                 </button>
                 <span className="text-xs sm:text-sm font-bold text-[#581E83] min-w-[18px] sm:min-w-[20px] text-center tabular-nums">{quantity || 1}</span>
                 <button
-                  onClick={(e) => { e.stopPropagation(); onQuantityChange(product._id || product.id, 1); }}
-                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); if (canIncrease) onQuantityChange(product._id || product.id, 1); }}
+                  disabled={!canIncrease}
+                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#581E83]" />
                 </button>
@@ -200,75 +185,49 @@ export default function ProductCatalogDrawer({
   cart,
   setCart,
   getMeetings,
-  participants,
+  totalCarpets,
   wixProducts,
   updateQuantity
 }) {
-  const [priceFilter, setPriceFilter] = useState([0, 1000]);
-  const [showFilters, setShowFilters] = useState(false);
   const [enlargedImage, setEnlargedImage] = useState(null);
   const productsContainerRef = useRef(null);
 
-  // For Tufting - one session per design
-  const getLocalMeetings = (product) => {
-    return 1;
-  };
-
-  // שימוש במוצרים מ-Wix, אם אין - fallback
   const products = wixProducts && wixProducts.length > 0 ? wixProducts : FALLBACK_PRODUCTS;
 
   const filteredProducts = useMemo(() => {
-    return products
-      .filter(product => {
-        return (
-          (product.price || 0) >= priceFilter[0] &&
-          (product.price || 0) <= priceFilter[1]
-        );
-      })
-      .sort((a, b) => {
-        const ta = (a.title || '').toString();
-        const tb = (b.title || '').toString();
-        return ta.localeCompare(tb, 'he');
-      });
-  }, [products, priceFilter]);
+    return [...products].sort((a, b) => {
+      const ta = (a.title || '').toString();
+      const tb = (b.title || '').toString();
+      return ta.localeCompare(tb, 'he');
+    });
+  }, [products]);
 
-  const MAX_SESSIONS = 8;
-
-  // סה"כ מפגשים נוכחי בעגלה
-  const currentTotalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)) * (p.quantity || 1), 0);
+  const totalItems = cart.reduce((sum, p) => sum + (p.quantity || 1), 0);
 
   const toggleProduct = (product) => {
-    // תמיכה גם ב-id וגם ב-_id מ-Wix CMS
     const productId = product._id || product.id;
     const isSelected = cart.some(p => (p._id || p.id) === productId);
     if (isSelected) {
       setCart(cart.filter(p => (p._id || p.id) !== productId));
     } else {
-      // מגבלה של 21 מוצרים מקסימום
-      if (cart.length >= MAX_PRODUCTS) return;
-      // מגבלה של 8 מפגשים מקסימום
-      const productMeetings = getLocalMeetings(product);
-      if (currentTotalMeetings + productMeetings > MAX_SESSIONS) return;
-      setCart([...cart, { ...product, id: productId, meetings: getMeetings(product), quantity: 1 }]);
+      if (totalItems >= totalCarpets) return;
+      setCart([...cart, { 
+        ...product, 
+        id: productId, 
+        meetings: getMeetings(product), 
+        quantity: 1,
+        difficulty: getDifficultyLabel(product)
+      }]);
     }
   };
 
-  const totalPriceBase = cart.reduce((sum, p) => sum + p.price * (p.quantity || 1), 0);
-  // מציג מחיר מוצרים ללא תוספת (התוספת מחושבת בחלונית הסיכום)
-  const totalPrice = totalPriceBase;
-  const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)) * (p.quantity || 1), 0);
-  const totalItems = cart.reduce((sum, p) => sum + (p.quantity || 1), 0);
-
-  // שליחת הודעה על מצב הקטלוג ל-FloatingSummary (בתוך ה-iframe) ול-VELO (אם צריך)
   useEffect(() => {
     try {
-      // שליחה ל-FloatingSummary בתוך ה-iframe
       window.postMessage({
         type: 'CATALOG_STATE_CHANGE',
         data: { isOpen }
       }, '*');
       
-      // שליחה ל-Wix VELO (אם עדיין משתמשים ב-CE חיצוני)
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({
           type: 'CATALOG_STATE_CHANGE',
@@ -282,34 +241,6 @@ export default function ProductCatalogDrawer({
     }
   }, [isOpen]);
 
-  // סגירת הסינון כשמשתמש גולל או לוחץ על מוצר
-  // תיקון: הגדרת הפונקציות בתוך ה-useEffect למניעת memory leaks
-  useEffect(() => {
-    if (!showFilters) return;
-
-    const container = productsContainerRef.current;
-    if (!container) return;
-
-    // הגדרה בתוך ה-effect - אותה reference תמיד
-    const handleScroll = () => setShowFilters(false);
-    
-    const handleClick = (e) => {
-      const isFilterSection = e.target.closest('[data-filter-section]');
-      const isProductCard = e.target.closest('[data-product-card]');
-      if (isProductCard && !isFilterSection) {
-        setShowFilters(false);
-      }
-    };
-
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('click', handleClick);
-
-    return () => {
-      container.removeEventListener('scroll', handleScroll);
-      document.removeEventListener('click', handleClick);
-    };
-  }, [showFilters]);
-
   return (
     <Sheet
       open={isOpen}
@@ -320,111 +251,33 @@ export default function ProductCatalogDrawer({
       <SheetContent
         side="right"
         hideCloseButton
-        className="flex h-full max-h-[100dvh] w-full flex-col overflow-hidden p-0 sm:max-w-xl bg-white"
+        className="flex h-full max-h-[100dvh] w-full flex-col overflow-hidden p-0 sm:max-w-xl"
+        style={{ backgroundColor: '#E4C1F9' }}
       >
-        <SheetClose
-          type="button"
-          className="absolute left-2 top-1.5 z-[70] flex h-9 w-9 items-center justify-center rounded-full border border-[#e8e8e8] bg-white text-[#581E83] shadow-sm transition-colors hover:bg-[#fafafa] focus:outline-none focus:ring-2 focus:ring-[#5E2F88]/40 sm:left-3 sm:top-3"
-          aria-label="סגור קטלוג"
-        >
-          <X className="h-5 w-5" />
-        </SheetClose>
-        <SheetHeader className="flex flex-col text-center sm:text-left shrink-0 space-y-0 border-b border-[#e8e8e8] bg-white pt-0 pr-1.5 pb-[5px] pl-[98px] md:p-4 md:pl-14 sticky top-0 z-10">
-          <div className="flex min-w-0 flex-nowrap items-center justify-end gap-1.5 overflow-x-auto [scrollbar-width:thin] md:gap-2">
-            <SheetTitle className="shrink-0 text-right text-base font-bold leading-tight text-[#581E83] whitespace-nowrap md:text-xl md:font-semibold">
-              קטלוג מוצרים
+        <SheetHeader className="flex flex-col text-center sm:text-left shrink-0 space-y-0 border-b border-[#5E2F88]/20 bg-[#E4C1F9] px-4 py-3 sticky top-0 z-10">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-[#581E83] hover:bg-white transition-colors"
+              aria-label="סגור קטלוג"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <SheetTitle className="text-lg font-bold text-[#581E83] md:text-xl">
+              קטלוג השטיחים שלנו
             </SheetTitle>
-
-            <div className="flex shrink-0 items-center">
-              <select
-                value={selectedWoodType}
-                onChange={(e) => setSelectedWoodType(e.target.value)}
-                className="h-7 max-w-[9rem] text-[11px] md:h-8 md:max-w-[10rem] md:text-xs px-1.5 md:px-2 rounded-md border border-[#5E2F88]/40 bg-white text-[#464646] focus:outline-none focus:ring-2 focus:ring-[#5E2F88]/30"
-                aria-label="סוג עץ"
-              >
-                <option value="recycled">עץ ממוחזר</option>
-                <option value="new">עץ חדש</option>
-              </select>
-            </div>
-
-            <div className="flex shrink-0 items-center">
-              <select
-                value={meetingsFilter}
-                onChange={(e) => setMeetingsFilter(e.target.value)}
-                className="h-7 max-w-[9rem] text-[11px] md:h-8 md:max-w-[10rem] md:text-xs px-1.5 md:px-2 rounded-md border border-[#5E2F88]/40 bg-white text-[#464646] focus:outline-none focus:ring-2 focus:ring-[#5E2F88]/30"
-                aria-label="סינון לפי מספר מפגשים"
-              >
-                <option value="all">כל המפגשים</option>
-                {meetingOptions.map((m) => (
-                  <option key={m} value={String(m)}>{m} מפגשים</option>
-                ))}
-              </select>
-            </div>
-
-            {selectedWoodType === 'new' && (
-              <button
-                type="button"
-                onClick={() => setShowFilters(!showFilters)}
-                className={cn(
-                  "flex items-center gap-1 px-2 py-1 md:px-3 md:py-1.5 rounded-lg border text-[11px] md:text-sm shrink-0",
-                  showFilters ? "border-[#5E2F88] bg-[#5E2F88]/10" : "border-[#e8e8e8] hover:border-[#5E2F88]"
-                )}
-              >
-                <Filter className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#581E83]" />
-                <span className="text-[#464646] whitespace-nowrap">מחיר</span>
-              </button>
-            )}
+            <div className="w-8" />
           </div>
-
-          {/* פילטרים */}
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-                data-filter-section
-              >
-                <div className="mt-2 p-3 md:p-4 bg-[#fafafa] rounded-xl space-y-4">
-                  <div>
-                    <Label className="text-sm text-[#464646]">מחיר (₪)</Label>
-                    <Slider
-                      value={priceFilter}
-                      onValueChange={setPriceFilter}
-                      min={0}
-                      max={1000}
-                      step={50}
-                      className="mt-2"
-                    />
-                    <div className="flex justify-between text-xs text-[#464646] mt-1">
-                      <span>₪{priceFilter[0]}</span>
-                      <span>₪{priceFilter[1]}</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </SheetHeader>
 
-        {/* מובייל: סיכום + המשך מחוץ לאזור הגלילה — נשארים קבועים למעלה בזמן גלילת המוצרים */}
-        <div className="shrink-0 border-b border-[#e8e8e8] bg-white px-2 pb-2 pt-0 sm:hidden">
-          <div className="rounded-lg border border-[#e8e8e8] bg-[#fafafa] p-2 text-sm text-[#464646]">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap gap-3">
-                <span className="flex items-center gap-1">
-                  <Package className="h-4 w-4 shrink-0 text-[#5E2F88]" />
-                  {cart.length} מוצרים{totalItems > cart.length ? ` (${totalItems} יח')` : ''}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4 shrink-0 text-[#5E2F88]" />
-                  {totalMeetings} מפגשים
-                </span>
-              </div>
-              <span className="flex items-center gap-1 font-medium text-[#581E83]">
-                <CreditCard className="h-4 w-4 text-[#5E2F88]" />
-                {selectedWoodType === 'recycled' ? 'כלול במחיר' : `₪${totalPrice}`}
+        {/* מובייל: סיכום + המשך */}
+        <div className="shrink-0 border-b border-[#5E2F88]/20 bg-[#E4C1F9] px-2 pb-2 pt-0 sm:hidden">
+          <div className="rounded-lg border border-[#5E2F88]/20 bg-white/80 p-2 text-sm text-[#464646]">
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1">
+                <Package className="h-4 w-4 shrink-0 text-[#5E2F88]" />
+                {totalItems}/{totalCarpets} שטיחים נבחרו
               </span>
             </div>
             <Button
@@ -440,7 +293,7 @@ export default function ProductCatalogDrawer({
           </div>
         </div>
 
-        {/* גריד מוצרים */}
+        {/* גריד שטיחים */}
         <div
           ref={productsContainerRef}
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 sm:p-4 sm:pb-4"
@@ -450,29 +303,26 @@ export default function ProductCatalogDrawer({
               const productId = product._id || product.id;
               const cartItem = cart.find(p => (p._id || p.id) === productId);
               const isSelected = !!cartItem;
-              const productMeetings = getLocalMeetings(product);
-              const wouldExceedLimit = !isSelected && (currentTotalMeetings + productMeetings > MAX_SESSIONS);
+              const canAddMore = totalItems < totalCarpets;
               return (
                 <div 
                   key={productId} 
                   data-product-card 
                   onClick={() => {
-                    if (wouldExceedLimit) return;
+                    if (!isSelected && !canAddMore) return;
                     toggleProduct(product);
-                    setShowFilters(false);
                   }}
-                  className={wouldExceedLimit ? 'opacity-40 cursor-not-allowed' : ''}
-                  title={wouldExceedLimit ? `מוצר זה דורש ${productMeetings} מפגשים, חורג מהמגבלה של ${MAX_SESSIONS}` : ''}
+                  className={!isSelected && !canAddMore ? 'opacity-40 cursor-not-allowed' : ''}
+                  title={!isSelected && !canAddMore ? `כבר בחרת ${totalCarpets} עיצובים` : ''}
                 >
                   <ProductGridCard
                     product={product}
                     isSelected={isSelected}
                     onClick={() => {}}
-                    meetings={getLocalMeetings(product)}
-                    showNewWoodPrices={selectedWoodType === 'new'}
                     onZoom={setEnlargedImage}
                     quantity={cartItem?.quantity || 1}
                     onQuantityChange={updateQuantity}
+                    canIncrease={totalItems < totalCarpets}
                   />
                 </div>
               );
@@ -480,31 +330,17 @@ export default function ProductCatalogDrawer({
           </div>
           {filteredProducts.length === 0 && (
             <div className="text-center py-12 text-[#464646]">
-              לא נמצאו מוצרים התואמים לסינון
+              לא נמצאו שטיחים
             </div>
           )}
         </div>
 
-        {/* טאבלט ומעלה: סיכום + המשך בגוף הדף */}
-        <div className="hidden sm:block shrink-0 border-t border-[#e8e8e8] bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
+        {/* טאבלט ומעלה: סיכום + המשך */}
+        <div className="hidden sm:block shrink-0 border-t border-[#5E2F88]/20 bg-[#E4C1F9] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="flex gap-4 text-sm">
-              <div className="flex items-center gap-1.5 text-[#464646]">
-                <Package className="w-4 h-4 text-[#5E2F88]" />
-                <span>{cart.length} מוצרים{totalItems > cart.length ? ` (${totalItems} יח')` : ''}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[#464646]">
-                <Calendar className="w-4 h-4 text-[#5E2F88]" />
-                <span>{totalMeetings} מפגשים</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <CreditCard className="w-4 h-4 text-[#5E2F88]" />
-              {selectedWoodType === 'recycled' ? (
-                <span className="text-sm text-[#581E83]">כלול במחיר</span>
-              ) : (
-                <span className="text-xl font-bold text-[#5E2F88]">₪{totalPrice}</span>
-              )}
+            <div className="flex items-center gap-1.5 text-[#464646]">
+              <Package className="w-4 h-4 text-[#5E2F88]" />
+              <span>{totalItems}/{totalCarpets} שטיחים נבחרו</span>
             </div>
           </div>
           <Button
@@ -520,11 +356,10 @@ export default function ProductCatalogDrawer({
         </div>
       </SheetContent>
 
-      {/* מודל להגדלת תמונה — מותאם לרוחב/גובה המסך (מובייל) */}
+      {/* מודל להגדלת תמונה */}
       <Dialog
         open={!!enlargedImage}
         onOpenChange={(open) => {
-          // חשוב: סוגרים רק כשה-Radix מדווח שה-dialog נסגר (open=false)
           if (!open) setEnlargedImage(null);
         }}
       >

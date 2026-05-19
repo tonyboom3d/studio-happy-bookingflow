@@ -17,6 +17,10 @@ export function computeOrderSummary({
   carpetSizeUpgradePrice = 0,
   totalPrice = 0
 }) {
+  // חישוב זוגות הורה+ילד ומבוגרים רגילים
+  const parentChildPairs = Math.min(adults, children);
+  const soloAdults = adults - parentChildPairs;
+
   // חישוב תוספת שטיח (אם לא הועבר)
   const calculatedCarpetUpgrade = carpetSizeUpgradePrice || 
     Object.values(carpetSizes).filter(s => s === '90x90').length * 100;
@@ -36,6 +40,16 @@ export function computeOrderSummary({
   const size60Count = Object.values(carpetSizes).filter(s => s === '60x60').length;
   const size90Count = Object.values(carpetSizes).filter(s => s === '90x90').length;
 
+  // בניית טקסט משתתפים
+  let participantsLabel = '';
+  if (parentChildPairs > 0 && soloAdults > 0) {
+    participantsLabel = `${soloAdults} ${soloAdults === 1 ? 'מבוגר' : 'מבוגרים'} + ${parentChildPairs} ${parentChildPairs === 1 ? 'זוג' : 'זוגות'} הורה+ילד`;
+  } else if (parentChildPairs > 0) {
+    participantsLabel = `${parentChildPairs} ${parentChildPairs === 1 ? 'זוג' : 'זוגות'} הורה+ילד`;
+  } else {
+    participantsLabel = `${adults} ${adults === 1 ? 'מבוגר' : 'מבוגרים'}`;
+  }
+
   const items = [
     {
       show: selectedSlot !== null,
@@ -46,8 +60,8 @@ export function computeOrderSummary({
     },
     {
       show: adults > 0,
-      icon: Users,
-      label: `${adults} ${adults === 1 ? 'מבוגר' : 'מבוגרים'}${children > 0 ? ` + ${children} ${children === 1 ? 'ילד' : 'ילדים'}` : ''}`,
+      icon: parentChildPairs > 0 ? Baby : Users,
+      label: participantsLabel,
       value: '',
       active: false
     },

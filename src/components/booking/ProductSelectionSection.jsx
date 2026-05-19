@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ShoppingBag, Wrench, HelpCircle, Sparkles, X, Minus, Plus } from 'lucide-react';
+import { ShoppingBag, Wrench, X, Minus, Plus, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import ProductCatalogDrawer from './ProductCatalogDrawer';
@@ -10,7 +10,8 @@ const MAX_PRODUCTS = 21;
 export default function ProductSelectionSection({
   cart,
   setCart,
-  participants,
+  adults,
+  children,
   onContinue,
   wixProducts,
   updateQuantity
@@ -20,6 +21,9 @@ export default function ProductSelectionSection({
   const [pendingLightbox, setPendingLightbox] = useState(null);
   const pendingTimerRef = useRef(null);
 
+  // חישוב מספר שטיחים (הורה+ילד = שטיח אחד)
+  const totalCarpets = adults;
+
   useEffect(() => {
     return () => {
       if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
@@ -27,11 +31,10 @@ export default function ProductSelectionSection({
   }, []);
 
   const getMeetings = (product) => {
-    return 1; // Tufting workshop - one session per design
+    return 1;
   };
 
   const handleOptionClick = (optionId) => {
-    // אם כבר בתהליך טעינה לפתיחת לייטבוקס – לא מאפשרים קליקים נוספים
     if (pendingLightbox) return;
 
     setSelectedOption(optionId);
@@ -41,11 +44,10 @@ export default function ProductSelectionSection({
       return;
     }
 
-    if (optionId === 'custom' || optionId === 'help') {
+    if (optionId === 'custom') {
       setPendingLightbox(optionId);
       pendingTimerRef.current = setTimeout(() => {
-        const lightboxId = optionId === 'custom' ? 'byMySelf' : 'needHelp';
-        window.parent.postMessage({ type: 'OPEN_LIGHTBOX', lightboxId }, '*');
+        window.parent.postMessage({ type: 'OPEN_LIGHTBOX', lightboxId: 'byMySelf' }, '*');
         setPendingLightbox(null);
         pendingTimerRef.current = null;
       }, 2000);
@@ -56,7 +58,7 @@ export default function ProductSelectionSection({
     {
       id: 'catalog',
       title: 'בחירה מהקטלוג',
-      description: 'בחרו מתוך מגוון מוצרים מוכנים',
+      description: 'בחרו מתוך מגוון עיצובים מוכנים',
       icon: ShoppingBag,
       recommended: true
     },
@@ -64,18 +66,11 @@ export default function ProductSelectionSection({
       id: 'custom',
       title: 'לבנות משהו משלי',
       description: 'יש לכם רעיון משלכם? ספרו לנו!',
-      icon: Wrench
-    },
-    {
-      id: 'help',
-      title: 'אשמח להתייעץ לפני',
-      description: 'נשמח לעזור לכם לבחור',
-      icon: HelpCircle
+      icon: Wrench,
+      recommended: false
     }
   ];
 
-  const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || getMeetings(p)) * (p.quantity || 1), 0);
-  const totalPrice = cart.reduce((sum, p) => sum + p.price * (p.quantity || 1), 0);
   const totalItems = cart.reduce((sum, p) => sum + (p.quantity || 1), 0);
 
   const removeProduct = (productId) => {
@@ -84,13 +79,15 @@ export default function ProductSelectionSection({
 
   return (
     <div className="py-4" dir="rtl">
-      {/* הנחייה */}
-      <div className="mb-3 text-right md:mb-4 md:text-center">
-        <p className="text-sm text-[#464646]/70">בחרו את אחת מהאפשרויות</p>
+      {/* כותרת משנה */}
+      <div className="mb-6 text-center">
+        <p className="text-sm text-[#464646]/80 leading-relaxed">
+          בוחרים את העיצוב שאתם רוצים והוא יחכה לכם לתפירה בסדנה
+        </p>
       </div>
 
-      {/* אפשרויות בחירה */}
-      <div className="mb-4 grid grid-cols-1 gap-2 md:mb-6 md:grid-cols-3 md:gap-4">
+      {/* אפשרויות בחירה - רק 2 */}
+      <div className="mb-4 grid grid-cols-1 gap-3 md:mb-6 md:grid-cols-2 md:gap-4 max-w-lg mx-auto">
         {options.map((option) => {
           const Icon = option.icon;
           const isSelected = selectedOption === option.id;
@@ -104,7 +101,7 @@ export default function ProductSelectionSection({
               disabled={disableWhilePending || isPending}
               className={cn(
                 "relative rounded-xl border-2 text-right",
-                "p-3 md:p-5",
+                "p-4 md:p-5",
                 isSelected
                   ? "border-[#5E2F88] bg-[#5E2F88]/5 shadow-lg"
                   : "border-[#e8e8e8] hover:border-[#5E2F88] bg-white hover:shadow-lg",
@@ -148,11 +145,12 @@ export default function ProductSelectionSection({
           animate={{ opacity: 1, y: 0 }}
           className="mb-6"
         >
-          <h4 className="font-medium text-[#581E83] mb-3">המוצרים שנבחרו:</h4>
+          <h4 className="font-medium text-[#581E83] mb-3">
+            העיצובים שנבחרו: ({totalItems}/{totalCarpets} שטיחים)
+          </h4>
           <div className="space-y-2">
             {cart.map(product => {
               const pid = product._id || product.id;
-              const meetingsTotal = (product.meetings || getMeetings(product)) * (product.quantity || 1);
               return (
                 <motion.div
                   key={pid}
@@ -169,16 +167,15 @@ export default function ProductSelectionSection({
                     />
                   </div>
 
-                  {/* שורה אחת: כותרת + מחיר/כלול + מפגשים */}
                   <div className="flex-1 min-w-0 flex items-center flex-nowrap gap-1.5 sm:gap-2">
                     <h5 className="flex-1 min-w-0 font-medium text-[#581E83] text-xs sm:text-sm leading-tight truncate">
                       {product.title}
                     </h5>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[10px] sm:text-xs text-[#464646]/70 whitespace-nowrap tabular-nums leading-none">
-                        עיצוב
+                    {product.difficulty && (
+                      <span className="text-[10px] sm:text-xs text-[#464646]/60 whitespace-nowrap">
+                        רמת קושי: {product.difficulty}
                       </span>
-                    </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1 sm:gap-2 shrink-0">
@@ -196,7 +193,8 @@ export default function ProductSelectionSection({
                       <button
                         type="button"
                         onClick={() => updateQuantity(pid, 1)}
-                        className="w-6 h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors"
+                        disabled={totalItems >= totalCarpets}
+                        className="w-6 h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Plus className="w-3 h-3 text-[#581E83]" />
                       </button>
@@ -216,7 +214,7 @@ export default function ProductSelectionSection({
         </motion.div>
       )}
 
-      {/* כפתור המשך - הסרת אנימציה אינסופית לחיסכון בזיכרון */}
+      {/* כפתור המשך */}
       <div className="flex justify-center mt-8">
         <Button
           onClick={onContinue}
@@ -228,14 +226,14 @@ export default function ProductSelectionSection({
         </Button>
       </div>
 
-      {/* קטלוג מוצרים */}
+      {/* קטלוג שטיחים */}
       <ProductCatalogDrawer
         isOpen={showCatalog}
         onClose={() => setShowCatalog(false)}
         cart={cart}
         setCart={setCart}
         getMeetings={getMeetings}
-        participants={participants}
+        totalCarpets={totalCarpets}
         wixProducts={wixProducts}
         updateQuantity={updateQuantity}
       />
