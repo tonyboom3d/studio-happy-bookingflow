@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, CreditCard, Loader2 } from 'lucide-react';
+import { ArrowRight, CreditCard } from 'lucide-react';
 import AccordionSection from '../components/booking/AccordionSection';
 import TimeSlotsSection from '../components/booking/TimeSlotsSection';
 import ParticipantsSection from '../components/booking/ParticipantsSection';
@@ -223,18 +223,39 @@ export default function WorkshopBooking() {
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
-          className="flex flex-col items-center"
+          className="flex flex-col items-center gap-5"
         >
-          <div className="relative mb-6">
-            <div className="w-20 h-20 border-4 border-[#e8e8e8] border-t-[#5E2F88] rounded-full animate-spin" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 text-[#5E2F88] animate-pulse" />
-            </div>
+          {/* לוגו עם טבעת סיבוב */}
+          <div className="relative flex items-center justify-center">
+            {/* טבעת חיצונית מסתובבת */}
+            <div className="w-28 h-28 rounded-full border-4 border-[#e8e8e8] border-t-[#5E2F88] animate-spin absolute" />
+            {/* טבעת פנימית מסתובבת בכיוון הפוך */}
+            <div className="w-20 h-20 rounded-full border-2 border-[#E4C1F9] border-b-[#7B3DB0] animate-spin absolute"
+              style={{ animationDirection: 'reverse', animationDuration: '1.2s' }}
+            />
+            {/* תמונת לוגו במרכז */}
+            <img
+              src="https://static.wixstatic.com/media/6b73e9_6e7c52763bb24ba6812aaac51ecb4296~mv2.png"
+              alt="סטודיו האפי"
+              className="w-14 h-14 object-contain rounded-full"
+            />
           </div>
-          <h2 className="text-2xl font-bold text-[#581E83] animate-pulse">
-            סטודיו האפי
-          </h2>
-          <p className="text-[#464646]/70 mt-2">טוען נתונים...</p>
+
+          <p className="text-lg font-semibold text-[#581E83] tracking-wide">
+            טוען סדנת טאפטינג
+          </p>
+
+          {/* נקודות אנימציה */}
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="w-2 h-2 rounded-full bg-[#5E2F88]"
+                animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
+                transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+              />
+            ))}
+          </div>
         </motion.div>
       </div>
     );
