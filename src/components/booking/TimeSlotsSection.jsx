@@ -46,7 +46,7 @@ const ISRAELI_HOLIDAYS = {
 function getAvailabilityInfo(availableSlots) {
   const availableDates = new Set();
   const spotsMap = new Map();
-  const slotsMap = new Map(); // מערך של slots לכל תאריך
+  const slotsMap = new Map();
 
   if (!Array.isArray(availableSlots)) {
     return { availableDates, spotsMap, slotsMap };
@@ -67,17 +67,14 @@ function getAvailabilityInfo(availableSlots) {
       return;
     }
 
-    // עדכון מקסימום מקומות ליום
     const currentMax = spotsMap.get(dateStr) || 0;
     if (openSpots > currentMax) {
       spotsMap.set(dateStr, openSpots);
     }
 
-    // הוספת slot למערך של היום
     const daySlots = slotsMap.get(dateStr) || [];
     daySlots.push(slot);
     slotsMap.set(dateStr, daySlots);
-
     availableDates.add(dateStr);
   });
 
@@ -102,15 +99,78 @@ function getSlotTime(slot) {
   return `${String(dt.hourOfDay || 0).padStart(2, '0')}:${String(dt.minutesOfHour || 0).padStart(2, '0')}`;
 }
 
-function getSlotDuration(slot) {
-  if (!slot?.start?.timestamp || !slot?.end?.timestamp) return null;
+function getSlotDurationMinutes(slot) {
+  if (!slot?.start?.timestamp || !slot?.end?.timestamp) return 0;
   const startMs = new Date(slot.start.timestamp).getTime();
   const endMs = new Date(slot.end.timestamp).getTime();
-  const diffMinutes = Math.round((endMs - startMs) / 60000);
-  const hours = Math.floor(diffMinutes / 60);
-  const minutes = diffMinutes % 60;
-  if (minutes === 0) return `${hours} שעות`;
-  return `${hours}:${String(minutes).padStart(2, '0')} שעות`;
+  return Math.round((endMs - startMs) / 60000);
+}
+
+function formatDuration(minutes) {
+  if (!minutes) return null;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (mins === 0) return `${hours} שעות`;
+  return `${hours}:${String(mins).padStart(2, '0')} שעות`;
+}
+
+function getSlotDuration(slot) {
+  return formatDuration(getSlotDurationMinutes(slot));
+}
+
+// Tooltip קומפוננטה
+function DayTooltip({ slots, pricingByService, holiday, isVisible }) {
+  if (!isVisible || !slots?.length) return null;
+
+  const minPrice = getMinPriceForDate(slots, pricingByService);
+  const times = slots.map(slot => getSlotTime(slot)).sort();
+  const durations = [...new Set(slots.map(slot => formatDuration(getSlotDurationMinutes(slot))).filter(Boolean))];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 5, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 5, scale: 0.95 }}
+      transition={{ duration: 0.15 }}
+      className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-1.5 bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 p-2 min-w-[140px] text-right"
+      style={{ pointerEvents: 'none' }}
+    >
+      <div className="space-y-1 text-[10px]">
+        {/* חג */}
+        {holiday && (
+          <div className="flex items-center gap-1 text-[#7B3DB0] font-medium">
+            <span>🎉</span>
+            <span>{holiday}</span>
+          </div>
+        )}
+        
+        {/* מחיר */}
+        {minPrice && (
+          <div className="flex items-center gap-1 text-[#581E83]">
+            <span>💰</span>
+            <span>החל מ-{minPrice}₪</span>
+          </div>
+        )}
+        
+        {/* שעות */}
+        <div className="flex items-center gap-1 text-[#464646]">
+          <Clock className="w-3 h-3" />
+          <span>{times.length > 1 ? `${times.length} סדנאות` : times[0]}</span>
+        </div>
+        
+        {/* משך */}
+        {durations.length > 0 && (
+          <div className="flex items-center gap-1 text-[#464646]">
+            <Timer className="w-3 h-3" />
+            <span>{durations[0]}</span>
+          </div>
+        )}
+      </div>
+      
+      {/* חץ */}
+      <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white" />
+    </motion.div>
+  );
 }
 
 export default function TimeSlotsSection({
@@ -123,7 +183,8 @@ export default function TimeSlotsSection({
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [today] = useState(() => startOfDay(new Date()));
   const [whatsappOpen, setWhatsappOpen] = useState(false);
-  const [timePickerDate, setTimePickerDate] = useState(null); // תאריך שנבחר עם כמה שעות
+  const [timePickerDate, setTimePickerDate] = useState(null);
+  const [hoveredDate, setHoveredDate] = useState(null);
 
   const { availableDates, slotsMap } = useMemo(
     () => getAvailabilityInfo(Array.isArray(availableSlots) ? availableSlots : []),
@@ -164,7 +225,6 @@ export default function TimeSlotsSection({
     return format(startOfDay(date), 'yyyy-MM-dd') === selectedDateStr;
   };
 
-  // נתוני התאריך הנבחר
   const selectedInfo = useMemo(() => {
     if (!selectedSlot?.start) return null;
     const dt = selectedSlot.start.localDateTime;
@@ -179,7 +239,6 @@ export default function TimeSlotsSection({
     return { dateFormatted, dayName, timeFormatted, duration };
   }, [selectedSlot]);
 
-  // Slots לתאריך שנבחר לבחירת שעה
   const timePickerSlots = timePickerDate ? (slotsMap.get(timePickerDate) || []).sort((a, b) => {
     const timeA = a.start?.localDateTime?.hourOfDay || 0;
     const timeB = b.start?.localDateTime?.hourOfDay || 0;
@@ -219,7 +278,7 @@ export default function TimeSlotsSection({
           ))}
         </div>
 
-        {/* ימים — ריבועים קטנים עם מרווח */}
+        {/* ימים */}
         <div className="grid grid-cols-7 gap-1">
           {calendarDays.map((day, i) => {
             const sod = startOfDay(day);
@@ -233,43 +292,58 @@ export default function TimeSlotsSection({
             const isDisabled = !isCurrentMonth || isPast || !hasSlot;
             const isHoliday = ISRAELI_HOLIDAYS[dateStr];
             const hasMultipleSlots = daySlots.length > 1;
+            const isHovered = hoveredDate === dateStr && hasSlot;
 
             return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => handleDateClick(day)}
-                disabled={isDisabled}
-                title={isHoliday || undefined}
-                className={cn(
-                  'relative flex flex-col items-center justify-center rounded-lg text-[10px] transition-all h-9 w-full',
-                  !isCurrentMonth && 'text-[#464646]/15',
-                  isCurrentMonth && isDisabled && !isHoliday && 'text-[#b0b0b0] cursor-default',
-                  isCurrentMonth && isHoliday && isDisabled && 'bg-[#DA9BFF]/30 text-[#7B3DB0] cursor-default',
-                  isCurrentMonth && isHoliday && hasSlot && !isSelected && 'bg-[#DA9BFF]/40 text-[#581E83] hover:bg-[#DA9BFF]/60 cursor-pointer border border-[#DA9BFF]',
-                  isCurrentMonth && !isPast && hasSlot && !isSelected && !isHoliday &&
-                    'text-[#581E83] hover:bg-[#5E2F88]/15 cursor-pointer border border-[#5E2F88]/30 bg-[#5E2F88]/5',
-                  isSelected && 'bg-[#5E2F88] text-white shadow-md cursor-pointer'
-                )}
-              >
-                <span className={cn(
-                  'font-semibold leading-none',
-                  isCurrentMonth && isDisabled && !isHoliday && 'line-through decoration-[#b0b0b0]/60'
-                )}>
-                  {format(day, 'd')}
-                </span>
-                {isCurrentMonth && !isPast && hasSlot && minPrice && (
+              <div key={i} className="relative">
+                <button
+                  type="button"
+                  onClick={() => handleDateClick(day)}
+                  onMouseEnter={() => hasSlot && setHoveredDate(dateStr)}
+                  onMouseLeave={() => setHoveredDate(null)}
+                  disabled={isDisabled}
+                  className={cn(
+                    'relative flex flex-col items-center justify-center rounded-lg text-[10px] transition-all h-9 w-full',
+                    !isCurrentMonth && 'text-[#464646]/15',
+                    isCurrentMonth && isDisabled && !isHoliday && 'text-[#b0b0b0] cursor-default',
+                    isCurrentMonth && isHoliday && isDisabled && 'bg-[#DA9BFF]/30 text-[#7B3DB0] cursor-default',
+                    isCurrentMonth && isHoliday && hasSlot && !isSelected && 'bg-[#DA9BFF]/40 text-[#581E83] hover:bg-[#DA9BFF]/60 cursor-pointer border border-[#DA9BFF]',
+                    isCurrentMonth && !isPast && hasSlot && !isSelected && !isHoliday &&
+                      'text-[#581E83] hover:bg-[#5E2F88]/15 cursor-pointer border border-[#5E2F88]/30 bg-[#5E2F88]/5',
+                    isSelected && 'bg-[#5E2F88] text-white shadow-md cursor-pointer'
+                  )}
+                >
                   <span className={cn(
-                    'text-[5px] leading-none mt-0.5 whitespace-nowrap',
-                    isSelected ? 'text-white/80' : 'text-[#5E2F88]/80'
+                    'font-semibold leading-none',
+                    isCurrentMonth && isDisabled && !isHoliday && 'line-through decoration-[#b0b0b0]/60'
                   )}>
-                    החל מ{minPrice}₪
+                    {format(day, 'd')}
                   </span>
-                )}
-                {hasMultipleSlots && !isSelected && (
-                  <span className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-[#5E2F88]" />
-                )}
-              </button>
+                  {isCurrentMonth && !isPast && hasSlot && minPrice && (
+                    <span className={cn(
+                      'text-[5px] leading-none mt-0.5 whitespace-nowrap',
+                      isSelected ? 'text-white/80' : 'text-[#5E2F88]/80'
+                    )}>
+                      החל מ{minPrice}₪
+                    </span>
+                  )}
+                  {hasMultipleSlots && !isSelected && (
+                    <span className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-[#5E2F88]" />
+                  )}
+                </button>
+
+                {/* Tooltip */}
+                <AnimatePresence>
+                  {isHovered && (
+                    <DayTooltip
+                      slots={daySlots}
+                      pricingByService={pricingByService}
+                      holiday={isHoliday}
+                      isVisible={true}
+                    />
+                  )}
+                </AnimatePresence>
+              </div>
             );
           })}
         </div>
@@ -297,7 +371,7 @@ export default function TimeSlotsSection({
         </div>
       </div>
 
-      {/* בחירת שעה — כשיש כמה סדנאות באותו יום */}
+      {/* בחירת שעה */}
       <AnimatePresence>
         {timePickerDate && timePickerSlots.length > 0 && (
           <motion.div
@@ -318,24 +392,29 @@ export default function TimeSlotsSection({
                 </button>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {timePickerSlots.map((slot, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleTimeSelect(slot)}
-                    className="px-3 py-1.5 rounded-lg border border-[#5E2F88]/30 bg-white text-xs font-medium text-[#581E83] hover:bg-[#5E2F88] hover:text-white hover:border-[#5E2F88] transition-colors"
-                  >
-                    {getSlotTime(slot)}
-                    <span className="text-[9px] opacity-70 mr-1">({slot.openSpots} מקומות)</span>
-                  </button>
-                ))}
+                {timePickerSlots.map((slot, idx) => {
+                  const duration = getSlotDuration(slot);
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleTimeSelect(slot)}
+                      className="px-3 py-1.5 rounded-lg border border-[#5E2F88]/30 bg-white text-xs font-medium text-[#581E83] hover:bg-[#5E2F88] hover:text-white hover:border-[#5E2F88] transition-colors"
+                    >
+                      <div className="flex flex-col items-center">
+                        <span>{getSlotTime(slot)}</span>
+                        <span className="text-[8px] opacity-70">{duration} • {slot.openSpots} מקומות</span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* תצוגת תאריך נבחר עם אייקונים */}
+      {/* תצוגת תאריך נבחר */}
       {selectedInfo && (
         <div className="mt-3 rounded-xl border border-[#5E2F88]/20 bg-[#5E2F88]/5 p-2.5">
           <div className="flex items-center justify-center gap-4 flex-wrap">
