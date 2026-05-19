@@ -73,17 +73,17 @@ export default function ConsultationModal({ isOpen, onClose }) {
               animate={{ opacity: 1, scale: 1 }}
               className="py-8 text-center"
             >
-              <div className="w-16 h-16 rounded-full bg-[#ADC178] flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 rounded-full bg-[#5E2F88] flex items-center justify-center mx-auto mb-4">
                 <Check className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-[#6B584C] mb-2">קיבלנו את הפנייה שלך!</h3>
+              <h3 className="text-xl font-semibold text-[#581E83] mb-2">קיבלנו את הפנייה שלך!</h3>
               <p className="text-[#464646] mb-6">עושים מאמץ לענות לך בהקדם האפשרי</p>
               <div className="flex gap-3 justify-center">
                 <Button variant="outline" onClick={handleClose}>
                   סגירת חלון
                 </Button>
                 <Button
-                  className="bg-[#ADC178] hover:bg-[#9ab569]"
+                  className="bg-[#5E2F88] hover:bg-[#7B3DB0]"
                   onClick={handleClose}
                 >
                   חזרה להזמנה
@@ -96,7 +96,7 @@ export default function ConsultationModal({ isOpen, onClose }) {
               animate={{ opacity: 1 }}
             >
               <DialogHeader>
-                <DialogTitle className="text-[#6B584C] text-right">אשמח להתייעץ</DialogTitle>
+                <DialogTitle className="text-[#581E83] text-right">אשמח להתייעץ</DialogTitle>
               </DialogHeader>
 
               <form onSubmit={handleSubmit} className="space-y-4 mt-4">
@@ -149,7 +149,7 @@ export default function ConsultationModal({ isOpen, onClose }) {
                 <div>
                   <Label>העלאת תמונות/סרטון (אופציונלי)</Label>
                   <div className="mt-1">
-                    <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-[#e8e8e8] rounded-lg cursor-pointer hover:border-[#ADC178] transition-colors">
+                    <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-[#e8e8e8] rounded-lg cursor-pointer hover:border-[#5E2F88] transition-colors">
                       <Upload className="w-5 h-5 text-[#464646]" />
                       <span className="text-sm text-[#464646]">
                         {files.length > 0 ? `${files.length} קבצים נבחרו` : 'לחץ לבחירת קבצים'}
@@ -179,7 +179,7 @@ export default function ConsultationModal({ isOpen, onClose }) {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-[#ADC178] hover:bg-[#9ab569]"
+                  className="w-full bg-[#5E2F88] hover:bg-[#7B3DB0]"
                 >
                   {isSubmitting ? (
                     <>

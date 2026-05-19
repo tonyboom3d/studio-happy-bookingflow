@@ -11,14 +11,13 @@ export default function ProductSelectionSection({
   cart,
   setCart,
   participants,
-  woodType,
   onContinue,
-  wixProducts, // הוספת מוצרים מ-Wix
-  updateQuantity // עדכון כמות מוצר בעגלה
+  wixProducts,
+  updateQuantity
 }) {
   const [showCatalog, setShowCatalog] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
-  const [pendingLightbox, setPendingLightbox] = useState(null); // 'custom' | 'help' | null
+  const [pendingLightbox, setPendingLightbox] = useState(null);
   const pendingTimerRef = useRef(null);
 
   useEffect(() => {
@@ -28,14 +27,7 @@ export default function ProductSelectionSection({
   }, []);
 
   const getMeetings = (product) => {
-    const isCouple = participants >= 2;
-    const isRecycled = woodType === 'recycled';
-
-    // שימוש בשדות החדשים מ-Wix CMS
-    if (isCouple && isRecycled) return parseInt(product.meetings_couple_recycled) || 2;
-    if (isCouple && !isRecycled) return parseInt(product.meetings_couple_new) || 3;
-    if (!isCouple && isRecycled) return parseInt(product.meetings_single_recycled) || 3;
-    return parseInt(product.meetings_single_new) || 4;
+    return 1; // Tufting workshop - one session per design
   };
 
   const handleOptionClick = (optionId) => {
@@ -114,32 +106,32 @@ export default function ProductSelectionSection({
                 "relative rounded-xl border-2 text-right",
                 "p-3 md:p-5",
                 isSelected
-                  ? "border-[#ADC178] bg-[#ADC178]/5 shadow-lg"
-                  : "border-[#e8e8e8] hover:border-[#ADC178] bg-white hover:shadow-lg",
+                  ? "border-[#5E2F88] bg-[#5E2F88]/5 shadow-lg"
+                  : "border-[#e8e8e8] hover:border-[#5E2F88] bg-white hover:shadow-lg",
                 (disableWhilePending || isPending) && "disabled:opacity-70 disabled:cursor-not-allowed"
               )}
             >
               {option.recommended && (
-                <div className="absolute -top-2.5 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-[#ADC178] px-2 py-0.5 text-[10px] font-medium text-white md:px-3 md:text-xs">
+                <div className="absolute -top-2.5 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-[#5E2F88] px-2 py-0.5 text-[10px] font-medium text-white md:px-3 md:text-xs">
                   <Sparkles className="h-2.5 w-2.5 md:h-3 md:w-3" />
                   מומלץ
                 </div>
               )}
 
               <div className="flex w-full flex-row items-center gap-3 text-right md:flex-col md:items-center md:text-center md:gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f5f5f5] text-[#6B584C] md:h-12 md:w-12">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f5f5f5] text-[#581E83] md:h-12 md:w-12">
                   <Icon className="h-5 w-5 md:h-6 md:w-6" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-semibold leading-tight text-[#6B584C] md:text-base">{option.title}</h3>
+                  <h3 className="text-sm font-semibold leading-tight text-[#581E83] md:text-base">{option.title}</h3>
                   <p className="mt-0.5 text-xs leading-snug text-[#464646]/70 md:mt-1 md:text-sm">{option.description}</p>
                 </div>
               </div>
 
               {isPending && (
                 <div className="absolute inset-0 rounded-xl bg-white/70 backdrop-blur-[1px] flex items-center justify-center">
-                  <div className="flex items-center gap-2 text-[#6B584C]">
-                    <span className="h-4 w-4 rounded-full border-2 border-[#6B584C]/25 border-t-[#6B584C] animate-spin" />
+                  <div className="flex items-center gap-2 text-[#581E83]">
+                    <span className="h-4 w-4 rounded-full border-2 border-[#581E83]/25 border-t-[#581E83] animate-spin" />
                     <span className="text-xs font-medium">טוען…</span>
                   </div>
                 </div>
@@ -156,7 +148,7 @@ export default function ProductSelectionSection({
           animate={{ opacity: 1, y: 0 }}
           className="mb-6"
         >
-          <h4 className="font-medium text-[#6B584C] mb-3">המוצרים שנבחרו:</h4>
+          <h4 className="font-medium text-[#581E83] mb-3">המוצרים שנבחרו:</h4>
           <div className="space-y-2">
             {cart.map(product => {
               const pid = product._id || product.id;
@@ -167,7 +159,7 @@ export default function ProductSelectionSection({
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10 }}
-                  className="bg-white px-2 py-2 sm:p-3 rounded-lg border border-[#e8e8e8] flex flex-nowrap items-center gap-2 min-w-0 hover:border-[#ADC178]/50 transition-colors"
+                  className="bg-white px-2 py-2 sm:p-3 rounded-lg border border-[#e8e8e8] flex flex-nowrap items-center gap-2 min-w-0 hover:border-[#5E2F88]/50 transition-colors"
                 >
                   <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg overflow-hidden bg-[#f5f5f5] shrink-0">
                     <img
@@ -179,21 +171,12 @@ export default function ProductSelectionSection({
 
                   {/* שורה אחת: כותרת + מחיר/כלול + מפגשים */}
                   <div className="flex-1 min-w-0 flex items-center flex-nowrap gap-1.5 sm:gap-2">
-                    <h5 className="flex-1 min-w-0 font-medium text-[#6B584C] text-xs sm:text-sm leading-tight truncate">
+                    <h5 className="flex-1 min-w-0 font-medium text-[#581E83] text-xs sm:text-sm leading-tight truncate">
                       {product.title}
                     </h5>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {woodType === 'recycled' ? (
-                        <span className="text-[10px] sm:text-xs text-[#6B584C] whitespace-nowrap leading-none">
-                          כלול במחיר
-                        </span>
-                      ) : (
-                        <span className="text-xs font-bold text-[#ADC178] whitespace-nowrap tabular-nums leading-none">
-                          ₪{product.price * (product.quantity || 1)}
-                        </span>
-                      )}
                       <span className="text-[10px] sm:text-xs text-[#464646]/70 whitespace-nowrap tabular-nums leading-none">
-                        {meetingsTotal} מפגשים
+                        עיצוב
                       </span>
                     </div>
                   </div>
@@ -203,19 +186,19 @@ export default function ProductSelectionSection({
                       <button
                         type="button"
                         onClick={() => updateQuantity(pid, -1)}
-                        className="w-6 h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#ADC178] hover:bg-[#ADC178]/10 transition-colors"
+                        className="w-6 h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors"
                       >
-                        <Minus className="w-3 h-3 text-[#6B584C]" />
+                        <Minus className="w-3 h-3 text-[#581E83]" />
                       </button>
-                      <span className="text-xs sm:text-sm font-bold text-[#6B584C] min-w-[18px] sm:min-w-[20px] text-center tabular-nums">
+                      <span className="text-xs sm:text-sm font-bold text-[#581E83] min-w-[18px] sm:min-w-[20px] text-center tabular-nums">
                         {product.quantity || 1}
                       </span>
                       <button
                         type="button"
                         onClick={() => updateQuantity(pid, 1)}
-                        className="w-6 h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#ADC178] hover:bg-[#ADC178]/10 transition-colors"
+                        className="w-6 h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors"
                       >
-                        <Plus className="w-3 h-3 text-[#6B584C]" />
+                        <Plus className="w-3 h-3 text-[#581E83]" />
                       </button>
                     </div>
                     <button
@@ -238,10 +221,10 @@ export default function ProductSelectionSection({
         <Button
           onClick={onContinue}
           disabled={cart.length === 0}
-          className="bg-[#ADC178] hover:bg-[#9ab569] hover:scale-[1.02] text-white px-8 py-3 rounded-lg
+          className="bg-[#5E2F88] hover:bg-[#7B3DB0] hover:scale-[1.02] text-white px-8 py-3 rounded-lg
                      transition-all duration-200 text-lg disabled:opacity-50"
         >
-          המשך לבחירת תאריכים
+          המשך לפרטים אישיים
         </Button>
       </div>
 
@@ -252,7 +235,6 @@ export default function ProductSelectionSection({
         cart={cart}
         setCart={setCart}
         getMeetings={getMeetings}
-        woodType={woodType}
         participants={participants}
         wixProducts={wixProducts}
         updateQuantity={updateQuantity}

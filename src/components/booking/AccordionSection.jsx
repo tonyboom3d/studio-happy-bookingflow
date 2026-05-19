@@ -28,7 +28,7 @@ export default function AccordionSection({
           ? "border-[#e8e8e8] shadow-lg"
           : "border-[#e8e8e8]"
         : isActive
-          ? "border-[#ADC178] shadow-lg"
+          ? "border-[#5E2F88] shadow-lg"
           : "border-[#e8e8e8]",
       isLocked && "opacity-60"
     )}>
@@ -40,7 +40,7 @@ export default function AccordionSection({
           "w-full flex items-center justify-between p-4 md:p-5 text-right transition-colors duration-200",
           isSummary
             ? cn(
-                isActive ? "bg-[#6B584C] text-white" : "bg-[#5a4d42] text-white hover:bg-[#6B584C]",
+                isActive ? "bg-[#581E83] text-white" : "bg-[#581E83] text-white hover:bg-[#581E83]",
                 isLocked && "cursor-not-allowed"
               )
             : cn(
@@ -58,8 +58,8 @@ export default function AccordionSection({
                 : isActive
                   ? "bg-white/20 text-white"
                   : "bg-white/15 text-white"
-              : isCompleted ? "bg-[#ADC178] text-white" : 
-            isActive ? "bg-[#6B584C] text-white" : 
+              : isCompleted ? "bg-[#5E2F88] text-white" : 
+            isActive ? "bg-[#581E83] text-white" : 
             "bg-[#e8e8e8] text-[#464646]"
           )}>
             {isCompleted ? <Check className="w-4 h-4" /> : 
@@ -70,7 +70,7 @@ export default function AccordionSection({
             "text-lg font-medium min-w-0 truncate",
             isSummary
               ? "text-white"
-              : isActive ? "text-[#6B584C]" : "text-[#464646]"
+              : isActive ? "text-[#581E83]" : "text-[#464646]"
           )}>
             {titleMobile ? (
               <>
@@ -92,7 +92,7 @@ export default function AccordionSection({
               "w-5 h-5 transition-colors",
               isSummary
                 ? "text-white/90"
-                : isActive ? "text-[#ADC178]" : "text-[#464646]"
+                : isActive ? "text-[#5E2F88]" : "text-[#464646]"
             )} />
           </motion.div>
         </div>

@@ -5,12 +5,14 @@ import { OrderSummaryCard } from './FloatingSummary';
  * תוכן שלב "סיכום הזמנה" — רק תצוגת פירוט (תשלום בשלב פרטים אישיים).
  */
 export default function OrderSummarySection({
-  participants,
-  woodType,
+  adults,
+  children,
+  carpetSizes,
   cart,
-  selectedSlots,
-  totalMeetings,
-  activeSection
+  selectedSlot,
+  basePrice,
+  carpetSizeUpgradePrice,
+  totalPrice
 }) {
   return (
     <div className="flex flex-col pb-2 md:pb-4" dir="rtl">
@@ -20,12 +22,14 @@ export default function OrderSummarySection({
 
       <OrderSummaryCard
         key="order-summary-step"
-        participants={participants}
-        woodType={woodType}
+        adults={adults}
+        children={children}
+        carpetSizes={carpetSizes}
         cart={cart}
-        selectedSlots={selectedSlots}
-        totalMeetings={totalMeetings}
-        activeSection={activeSection}
+        selectedSlot={selectedSlot}
+        basePrice={basePrice}
+        carpetSizeUpgradePrice={carpetSizeUpgradePrice}
+        totalPrice={totalPrice}
         variant="step"
         className="shadow-none"
       />

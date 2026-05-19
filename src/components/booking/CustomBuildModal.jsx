@@ -77,17 +77,17 @@ export default function CustomBuildModal({ isOpen, onClose }) {
               animate={{ opacity: 1, scale: 1 }}
               className="py-8 text-center"
             >
-              <div className="w-16 h-16 rounded-full bg-[#ADC178] flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 rounded-full bg-[#5E2F88] flex items-center justify-center mx-auto mb-4">
                 <Check className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-[#6B584C] mb-2">אנחנו בודקים את פרטי הבקשה שלך</h3>
+              <h3 className="text-xl font-semibold text-[#581E83] mb-2">אנחנו בודקים את פרטי הבקשה שלך</h3>
               <p className="text-[#464646] mb-6">נחזור אליך בהקדם האפשרי עד 24 שעות</p>
               <div className="flex gap-3 justify-center">
                 <Button variant="outline" onClick={handleClose}>
                   סגירת חלון
                 </Button>
                 <Button
-                  className="bg-[#ADC178] hover:bg-[#9ab569]"
+                  className="bg-[#5E2F88] hover:bg-[#7B3DB0]"
                   onClick={handleClose}
                 >
                   חזרה להזמנה
@@ -100,12 +100,12 @@ export default function CustomBuildModal({ isOpen, onClose }) {
               animate={{ opacity: 1 }}
             >
               <DialogHeader>
-                <DialogTitle className="text-[#6B584C] text-right">אני רוצה לבנות משהו משלי</DialogTitle>
+                <DialogTitle className="text-[#581E83] text-right">אני רוצה לבנות משהו משלי</DialogTitle>
               </DialogHeader>
 
               {/* הסבר על התהליך */}
-              <div className="mt-4 p-3 bg-[#ADC178]/10 border border-[#ADC178]/30 rounded-lg">
-                <h4 className="font-medium text-[#6B584C] text-sm mb-2">התהליך:</h4>
+              <div className="mt-4 p-3 bg-[#5E2F88]/10 border border-[#5E2F88]/30 rounded-lg">
+                <h4 className="font-medium text-[#581E83] text-sm mb-2">התהליך:</h4>
                 <ol className="text-xs text-[#464646] space-y-1.5 mr-4" style={{ listStyleType: 'decimal' }}>
                   <li>מלאו את הפרטים בטופס</li>
                   <li>נבדוק את הבקשה ונתאים מסלול אישי (במידת האפשר)</li>
@@ -153,7 +153,7 @@ export default function CustomBuildModal({ isOpen, onClose }) {
                 <div>
                   <Label>העלאת תמונה/סרטון של הרעיון (אופציונלי)</Label>
                   <div className="mt-1">
-                    <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-[#e8e8e8] rounded-lg cursor-pointer hover:border-[#ADC178] transition-colors">
+                    <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-[#e8e8e8] rounded-lg cursor-pointer hover:border-[#5E2F88] transition-colors">
                       <Upload className="w-5 h-5 text-[#464646]" />
                       <span className="text-sm text-[#464646]">
                         {files.length > 0 ? `${files.length} קבצים נבחרו` : 'לחץ לבחירת קבצים'}
@@ -228,7 +228,7 @@ export default function CustomBuildModal({ isOpen, onClose }) {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-[#ADC178] hover:bg-[#9ab569]"
+                  className="w-full bg-[#5E2F88] hover:bg-[#7B3DB0]"
                 >
                   {isSubmitting ? (
                     <>

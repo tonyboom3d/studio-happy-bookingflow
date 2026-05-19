@@ -63,15 +63,15 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
       className={cn(
         "relative bg-white rounded-xl overflow-hidden border-2 transition-all duration-300",
         isSelected
-          ? "border-[#ADC178] shadow-lg"
-          : "border-[#e8e8e8] hover:border-[#ADC178]/50 hover:shadow-md"
+          ? "border-[#5E2F88] shadow-lg"
+          : "border-[#e8e8e8] hover:border-[#5E2F88]/50 hover:shadow-md"
       )}
     >
       {isSelected && (
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="absolute top-3 left-3 z-10 w-6 h-6 rounded-full bg-[#ADC178] flex items-center justify-center shadow-md"
+          className="absolute top-3 left-3 z-10 w-6 h-6 rounded-full bg-[#5E2F88] flex items-center justify-center shadow-md"
         >
           <Check className="w-4 h-4 text-white" />
         </motion.div>
@@ -90,7 +90,7 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
                   setShowDimensions(!showDimensions);
                 }}
               >
-                <Info className="w-4 h-4 text-[#6B584C]" />
+                <Info className="w-4 h-4 text-[#581E83]" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="z-[500] bg-white border border-[#e8e8e8] p-3">
@@ -129,7 +129,7 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
                 }}
                 className="absolute bottom-2 left-2 rounded-full bg-white/80 p-1.5 transition-colors hover:bg-white"
               >
-                <ZoomIn className="h-4 w-4 text-[#6B584C]" />
+                <ZoomIn className="h-4 w-4 text-[#581E83]" />
               </button>
             </>
           ) : (
@@ -140,7 +140,7 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
         </div>
 
         <div className="p-2.5 sm:p-4">
-          <h3 className="font-semibold text-[#6B584C] text-sm sm:text-base mb-1.5 sm:mb-2 leading-snug">{product.title}</h3>
+          <h3 className="font-semibold text-[#581E83] text-sm sm:text-base mb-1.5 sm:mb-2 leading-snug">{product.title}</h3>
 
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1 text-xs text-[#464646]">
@@ -161,8 +161,8 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
               className={cn(
                 "font-bold leading-tight min-w-0 shrink text-right",
                 showNewWoodPrices
-                  ? "text-sm sm:text-lg text-[#ADC178]"
-                  : "text-[11px] sm:text-sm text-[#6B584C] whitespace-nowrap"
+                  ? "text-sm sm:text-lg text-[#5E2F88]"
+                  : "text-[11px] sm:text-sm text-[#581E83] whitespace-nowrap"
               )}
             >
               {priceDisplay}
@@ -174,16 +174,16 @@ function ProductGridCard({ product, isSelected, onClick, meetings, showNewWoodPr
               >
                 <button
                   onClick={(e) => { e.stopPropagation(); onQuantityChange(product._id || product.id, -1); }}
-                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#ADC178] hover:bg-[#ADC178]/10 transition-colors"
+                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors"
                 >
-                  <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#6B584C]" />
+                  <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#581E83]" />
                 </button>
-                <span className="text-xs sm:text-sm font-bold text-[#6B584C] min-w-[18px] sm:min-w-[20px] text-center tabular-nums">{quantity || 1}</span>
+                <span className="text-xs sm:text-sm font-bold text-[#581E83] min-w-[18px] sm:min-w-[20px] text-center tabular-nums">{quantity || 1}</span>
                 <button
                   onClick={(e) => { e.stopPropagation(); onQuantityChange(product._id || product.id, 1); }}
-                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#ADC178] hover:bg-[#ADC178]/10 transition-colors"
+                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors"
                 >
-                  <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#6B584C]" />
+                  <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#581E83]" />
                 </button>
               </div>
             )}
@@ -200,84 +200,37 @@ export default function ProductCatalogDrawer({
   cart,
   setCart,
   getMeetings,
-  woodType,
   participants,
-  wixProducts, // קבלת מוצרים מ-Wix!
-  updateQuantity // עדכון כמות מוצר בעגלה
+  wixProducts,
+  updateQuantity
 }) {
   const [priceFilter, setPriceFilter] = useState([0, 1000]);
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedWoodType, setSelectedWoodType] = useState(woodType || 'recycled');
-  const [meetingsFilter, setMeetingsFilter] = useState('all'); // 'all' | number-as-string
   const [enlargedImage, setEnlargedImage] = useState(null);
   const productsContainerRef = useRef(null);
 
-  // סנכרון סוג העץ בבחירת הקטלוג כשהחלונית נפתחת (משקף את הבחירה בדף הראשי)
-  useEffect(() => {
-    if (isOpen && woodType) {
-      setSelectedWoodType(woodType);
-    }
-  }, [isOpen, woodType]);
-
-  // כאשר המשתמש עובר לעץ ממוחזר – סגירת חלון הסינון והחזרת סינון המחיר לברירת מחדל
-  useEffect(() => {
-    if (selectedWoodType === 'recycled' && showFilters) {
-      setShowFilters(false);
-    }
-    if (selectedWoodType === 'recycled') {
-      setPriceFilter([0, 1000]);
-    }
-  }, [selectedWoodType, showFilters]);
-
-  // חישוב כמות מפגשים לפי סוג עץ נבחר ב-Drawer
+  // For Tufting - one session per design
   const getLocalMeetings = (product) => {
-    const isCouple = participants >= 2;
-    const isRecycled = selectedWoodType === 'recycled';
-
-    if (isCouple && isRecycled) return parseInt(product.meetings_couple_recycled) || 0;
-    if (isCouple && !isRecycled) return parseInt(product.meetings_couple_new) || 0;
-    if (!isCouple && isRecycled) return parseInt(product.meetings_single_recycled) || 0;
-    return parseInt(product.meetings_single_new) || 0;
+    return 1;
   };
 
   // שימוש במוצרים מ-Wix, אם אין - fallback
   const products = wixProducts && wixProducts.length > 0 ? wixProducts : FALLBACK_PRODUCTS;
 
-  const meetingOptions = useMemo(() => {
-    const values = new Set();
-    for (const p of products) {
-      const m = getLocalMeetings(p);
-      if (m > 0) values.add(m);
-    }
-    return Array.from(values).sort((a, b) => a - b);
-  }, [products, selectedWoodType, participants]);
-
   const filteredProducts = useMemo(() => {
-    const selectedMeetings = meetingsFilter === 'all' ? null : Number(meetingsFilter);
-
     return products
       .filter(product => {
-        // סינון מוצרים שאין להם מפגשים עבור המצב הנוכחי
-        const meetings = getLocalMeetings(product);
-        if (meetings === 0) return false;
-
-        if (selectedMeetings && meetings !== selectedMeetings) return false;
-
         return (
           (product.price || 0) >= priceFilter[0] &&
           (product.price || 0) <= priceFilter[1]
         );
       })
-      // מיון מוצרים לפי כמות מפגשים (מעט -> הרבה)
       .sort((a, b) => {
-        const ma = getLocalMeetings(a);
-        const mb = getLocalMeetings(b);
-        if (ma !== mb) return ma - mb;
         const ta = (a.title || '').toString();
         const tb = (b.title || '').toString();
         return ta.localeCompare(tb, 'he');
       });
-  }, [products, priceFilter, meetingsFilter, selectedWoodType, participants]);
+  }, [products, priceFilter]);
 
   const MAX_SESSIONS = 8;
 
@@ -371,14 +324,14 @@ export default function ProductCatalogDrawer({
       >
         <SheetClose
           type="button"
-          className="absolute left-2 top-1.5 z-[70] flex h-9 w-9 items-center justify-center rounded-full border border-[#e8e8e8] bg-white text-[#6B584C] shadow-sm transition-colors hover:bg-[#fafafa] focus:outline-none focus:ring-2 focus:ring-[#ADC178]/40 sm:left-3 sm:top-3"
+          className="absolute left-2 top-1.5 z-[70] flex h-9 w-9 items-center justify-center rounded-full border border-[#e8e8e8] bg-white text-[#581E83] shadow-sm transition-colors hover:bg-[#fafafa] focus:outline-none focus:ring-2 focus:ring-[#5E2F88]/40 sm:left-3 sm:top-3"
           aria-label="סגור קטלוג"
         >
           <X className="h-5 w-5" />
         </SheetClose>
         <SheetHeader className="flex flex-col text-center sm:text-left shrink-0 space-y-0 border-b border-[#e8e8e8] bg-white pt-0 pr-1.5 pb-[5px] pl-[98px] md:p-4 md:pl-14 sticky top-0 z-10">
           <div className="flex min-w-0 flex-nowrap items-center justify-end gap-1.5 overflow-x-auto [scrollbar-width:thin] md:gap-2">
-            <SheetTitle className="shrink-0 text-right text-base font-bold leading-tight text-[#6B584C] whitespace-nowrap md:text-xl md:font-semibold">
+            <SheetTitle className="shrink-0 text-right text-base font-bold leading-tight text-[#581E83] whitespace-nowrap md:text-xl md:font-semibold">
               קטלוג מוצרים
             </SheetTitle>
 
@@ -386,7 +339,7 @@ export default function ProductCatalogDrawer({
               <select
                 value={selectedWoodType}
                 onChange={(e) => setSelectedWoodType(e.target.value)}
-                className="h-7 max-w-[9rem] text-[11px] md:h-8 md:max-w-[10rem] md:text-xs px-1.5 md:px-2 rounded-md border border-[#ADC178]/40 bg-white text-[#464646] focus:outline-none focus:ring-2 focus:ring-[#ADC178]/30"
+                className="h-7 max-w-[9rem] text-[11px] md:h-8 md:max-w-[10rem] md:text-xs px-1.5 md:px-2 rounded-md border border-[#5E2F88]/40 bg-white text-[#464646] focus:outline-none focus:ring-2 focus:ring-[#5E2F88]/30"
                 aria-label="סוג עץ"
               >
                 <option value="recycled">עץ ממוחזר</option>
@@ -398,7 +351,7 @@ export default function ProductCatalogDrawer({
               <select
                 value={meetingsFilter}
                 onChange={(e) => setMeetingsFilter(e.target.value)}
-                className="h-7 max-w-[9rem] text-[11px] md:h-8 md:max-w-[10rem] md:text-xs px-1.5 md:px-2 rounded-md border border-[#ADC178]/40 bg-white text-[#464646] focus:outline-none focus:ring-2 focus:ring-[#ADC178]/30"
+                className="h-7 max-w-[9rem] text-[11px] md:h-8 md:max-w-[10rem] md:text-xs px-1.5 md:px-2 rounded-md border border-[#5E2F88]/40 bg-white text-[#464646] focus:outline-none focus:ring-2 focus:ring-[#5E2F88]/30"
                 aria-label="סינון לפי מספר מפגשים"
               >
                 <option value="all">כל המפגשים</option>
@@ -414,10 +367,10 @@ export default function ProductCatalogDrawer({
                 onClick={() => setShowFilters(!showFilters)}
                 className={cn(
                   "flex items-center gap-1 px-2 py-1 md:px-3 md:py-1.5 rounded-lg border text-[11px] md:text-sm shrink-0",
-                  showFilters ? "border-[#ADC178] bg-[#ADC178]/10" : "border-[#e8e8e8] hover:border-[#ADC178]"
+                  showFilters ? "border-[#5E2F88] bg-[#5E2F88]/10" : "border-[#e8e8e8] hover:border-[#5E2F88]"
                 )}
               >
-                <Filter className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#6B584C]" />
+                <Filter className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#581E83]" />
                 <span className="text-[#464646] whitespace-nowrap">מחיר</span>
               </button>
             )}
@@ -461,16 +414,16 @@ export default function ProductCatalogDrawer({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap gap-3">
                 <span className="flex items-center gap-1">
-                  <Package className="h-4 w-4 shrink-0 text-[#ADC178]" />
+                  <Package className="h-4 w-4 shrink-0 text-[#5E2F88]" />
                   {cart.length} מוצרים{totalItems > cart.length ? ` (${totalItems} יח')` : ''}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4 shrink-0 text-[#ADC178]" />
+                  <Calendar className="h-4 w-4 shrink-0 text-[#5E2F88]" />
                   {totalMeetings} מפגשים
                 </span>
               </div>
-              <span className="flex items-center gap-1 font-medium text-[#6B584C]">
-                <CreditCard className="h-4 w-4 text-[#ADC178]" />
+              <span className="flex items-center gap-1 font-medium text-[#581E83]">
+                <CreditCard className="h-4 w-4 text-[#5E2F88]" />
                 {selectedWoodType === 'recycled' ? 'כלול במחיר' : `₪${totalPrice}`}
               </span>
             </div>
@@ -478,7 +431,7 @@ export default function ProductCatalogDrawer({
               onClick={onClose}
               disabled={cart.length === 0}
               className={`mt-1.5 h-11 w-full text-base font-medium text-white shadow-md ${cart.length > 0
-                ? 'bg-[#ADC178] hover:bg-[#9ab569]'
+                ? 'bg-[#5E2F88] hover:bg-[#7B3DB0]'
                 : 'cursor-not-allowed bg-gray-300'
                 }`}
             >
@@ -537,20 +490,20 @@ export default function ProductCatalogDrawer({
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="flex gap-4 text-sm">
               <div className="flex items-center gap-1.5 text-[#464646]">
-                <Package className="w-4 h-4 text-[#ADC178]" />
+                <Package className="w-4 h-4 text-[#5E2F88]" />
                 <span>{cart.length} מוצרים{totalItems > cart.length ? ` (${totalItems} יח')` : ''}</span>
               </div>
               <div className="flex items-center gap-1.5 text-[#464646]">
-                <Calendar className="w-4 h-4 text-[#ADC178]" />
+                <Calendar className="w-4 h-4 text-[#5E2F88]" />
                 <span>{totalMeetings} מפגשים</span>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              <CreditCard className="w-4 h-4 text-[#ADC178]" />
+              <CreditCard className="w-4 h-4 text-[#5E2F88]" />
               {selectedWoodType === 'recycled' ? (
-                <span className="text-sm text-[#6B584C]">כלול במחיר</span>
+                <span className="text-sm text-[#581E83]">כלול במחיר</span>
               ) : (
-                <span className="text-xl font-bold text-[#ADC178]">₪{totalPrice}</span>
+                <span className="text-xl font-bold text-[#5E2F88]">₪{totalPrice}</span>
               )}
             </div>
           </div>
@@ -558,7 +511,7 @@ export default function ProductCatalogDrawer({
             onClick={onClose}
             disabled={cart.length === 0}
             className={`h-12 w-full text-base font-medium text-white shadow-md ${cart.length > 0
-              ? 'bg-[#ADC178] hover:bg-[#9ab569]'
+              ? 'bg-[#5E2F88] hover:bg-[#7B3DB0]'
               : 'cursor-not-allowed bg-gray-300'
               }`}
           >

@@ -10,13 +10,13 @@ function DifficultyStars({ difficulty }) {
   
   for (let i = 0; i < fullStars; i++) {
     stars.push(
-      <Star key={`full-${i}`} className="w-3.5 h-3.5 fill-[#ADC178] text-[#ADC178]" />
+      <Star key={`full-${i}`} className="w-3.5 h-3.5 fill-[#5E2F88] text-[#5E2F88]" />
     );
   }
   
   if (hasHalf) {
     stars.push(
-      <StarHalf key="half" className="w-3.5 h-3.5 fill-[#ADC178] text-[#ADC178]" />
+      <StarHalf key="half" className="w-3.5 h-3.5 fill-[#5E2F88] text-[#5E2F88]" />
     );
   }
   
@@ -38,15 +38,15 @@ export default function ProductCard({ product, isSelected, onClick, meetings }) 
       className={cn(
         "relative bg-white rounded-xl overflow-hidden border-2 text-right",
         isSelected 
-          ? "border-[#ADC178] shadow-lg" 
-          : "border-[#e8e8e8] hover:border-[#ADC178]/50 hover:shadow-md"
+          ? "border-[#5E2F88] shadow-lg" 
+          : "border-[#e8e8e8] hover:border-[#5E2F88]/50 hover:shadow-md"
       )}
     >
       {isSelected && (
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="absolute top-3 left-3 z-10 w-6 h-6 rounded-full bg-[#ADC178] flex items-center justify-center shadow-md"
+          className="absolute top-3 left-3 z-10 w-6 h-6 rounded-full bg-[#5E2F88] flex items-center justify-center shadow-md"
         >
           <Check className="w-4 h-4 text-white" />
         </motion.div>
@@ -61,7 +61,7 @@ export default function ProductCard({ product, isSelected, onClick, meetings }) 
       </div>
       
       <div className="p-4">
-        <h3 className="font-semibold text-[#6B584C] text-base mb-2">{product.title}</h3>
+        <h3 className="font-semibold text-[#581E83] text-base mb-2">{product.title}</h3>
         
         <div className="flex items-center justify-between mb-2">
           <DifficultyStars difficulty={product.difficulty || 3} />
@@ -69,7 +69,7 @@ export default function ProductCard({ product, isSelected, onClick, meetings }) 
         </div>
         
         <div className="flex items-center justify-between pt-2 border-t border-[#e8e8e8]">
-          <span className="text-lg font-bold text-[#ADC178]">₪{product.price}</span>
+          <span className="text-lg font-bold text-[#5E2F88]">₪{product.price}</span>
         </div>
       </div>
     </button>

@@ -1,77 +1,72 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { addLog } from '@/components/VersionLogger';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Package, Calendar, CreditCard, ChevronUp, ChevronDown } from 'lucide-react';
+import { Users, Ruler, Calendar, CreditCard, ChevronUp, ChevronDown, Baby } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const PRICING = {
-  1: 340,
-  2: 600,
-  3: 795,
-  4: 980
-};
+import { format } from 'date-fns';
+import { he } from 'date-fns/locale';
 
 /** חישוב שורות סיכום + סכום — משותף לחלונית הצפה ולתצוגה inline */
 export function computeOrderSummary({
-  participants,
-  woodType,
-  cart,
-  selectedSlots,
-  totalMeetings,
-  activeSection
+  adults = 1,
+  children = 0,
+  carpetSizes = {},
+  cart = [],
+  selectedSlot = null,
+  basePrice = 0,
+  carpetSizeUpgradePrice = 0,
+  totalPrice = 0
 }) {
-  const rawSessionsCount = totalMeetings || 0;
-  const sessionsCount = rawSessionsCount || 1;
-  const basePricePerSession = PRICING[participants] || 340;
-  const basePriceTotal = basePricePerSession * (sessionsCount || 1);
-  const totalItems = cart.reduce((sum, p) => {
-    const qty = typeof p.quantity === 'number' ? p.quantity : 1;
-    return sum + (qty > 0 ? qty : 1);
-  }, 0);
-  /** סכום מחירי קטלוג (לתוספת 20% בעץ חדש בלבד) */
-  const catalogProductsSum = cart.reduce((sum, p) => {
-    const qty = typeof p.quantity === 'number' ? p.quantity : 1;
-    return sum + (p.price || 0) * (qty > 0 ? qty : 1);
-  }, 0);
-  const woodExtra = woodType === 'new' ? Math.round(catalogProductsSum * 0.2) : 0;
-  /** בעץ ממוחזר המוצרים כלולים במחיר המפגשים — לא מוסיפים מחיר קטלוג */
-  const productsCharged = woodType === 'recycled' ? 0 : catalogProductsSum;
-  const totalPrice = basePriceTotal + productsCharged + woodExtra;
-  const productsLinePrice = catalogProductsSum + woodExtra;
+  // חישוב תוספת שטיח (אם לא הועבר)
+  const calculatedCarpetUpgrade = carpetSizeUpgradePrice || 
+    Object.values(carpetSizes).filter(s => s === '90x90').length * 100;
+
+  // סכום כולל
+  const calculatedTotal = totalPrice || (basePrice + calculatedCarpetUpgrade);
+
+  // פורמט תאריך
+  let dateDisplay = null;
+  if (selectedSlot?.start?.localDateTime) {
+    const dt = selectedSlot.start.localDateTime;
+    const date = new Date(dt.year, dt.monthOfYear - 1, dt.dayOfMonth);
+    dateDisplay = format(date, 'd בMMMM', { locale: he });
+  }
+
+  // ספירת גדלי שטיח
+  const size60Count = Object.values(carpetSizes).filter(s => s === '60x60').length;
+  const size90Count = Object.values(carpetSizes).filter(s => s === '90x90').length;
 
   const items = [
     {
-      show: participants > 0,
-      icon: Users,
-      label: participants === 1 ? 'יחיד' : participants === 2 ? 'זוגי' : participants === 3 ? 'שלישייה' : 'רביעייה',
-      value: `₪${basePricePerSession} למפגש`,
-      active: activeSection === 1
-    },
-    {
-      show: true,
+      show: selectedSlot !== null,
       icon: Calendar,
-      label: selectedSlots.length > 0
-        ? `${selectedSlots.length}/${sessionsCount} מפגשים`
-        : `${sessionsCount} מפגשים`,
-      value: `₪${basePricePerSession} × ${sessionsCount} = ₪${basePriceTotal}`,
-      active: activeSection === 4
+      label: dateDisplay || 'תאריך לא נבחר',
+      value: basePrice > 0 ? `₪${basePrice}` : '',
+      active: false
     },
     {
-      show: cart.length > 0 && woodType,
-      icon: Package,
-      label: `${totalItems} מוצרים - ${woodType === 'recycled' ? 'עץ ממוחזר' : 'עץ חדש'}`,
-      value: woodType === 'recycled'
-        ? 'כלול במחיר'
-        : `${productsLinePrice} ₪`,
-      active: activeSection === 3
+      show: adults > 0,
+      icon: Users,
+      label: `${adults} ${adults === 1 ? 'מבוגר' : 'מבוגרים'}${children > 0 ? ` + ${children} ${children === 1 ? 'ילד' : 'ילדים'}` : ''}`,
+      value: '',
+      active: false
     },
+    {
+      show: Object.keys(carpetSizes).length > 0,
+      icon: Ruler,
+      label: size90Count > 0 
+        ? `${size60Count > 0 ? `${size60Count}×60 + ` : ''}${size90Count}×90` 
+        : `${size60Count}×60`,
+      value: calculatedCarpetUpgrade > 0 ? `+₪${calculatedCarpetUpgrade}` : 'כלול',
+      active: false
+    }
   ].filter(item => item.show);
 
   const showEmptyState = items.length === 0;
 
   return {
     items,
-    totalPrice,
+    totalPrice: calculatedTotal,
     showEmptyState
   };
 }
@@ -80,12 +75,14 @@ export function computeOrderSummary({
  * תצוגת סיכום הזמנה (כרטיס) — לשימוש מתחת לכפתור תשלום במובייל או בדף summary
  */
 export function OrderSummaryCard({
-  participants,
-  woodType,
+  adults,
+  children,
+  carpetSizes,
   cart,
-  selectedSlots,
-  totalMeetings,
-  activeSection,
+  selectedSlot,
+  basePrice,
+  carpetSizeUpgradePrice,
+  totalPrice,
   /** true: ללא כפתור כותרת מתרחב, תמיד פתוח — מתחת ל"המשך לתשלום" */
   inline = false,
   /** כשלא inline: מצב התחלתי של פירוט השורות (ברירת מחדל פתוח — תואם חלונית צפה) */
@@ -100,17 +97,19 @@ export function OrderSummaryCard({
   const isStepVariant = variant === 'step';
   const expandable = !inline && !isStepVariant;
 
-  const { items, totalPrice, showEmptyState } = useMemo(
+  const { items, totalPrice: computedTotal, showEmptyState } = useMemo(
     () =>
       computeOrderSummary({
-        participants,
-        woodType,
+        adults,
+        children,
+        carpetSizes,
         cart,
-        selectedSlots,
-        totalMeetings,
-        activeSection
+        selectedSlot,
+        basePrice,
+        carpetSizeUpgradePrice,
+        totalPrice
       }),
-    [participants, woodType, cart, selectedSlots, totalMeetings, activeSection]
+    [adults, children, carpetSizes, cart, selectedSlot, basePrice, carpetSizeUpgradePrice, totalPrice]
   );
 
   const [isOpen, setIsOpen] = useState(isStepVariant ? true : initiallyExpanded);
@@ -128,7 +127,7 @@ export function OrderSummaryCard({
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1.5">
           <CreditCard
-            className={cn('w-4 h-4', isStepVariant ? 'text-[#6B584C]' : '')}
+            className={cn('w-4 h-4', isStepVariant ? 'text-[#581E83]' : '')}
           />
           <span
             className={cn(
@@ -136,7 +135,7 @@ export function OrderSummaryCard({
               isStepVariant ? 'text-black tabular-nums' : ''
             )}
           >
-            ₪{Math.round(totalPrice)}
+            ₪{Math.round(computedTotal)}
           </span>
         </div>
         {expandable && (
@@ -172,7 +171,7 @@ export function OrderSummaryCard({
                 className={cn(
                   'flex items-center justify-between rounded-lg p-2 text-sm transition-colors',
                   item.active
-                    ? 'bg-[#ADC178]/20'
+                    ? 'bg-[#5E2F88]/20'
                     : 'bg-[#fafafa]'
                 )}
               >
@@ -180,13 +179,13 @@ export function OrderSummaryCard({
                   <Icon
                     className={cn(
                       'w-4 h-4',
-                      item.active ? 'text-[#ADC178]' : 'text-[#6B584C]'
+                      item.active ? 'text-[#5E2F88]' : 'text-[#581E83]'
                     )}
                   />
                   <span className="text-[#464646]">{item.label}</span>
                 </div>
                 {item.value && (
-                  <span className="font-semibold text-[#6B584C]">{item.value}</span>
+                  <span className="font-semibold text-[#581E83]">{item.value}</span>
                 )}
               </motion.div>
             );
@@ -200,7 +199,7 @@ export function OrderSummaryCard({
     'flex w-full items-center justify-between px-4 py-2.5',
     isStepVariant
       ? 'border-b border-[#e8e8e8] bg-white text-black'
-      : 'bg-[#6B584C] text-white'
+      : 'bg-[#581E83] text-white'
   );
 
   return (
@@ -251,12 +250,14 @@ export function OrderSummaryCard({
 }
 
 export default function FloatingSummary({
-  participants,
-  woodType,
+  adults,
+  children,
+  carpetSizes,
   cart,
-  selectedSlots,
-  totalMeetings,
-  activeSection,
+  selectedSlot,
+  basePrice,
+  carpetSizeUpgradePrice,
+  totalPrice,
   isSummaryPage = false
 }) {
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
@@ -289,12 +290,14 @@ export default function FloatingSummary({
       style={{ direction: 'rtl' }}
     >
       <OrderSummaryCard
-        participants={participants}
-        woodType={woodType}
+        adults={adults}
+        children={children}
+        carpetSizes={carpetSizes}
         cart={cart}
-        selectedSlots={selectedSlots}
-        totalMeetings={totalMeetings}
-        activeSection={activeSection}
+        selectedSlot={selectedSlot}
+        basePrice={basePrice}
+        carpetSizeUpgradePrice={carpetSizeUpgradePrice}
+        totalPrice={totalPrice}
         inline={false}
         className={isSummaryPage ? 'bg-white' : 'bg-white/97 backdrop-blur-xl'}
       />

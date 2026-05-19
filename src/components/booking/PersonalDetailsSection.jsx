@@ -70,8 +70,8 @@ export default function PersonalDetailsSection({
       <div className="space-y-5 max-w-sm mx-auto w-full">
         {/* שם מלא */}
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-[#6B584C] flex items-center gap-2">
-            <User className="w-4 h-4 text-[#ADC178]" />
+          <label className="text-sm font-medium text-[#581E83] flex items-center gap-2">
+            <User className="w-4 h-4 text-[#5E2F88]" />
             שם מלא
             <span className="text-red-500">*</span>
           </label>
@@ -86,7 +86,7 @@ export default function PersonalDetailsSection({
               transition-all duration-200
               ${nameError
                 ? 'border-red-400 focus:ring-red-200'
-                : 'border-[#e8e8e8] focus:ring-[#ADC178]/30 focus:border-[#ADC178]'
+                : 'border-[#e8e8e8] focus:ring-[#5E2F88]/30 focus:border-[#5E2F88]'
               }`}
           />
           {nameError && (
@@ -102,8 +102,8 @@ export default function PersonalDetailsSection({
 
         {/* אימייל */}
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-[#6B584C] flex items-center gap-2">
-            <Mail className="w-4 h-4 text-[#ADC178]" />
+          <label className="text-sm font-medium text-[#581E83] flex items-center gap-2">
+            <Mail className="w-4 h-4 text-[#5E2F88]" />
             כתובת אימייל
             <span className="text-red-500">*</span>
           </label>
@@ -119,7 +119,7 @@ export default function PersonalDetailsSection({
               transition-all duration-200
               ${emailError
                 ? 'border-red-400 focus:ring-red-200'
-                : 'border-[#e8e8e8] focus:ring-[#ADC178]/30 focus:border-[#ADC178]'
+                : 'border-[#e8e8e8] focus:ring-[#5E2F88]/30 focus:border-[#5E2F88]'
               }`}
           />
           {emailError && (
@@ -135,8 +135,8 @@ export default function PersonalDetailsSection({
 
         {/* טלפון */}
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-[#6B584C] flex items-center gap-2">
-            <Phone className="w-4 h-4 text-[#ADC178]" />
+          <label className="text-sm font-medium text-[#581E83] flex items-center gap-2">
+            <Phone className="w-4 h-4 text-[#5E2F88]" />
             מספר טלפון
             <span className="text-red-500">*</span>
           </label>
@@ -152,7 +152,7 @@ export default function PersonalDetailsSection({
               transition-all duration-200
               ${phoneError
                 ? 'border-red-400 focus:ring-red-200'
-                : 'border-[#e8e8e8] focus:ring-[#ADC178]/30 focus:border-[#ADC178]'
+                : 'border-[#e8e8e8] focus:ring-[#5E2F88]/30 focus:border-[#5E2F88]'
               }`}
           />
           {phoneError && (
@@ -175,7 +175,7 @@ export default function PersonalDetailsSection({
           type="button"
           onClick={handlePayClick}
           disabled={isSubmitting || !isValid}
-          className="w-full bg-[#ADC178] px-8 py-3 text-lg text-white hover:bg-[#9ab569] sm:w-auto
+          className="w-full bg-[#5E2F88] px-8 py-3 text-lg text-white hover:bg-[#7B3DB0] sm:w-auto
                      transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 rounded-lg"
         >
           {isSubmitting ? 'מעביר לתשלום...' : 'המשך לתשלום'}

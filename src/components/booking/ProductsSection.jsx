@@ -56,7 +56,7 @@ export default function ProductsSection({
         <Button
           variant="outline"
           onClick={() => setShowConsultation(true)}
-          className="flex items-center gap-2 border-[#ADC178] text-[#6B584C] hover:bg-[#ADC178]/10"
+          className="flex items-center gap-2 border-[#5E2F88] text-[#581E83] hover:bg-[#5E2F88]/10"
         >
           <MessageCircle className="w-4 h-4" />
           אשמח להתייעץ לפני
@@ -64,7 +64,7 @@ export default function ProductsSection({
         <Button
           variant="outline"
           onClick={() => setShowCustomBuild(true)}
-          className="flex items-center gap-2 border-[#ADC178] text-[#6B584C] hover:bg-[#ADC178]/10"
+          className="flex items-center gap-2 border-[#5E2F88] text-[#581E83] hover:bg-[#5E2F88]/10"
         >
           <Wrench className="w-4 h-4" />
           אני רוצה לבנות משהו משלי
@@ -89,7 +89,7 @@ export default function ProductsSection({
         <Button
           variant="ghost"
           onClick={() => setShowCatalog(true)}
-          className="text-[#ADC178] hover:text-[#9ab569] hover:bg-[#ADC178]/10"
+          className="text-[#5E2F88] hover:text-[#7B3DB0] hover:bg-[#5E2F88]/10"
         >
           <ShoppingBag className="w-4 h-4 ml-2" />
           צפייה בקטלוג המלא
@@ -104,8 +104,8 @@ export default function ProductsSection({
             <span className="text-[#464646]">{totalMeetings} מפגשים</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-lg font-semibold text-[#6B584C]">סה״כ:</span>
-            <span className="text-xl font-bold text-[#ADC178]">₪{totalPrice}</span>
+            <span className="text-lg font-semibold text-[#581E83]">סה״כ:</span>
+            <span className="text-xl font-bold text-[#5E2F88]">₪{totalPrice}</span>
           </div>
         </div>
       )}
@@ -115,7 +115,7 @@ export default function ProductsSection({
         <Button
           onClick={onContinue}
           disabled={cart.length === 0}
-          className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
+          className="bg-[#5E2F88] hover:bg-[#7B3DB0] text-white px-8 py-3 rounded-lg
                      transition-all duration-200 text-lg disabled:opacity-50"
         >
           המשך לבחירת תאריכים

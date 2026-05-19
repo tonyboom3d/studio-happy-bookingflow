@@ -89,7 +89,7 @@ END:VCALENDAR`;
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-        className="w-24 h-24 rounded-full bg-[#ADC178] flex items-center justify-center mb-6 shadow-lg"
+        className="w-24 h-24 rounded-full bg-[#5E2F88] flex items-center justify-center mb-6 shadow-lg"
       >
         <Check className="w-12 h-12 text-white" />
       </motion.div>
@@ -98,7 +98,7 @@ END:VCALENDAR`;
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
-        className="text-3xl font-bold text-[#6B584C] mb-2"
+        className="text-3xl font-bold text-[#581E83] mb-2"
       >
         תודה רבה!
       </motion.h1>
@@ -139,21 +139,21 @@ END:VCALENDAR`;
         transition={{ delay: 0.5 }}
         className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 mb-6"
       >
-        <h2 className="text-lg font-semibold text-[#6B584C] mb-4 border-b border-[#e8e8e8] pb-2">
+        <h2 className="text-lg font-semibold text-[#581E83] mb-4 border-b border-[#e8e8e8] pb-2">
           סיכום הזמנה
         </h2>
 
         {/* מספר הזמנה — מוצג כשיש נתוני eCommerce order */}
         {isFromEcomOrder && booking?.orderNumber && (
           <div className="mb-4 text-sm text-[#464646]/70 text-right">
-            מספר הזמנה: <span className="font-medium text-[#6B584C]">#{booking.orderNumber}</span>
+            מספר הזמנה: <span className="font-medium text-[#581E83]">#{booking.orderNumber}</span>
           </div>
         )}
 
         {/* כמות משתתפים */}
         <div className="mb-4">
           <div className="flex items-center gap-2 text-sm">
-            <Users className="w-5 h-5 text-[#ADC178]" />
+            <Users className="w-5 h-5 text-[#5E2F88]" />
             <span className="font-medium text-[#464646]">
               {participants === 1 ? 'יחיד' : participants === 2 ? 'זוגי' : participants === 3 ? 'שלישייה' : 'רביעייה'}
             </span>
@@ -167,7 +167,7 @@ END:VCALENDAR`;
         {booking.products?.length > 0 && (
           <div className="mb-4">
             <h3 className="text-sm font-medium text-[#464646] mb-2 flex items-center gap-2">
-              <Package className="w-4 h-4 text-[#ADC178]" />
+              <Package className="w-4 h-4 text-[#5E2F88]" />
               מה נבנה:
             </h3>
             <ul className="space-y-1 mr-6">
@@ -184,7 +184,7 @@ END:VCALENDAR`;
         {booking.selected_slots?.length > 0 && (
           <div className="mb-4">
             <h3 className="text-sm font-medium text-[#464646] mb-2 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-[#ADC178]" />
+              <Calendar className="w-4 h-4 text-[#5E2F88]" />
               מועדים:
             </h3>
             <ul className="space-y-1 mr-6">
@@ -200,7 +200,7 @@ END:VCALENDAR`;
         {/* פירוט מחיר */}
         <div className="mb-4 pt-4 border-t border-[#e8e8e8]">
           <h3 className="text-sm font-medium text-[#464646] mb-3 flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-[#ADC178]" />
+            <Receipt className="w-4 h-4 text-[#5E2F88]" />
             פירוט תשלום:
           </h3>
           <div className="space-y-2 mr-6">
@@ -221,7 +221,7 @@ END:VCALENDAR`;
                 <div className="flex items-center gap-1">
                   <span className="text-[#464646]/80">מוצרים</span>
                   {woodType === 'recycled' && (
-                    <span className="text-xs text-[#ADC178]">(עץ ממוחזר)</span>
+                    <span className="text-xs text-[#5E2F88]">(עץ ממוחזר)</span>
                   )}
                 </div>
                 <span className="font-medium text-[#464646]">
@@ -234,7 +234,7 @@ END:VCALENDAR`;
             {woodExtra > 0 && (
               <div className="flex justify-between items-center text-sm">
                 <div className="flex items-center gap-1">
-                  <TreeDeciduous className="w-3 h-3 text-[#6B584C]" />
+                  <TreeDeciduous className="w-3 h-3 text-[#581E83]" />
                   <span className="text-[#464646]/80">תוספת עץ חדש (20%)</span>
                 </div>
                 <span className="font-medium text-[#464646]">₪{woodExtra.toFixed(0)}</span>
@@ -243,8 +243,8 @@ END:VCALENDAR`;
             
             {/* סה"כ */}
             <div className="flex justify-between items-center pt-2 border-t border-[#e8e8e8]">
-              <span className="font-semibold text-[#6B584C]">סה"כ</span>
-              <span className="font-bold text-lg text-[#ADC178]">₪{totalPrice}</span>
+              <span className="font-semibold text-[#581E83]">סה"כ</span>
+              <span className="font-bold text-lg text-[#5E2F88]">₪{totalPrice}</span>
             </div>
           </div>
         </div>
@@ -252,15 +252,15 @@ END:VCALENDAR`;
         {/* פרטי קשר */}
         <div className="pt-4 border-t border-[#e8e8e8] space-y-2">
         <div className="flex items-center gap-2 text-sm text-[#464646]">
-          <MapPin className="w-4 h-4 text-[#ADC178]" />
+          <MapPin className="w-4 h-4 text-[#5E2F88]" />
           <span>הנגריה הפתוחה, דרך שלמה (סלמה) 19, תל אביב-יפו</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-[#464646]">
-          <Phone className="w-4 h-4 text-[#ADC178]" />
+          <Phone className="w-4 h-4 text-[#5E2F88]" />
           <span dir="ltr">055-721-9327</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-[#464646]">
-          <Mail className="w-4 h-4 text-[#ADC178]" />
+          <Mail className="w-4 h-4 text-[#5E2F88]" />
           <span>Noam.r89@gmail.com</span>
         </div>
         </div>
@@ -276,7 +276,7 @@ END:VCALENDAR`;
         <Button
           variant="outline"
           onClick={addToGoogleCalendar}
-          className="flex items-center gap-2 border-[#ADC178] text-[#6B584C]"
+          className="flex items-center gap-2 border-[#5E2F88] text-[#581E83]"
         >
           <Calendar className="w-4 h-4" />
           הוספה ל-Google Calendar
@@ -284,7 +284,7 @@ END:VCALENDAR`;
         <Button
           variant="outline"
           onClick={generateICS}
-          className="flex items-center gap-2 border-[#ADC178] text-[#6B584C]"
+          className="flex items-center gap-2 border-[#5E2F88] text-[#581E83]"
         >
           <Calendar className="w-4 h-4" />
           הוספה ל-Apple Calendar
@@ -299,7 +299,7 @@ END:VCALENDAR`;
       >
         <Button
           onClick={onGoHome}
-          className="bg-[#ADC178] hover:bg-[#9ab569] text-white px-8"
+          className="bg-[#5E2F88] hover:bg-[#7B3DB0] text-white px-8"
         >
           <Home className="w-4 h-4 ml-2" />
           חזרה לדף הבית

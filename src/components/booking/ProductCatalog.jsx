@@ -42,13 +42,13 @@ export default function ProductCatalog({
       <DialogContent className="max-w-4xl h-[90vh] p-0 gap-0 overflow-hidden">
         <DialogHeader className="p-4 border-b border-[#e8e8e8] sticky top-0 bg-white z-10">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold text-[#6B584C]">קטלוג מוצרים</DialogTitle>
+            <DialogTitle className="text-xl font-semibold text-[#581E83]">קטלוג מוצרים</DialogTitle>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#e8e8e8] hover:border-[#ADC178] transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#e8e8e8] hover:border-[#5E2F88] transition-colors"
               >
-                <Filter className="w-4 h-4 text-[#6B584C]" />
+                <Filter className="w-4 h-4 text-[#581E83]" />
                 <span className="text-sm text-[#464646]">סינון</span>
               </button>
             </div>
@@ -119,7 +119,7 @@ export default function ProductCatalog({
               <span>{cart.length} מוצרים</span>
               <span>{totalMeetings} מפגשים</span>
             </div>
-            <div className="text-xl font-bold text-[#ADC178]">₪{totalPrice}</div>
+            <div className="text-xl font-bold text-[#5E2F88]">₪{totalPrice}</div>
           </div>
         </div>
       </DialogContent>

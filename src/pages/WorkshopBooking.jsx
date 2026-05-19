@@ -2,10 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, CreditCard, Loader2 } from 'lucide-react';
 import AccordionSection from '../components/booking/AccordionSection';
-import ParticipantsSection from '../components/booking/ParticipantsSection';
-import WoodTypeSection from '../components/booking/WoodTypeSection';
-import ProductSelectionSection from '../components/booking/ProductSelectionSection';
 import TimeSlotsSection from '../components/booking/TimeSlotsSection';
+import ParticipantsSection from '../components/booking/ParticipantsSection';
+import CarpetSizeSection from '../components/booking/CarpetSizeSection';
+import ProductSelectionSection from '../components/booking/ProductSelectionSection';
 import PersonalDetailsSection from '../components/booking/PersonalDetailsSection';
 import OrderSummarySection from '../components/booking/OrderSummarySection';
 import ThankYouScreen from '../components/booking/ThankYouScreen';
@@ -18,16 +18,18 @@ export default function WorkshopBooking() {
   const [activeSection, setActiveSection] = useState(1);
   const [completedSections, setCompletedSections] = useState([]);
 
-  // נתוני ההזמנה
-  const [participants, setParticipants] = useState(1);
-  const [woodType, setWoodType] = useState('');
+  // נתוני ההזמנה — סדר חדש: תאריך → משתתפים → גודל שטיח → עיצוב → פרטים
+  const [selectedSlot, setSelectedSlot] = useState(null); // slot יחיד (לא מערך)
+  const [adults, setAdults] = useState(1); // מבוגרים 14+
+  const [children, setChildren] = useState(0); // ילדים 8-13
+  const [carpetSizes, setCarpetSizes] = useState({}); // { 0: '60x60', 1: '90x90' } לפי אינדקס מבוגר
   const [cart, setCart] = useState([]);
-  const [selectedSlots, setSelectedSlots] = useState([]);
   const [userDetails, setUserDetails] = useState({ name: '', email: '', phone: '' });
 
   // נתונים מ-Wix
   const [wixProducts, setWixProducts] = useState(null);
   const [wixSlots, setWixSlots] = useState(null);
+  const [pricingByService, setPricingByService] = useState(null);
 
   // סטטוס
   const [isProcessing, setIsProcessing] = useState(false);
@@ -35,7 +37,6 @@ export default function WorkshopBooking() {
   const [booking, setBooking] = useState(null);
   const [bookingError, setBookingError] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState('Successful');
-  const [timerActive, setTimerActive] = useState(true);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
 
   /** בעורך Wix — לא מציגים מסך טעינה מלא (מפריע לעריכה) */
@@ -65,29 +66,28 @@ export default function WorkshopBooking() {
         setWixSlots(data.slots);
         addLog(`Loaded ${data.slots.length} time slots`, 'success');
       }
+      if (data.pricingByService) {
+        setPricingByService(data.pricingByService);
+        addLog('Loaded pricing by service', 'success');
+      }
       if (data.bookingConfirmed) {
-        // Wix confirmed booking saved (either legacy Wix Pay or eCommerce checkout)
         setIsProcessing(false);
         setIsComplete(true);
         setPaymentStatus(data.paymentStatus || 'Successful');
         addLog(`Booking confirmed! Payment status: ${data.paymentStatus}`, 'success');
 
-        // אם הגיע מ-ORDER_CONFIRMED (eCommerce checkout), נשמור את נתוני ה-order
-        // ונשתמש בהם לבניית אובייקט booking מינימלי לתצוגה בדף תודה
         if (data.orderData) {
           setBooking(prev => {
-            // אם כבר יש booking מה-submit (flow רגיל) — נשמר
             if (prev) return prev;
-            // אחרת — בונה booking מינימלי מנתוני ה-order
             return {
               full_name: `${data.orderData.buyerInfo?.firstName || ''} ${data.orderData.buyerInfo?.lastName || ''}`.trim(),
               email: data.orderData.buyerInfo?.email || '',
               phone: data.orderData.buyerInfo?.phone || '',
-              participants: 1,
-              wood_type: 'recycled',
+              adults: 1,
+              children: 0,
+              carpetSizes: {},
               products: [],
-              selected_slots: [],
-              total_sessions: 1,
+              selectedSlot: null,
               _fromOrder: true,
               orderNumber: data.orderData.orderNumber,
               orderTotal: data.orderData.total
@@ -109,50 +109,33 @@ export default function WorkshopBooking() {
   useEffect(() => {
     addLog(`Active section changed to: ${activeSection}`, 'info');
     notifyProgress(activeSection, {
-      participants,
-      woodType,
-      cartCount: cart.length,
-      slotsCount: selectedSlots.length
+      adults,
+      children,
+      hasSelectedSlot: !!selectedSlot,
+      cartCount: cart.length
     });
-  }, [activeSection, participants, woodType, cart.length, selectedSlots.length]);
+  }, [activeSection, adults, children, selectedSlot, cart.length]);
 
-  const MAX_SESSIONS = 8;
+  // חישוב מספר יחידות (מבוגר+ילד = יחידה אחת)
+  const totalUnits = adults; // כל מבוגר = יחידה, ילדים מצטרפים להורה
 
-  // עדכון כמות מוצר בעגלה (מינימום 1, עם הגבלת 8 מפגשים סה"כ)
-  const updateQuantity = (productId, delta) => {
-    setCart(prev => {
-      const currentTotal = prev.reduce((sum, p) => sum + (p.meetings || 3) * (p.quantity || 1), 0);
-      return prev.map(p => {
-        const pid = p._id || p.id;
-        if (pid === productId) {
-          const productMeetings = p.meetings || 3;
-          const newQty = Math.max(1, (p.quantity || 1) + delta);
-          // מניעת חריגה מ-8 מפגשים בעת הוספה
-          if (delta > 0) {
-            const meetingsAfterAdd = currentTotal + productMeetings;
-            if (meetingsAfterAdd > MAX_SESSIONS) return p;
-          }
-          return { ...p, quantity: newQty };
-        }
-        return p;
-      });
-    });
-  };
+  // חישוב תוספת מחיר עבור שטיחים 90x90
+  const carpetSizeUpgradePrice = useMemo(() => {
+    const upgradeCount = Object.values(carpetSizes).filter(s => s === '90x90').length;
+    return upgradeCount * 100;
+  }, [carpetSizes]);
 
-  // חישוב סה"כ מפגשים (כולל כמויות)
-  const totalMeetings = cart.reduce((sum, p) => sum + (p.meetings || 3) * (p.quantity || 1), 0);
+  // מחיר בסיס לפי שירות ומספר מבוגרים
+  const basePrice = useMemo(() => {
+    if (!selectedSlot || !pricingByService) return 0;
+    const servicePricing = pricingByService[selectedSlot.serviceId];
+    if (!servicePricing) return 0;
+    return servicePricing[adults] || servicePricing[1] * adults;
+  }, [selectedSlot, pricingByService, adults]);
 
   const orderTotalPreview = useMemo(
-    () =>
-      computeOrderSummary({
-        participants,
-        woodType,
-        cart,
-        selectedSlots,
-        totalMeetings,
-        activeSection
-      }).totalPrice,
-    [participants, woodType, cart, selectedSlots, totalMeetings, activeSection]
+    () => basePrice + carpetSizeUpgradePrice,
+    [basePrice, carpetSizeUpgradePrice]
   );
 
   // מעבר לסקשן הבא
@@ -185,18 +168,25 @@ export default function WorkshopBooking() {
     setIsProcessing(true);
 
     const bookingData = {
-      participants,
-      wood_type: woodType,
-      products: cart.map(p => ({ product_id: p.id, _id: p._id || p.id, title: p.title, price: p.price, quantity: p.quantity || 1, addOnId: p.addOnId })),
-      selected_slots: selectedSlots.map(s => ({
-        slot_id: s.id,
-        date: s.date?.toISOString?.() || s.date,
-        time: s.time,
-        sessionId: s.sessionId || null
+      adults,
+      children,
+      carpetSizes,
+      products: cart.map(p => ({ 
+        product_id: p.id, 
+        _id: p._id || p.id, 
+        title: p.title, 
+        price: p.price, 
+        quantity: p.quantity || 1, 
+        addOnId: p.addOnId 
       })),
-      total_price: cart.reduce((sum, p) => sum + p.price * (p.quantity || 1), 0),
-      total_sessions: totalMeetings,
-      status: 'pending',
+      selectedSlot: selectedSlot ? {
+        slot_id: selectedSlot._id || selectedSlot.sessionId,
+        date: selectedSlot.start?.timestamp,
+        sessionId: selectedSlot.sessionId,
+        serviceId: selectedSlot.serviceId,
+        openSpots: selectedSlot.openSpots
+      } : null,
+      total_price: orderTotalPreview,
       userDetails: {
         name: userDetails.name?.trim() || '',
         email: userDetails.email?.trim() || '',
@@ -204,13 +194,11 @@ export default function WorkshopBooking() {
       }
     };
 
-    // לוג מפורט לבדיקת ה-booking בצד הפרונט
     console.log('[Booking][Frontend] bookingData being sent to Wix:', JSON.stringify(bookingData, null, 2));
 
-    addLog(`Submitting booking with ${cart.length} products, ${selectedSlots.length} slots`, 'info');
+    addLog(`Submitting booking with ${cart.length} products`, 'info');
     submitBooking(bookingData);
 
-    // אם לא מתקבלת תגובה מ-Wix תוך 60 שניות — timeout
     setTimeout(() => {
       setIsProcessing(prev => {
         if (!prev) return prev;
@@ -220,11 +208,10 @@ export default function WorkshopBooking() {
     }, 60000);
   };
 
-  // מסך טעינה ראשוני - שימוש ב-CSS animations במקום framer-motion לחיסכון בזיכרון
-  // בעורך: מדלגים כשאין מוצרים מ-Wix עדיין — הקטלוג משתמש ב-fallback מקומי
-  if (!skipInitialLoadingScreen && (!minTimeElapsed || wixProducts == null)) {
+  // מסך טעינה ראשוני
+  if (!skipInitialLoadingScreen && (!minTimeElapsed || wixSlots == null)) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white" dir="rtl">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-transparent" dir="rtl">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -232,15 +219,13 @@ export default function WorkshopBooking() {
           className="flex flex-col items-center"
         >
           <div className="relative mb-6">
-            {/* CSS animation במקום framer-motion repeat: Infinity */}
-            <div className="w-20 h-20 border-4 border-[#e8e8e8] border-t-[#ADC178] rounded-full animate-spin" />
+            <div className="w-20 h-20 border-4 border-[#e8e8e8] border-t-[#5E2F88] rounded-full animate-spin" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 text-[#ADC178] animate-pulse" />
+              <Loader2 className="w-8 h-8 text-[#5E2F88] animate-pulse" />
             </div>
           </div>
-          {/* CSS animation במקום framer-motion repeat: Infinity */}
-          <h2 className="text-2xl font-bold text-[#6B584C] animate-pulse">
-            הנגריה הפתוחה
+          <h2 className="text-2xl font-bold text-[#581E83] animate-pulse">
+            סטודיו האפי
           </h2>
           <p className="text-[#464646]/70 mt-2">טוען נתונים...</p>
         </motion.div>
@@ -258,10 +243,11 @@ export default function WorkshopBooking() {
           setIsComplete(false);
           setActiveSection(1);
           setCompletedSections([]);
-          setParticipants(1);
-          setWoodType('');
+          setSelectedSlot(null);
+          setAdults(1);
+          setChildren(0);
+          setCarpetSizes({});
           setCart([]);
-          setSelectedSlots([]);
           setUserDetails({ name: '', email: '', phone: '' });
           setBooking(null);
           setPaymentStatus('Successful');
@@ -270,38 +256,38 @@ export default function WorkshopBooking() {
     );
   }
 
-  // מסך עיבוד - שימוש ב-CSS animation במקום framer-motion לחיסכון בזיכרון
+  // מסך עיבוד
   if (isProcessing) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-        {/* CSS animation במקום framer-motion repeat: Infinity */}
-        <Loader2 className="w-12 h-12 text-[#ADC178] animate-spin" />
-        <p className="mt-4 text-lg text-[#6B584C]">דף התשלום נטען, כמה רגעים...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-transparent">
+        <Loader2 className="w-12 h-12 text-[#5E2F88] animate-spin" />
+        <p className="mt-4 text-lg text-[#581E83]">דף התשלום נטען, כמה רגעים...</p>
       </div>
     );
   }
 
+  // סדר חדש של הטאבים
   const sections = [
-    { id: 1, title: 'כמה תיהיו?' },
-    { id: 2, title: 'סוג העץ' },
-    { id: 3, title: 'מה בונים?' },
-    { id: 4, title: 'בחירת תאריכים' },
+    { id: 1, title: 'בחירת תאריך' },
+    { id: 2, title: 'כמה תהיו ?' },
+    { id: 3, title: 'גודל שטיח' },
+    { id: 4, title: 'בחירת עיצוב' },
     { id: 5, title: 'פרטים אישיים' },
     { id: 6, title: 'סיכום הזמנה' }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-[#fafafa]" dir="rtl">
-      {/* Header — קומפקטי במובייל, ללא אנימציה */}
+    <div className="min-h-screen bg-transparent" dir="rtl">
+      {/* Header */}
       <header
-        className="py-8 px-8 text-center border-b border-[#e8e8e8] bg-white"
+        className="py-8 px-8 text-center border-b border-[#e8e8e8] bg-transparent"
         style={{ paddingTop: 10, paddingBottom: 10 }}
       >
         <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="inline-flex items-center gap-2 text-sm font-medium text-[#6B584C] hover:text-[#5a4940] transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-medium text-[#581E83] hover:text-[#7B3DB0] transition-colors"
           >
             <ArrowRight className="h-4 w-4" aria-hidden />
             חזרה לדף הקודם
@@ -309,13 +295,13 @@ export default function WorkshopBooking() {
           <div className="w-[1px]" aria-hidden />
         </div>
         <h1
-          className="text-xl md:text-2xl font-bold text-[#6B584C]"
+          className="text-xl md:text-2xl font-bold text-[#581E83]"
           style={{ opacity: 1, transform: 'none' }}
         >
-          הנגריה הפתוחה
+          סטודיו האפי
         </h1>
         <p className="text-[#464646]" style={{ marginTop: 0 }}>
-          הזמנת סדנת נגרות
+          הזמנת סדנת טאפטינג
         </p>
       </header>
 
@@ -342,7 +328,6 @@ export default function WorkshopBooking() {
               <AccordionSection
                 key={section.id}
                 title={section.title}
-                titleMobile={section.titleMobile}
                 headerRight={headerRight}
                 variant={section.id === 6 ? 'summary' : 'default'}
                 stepNumber={section.id}
@@ -352,42 +337,41 @@ export default function WorkshopBooking() {
                 onClick={() => openSection(section.id)}
               >
                 {section.id === 1 && (
-                  <ParticipantsSection
-                    participants={participants}
-                    setParticipants={setParticipants}
+                  <TimeSlotsSection
+                    selectedSlot={selectedSlot}
+                    setSelectedSlot={setSelectedSlot}
+                    availableSlots={wixSlots}
                     onContinue={() => completeSection(1)}
                   />
                 )}
                 {section.id === 2 && (
-                  <WoodTypeSection
-                    woodType={woodType}
-                    setWoodType={setWoodType}
+                  <ParticipantsSection
+                    adults={adults}
+                    setAdults={setAdults}
+                    children={children}
+                    setChildren={setChildren}
+                    maxParticipants={selectedSlot?.openSpots || 10}
+                    pricingByService={pricingByService}
+                    selectedSlot={selectedSlot}
                     onContinue={() => completeSection(2)}
                   />
                 )}
                 {section.id === 3 && (
-                  <ProductSelectionSection
-                    cart={cart}
-                    setCart={setCart}
-                    participants={participants}
-                    woodType={woodType}
-                    wixProducts={wixProducts}
-                    updateQuantity={updateQuantity}
+                  <CarpetSizeSection
+                    adults={adults}
+                    children={children}
+                    carpetSizes={carpetSizes}
+                    setCarpetSizes={setCarpetSizes}
                     onContinue={() => completeSection(3)}
                   />
                 )}
                 {section.id === 4 && (
-                  <TimeSlotsSection
-                    selectedSlots={selectedSlots}
-                    setSelectedSlots={setSelectedSlots}
-                    totalMeetings={totalMeetings || 1}
-                    availableSlots={wixSlots}
-                    participants={participants}
+                  <ProductSelectionSection
+                    cart={cart}
+                    setCart={setCart}
+                    participants={adults + children}
+                    wixProducts={wixProducts}
                     onContinue={() => completeSection(4)}
-                    continueLabel="המשך לפרטים אישיים"
-                    isSubmitting={false}
-                    timerActive={timerActive}
-                    setTimerActive={setTimerActive}
                   />
                 )}
                 {section.id === 5 && (
@@ -400,12 +384,14 @@ export default function WorkshopBooking() {
                 )}
                 {section.id === 6 && (
                   <OrderSummarySection
-                    participants={participants}
-                    woodType={woodType}
+                    adults={adults}
+                    children={children}
+                    carpetSizes={carpetSizes}
                     cart={cart}
-                    selectedSlots={selectedSlots}
-                    totalMeetings={totalMeetings}
-                    activeSection={activeSection}
+                    selectedSlot={selectedSlot}
+                    basePrice={basePrice}
+                    carpetSizeUpgradePrice={carpetSizeUpgradePrice}
+                    totalPrice={orderTotalPreview}
                   />
                 )}
               </AccordionSection>
@@ -413,11 +399,6 @@ export default function WorkshopBooking() {
           })}
         </div>
       </main>
-
-      {/* Footer */}
-      
-      
-      {/* סיכום ההזמנה משולב בשלב 6; חלונית iframe חיצונית אופציונלית ב־/summary */}
     </div>
   );
 }

@@ -31,14 +31,14 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
 
       {/* הסבר על ההבדלים */}
       <div className="mb-4 p-3 bg-[#f5f5f5] rounded-lg md:mb-6 md:p-4 md:rounded-xl">
-        <h3 className="text-sm font-semibold text-[#6B584C] mb-2 md:text-base md:mb-3">מה ההבדל בין סוגי העצים?</h3>
+        <h3 className="text-sm font-semibold text-[#581E83] mb-2 md:text-base md:mb-3">מה ההבדל בין סוגי העצים?</h3>
         <div className="space-y-2 text-xs text-[#464646] md:text-sm">
           <div>
-            <span className="font-medium text-[#6B584C]">עץ ממוחזר:</span>
+            <span className="font-medium text-[#581E83]">עץ ממוחזר:</span>
             <p className="mt-0.5 leading-snug">עצים מפורקים ממשטחי העמסה (פלטות). עלותו העץ נמוכה אך הוא מחייב זמן עבודה נוסף של הכנה ושיוף.</p>
           </div>
           <div>
-            <span className="font-medium text-[#6B584C]">עץ חדש:</span>
+            <span className="font-medium text-[#581E83]">עץ חדש:</span>
             <p className="mt-0.5 leading-snug">עץ מוכן לעבודה, המאפשר הספקים מהירים. עלות העץ היא בתוספת לתשלום על הסדנה.</p>
           </div>
         </div>
@@ -58,15 +58,15 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
                 "relative rounded-xl border-2 text-right",
                 "p-3 md:p-6",
                 isSelected
-                  ? "border-[#ADC178] bg-[#ADC178]/5"
-                  : "border-[#e8e8e8] hover:border-[#ADC178]/50 bg-white"
+                  ? "border-[#5E2F88] bg-[#5E2F88]/5"
+                  : "border-[#e8e8e8] hover:border-[#5E2F88]/50 bg-white"
               )}
             >
               {isSelected && (
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute top-2 left-2 md:top-3 md:left-3 w-5 h-5 md:w-6 md:h-6 rounded-full bg-[#ADC178] flex items-center justify-center"
+                  className="absolute top-2 left-2 md:top-3 md:left-3 w-5 h-5 md:w-6 md:h-6 rounded-full bg-[#5E2F88] flex items-center justify-center"
                 >
                   <Check className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
                 </motion.div>
@@ -77,16 +77,16 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
                 <div className={cn(
                   "shrink-0 rounded-full flex items-center justify-center transition-colors",
                   "h-11 w-11 md:h-14 md:w-14",
-                  isSelected ? "bg-[#ADC178] text-white" : "bg-[#f5f5f5] text-[#6B584C]"
+                  isSelected ? "bg-[#5E2F88] text-white" : "bg-[#f5f5f5] text-[#581E83]"
                 )}>
                   <Icon className="h-6 w-6 md:h-7 md:w-7" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-base font-semibold leading-tight text-[#6B584C] md:text-lg">{option.title}</h3>
+                  <h3 className="text-base font-semibold leading-tight text-[#581E83] md:text-lg">{option.title}</h3>
                   <p
                     className={cn(
                       "mt-0.5 text-xs font-medium leading-none md:mt-1 md:text-sm",
-                      option.id === 'recycled' ? "text-[#ADC178]" : "text-[#464646]",
+                      option.id === 'recycled' ? "text-[#5E2F88]" : "text-[#464646]",
                       "whitespace-nowrap"
                     )}
                   >
@@ -105,7 +105,7 @@ export default function WoodTypeSection({ woodType, setWoodType, onContinue }) {
           <Button
             onClick={onContinue}
             disabled={!woodType}
-            className="shadow-none animate-none bg-[#ADC178] hover:bg-[#9ab569] text-white px-8 py-3 rounded-lg
+            className="shadow-none animate-none bg-[#5E2F88] hover:bg-[#7B3DB0] text-white px-8 py-3 rounded-lg
                        transition-colors duration-150 text-lg disabled:opacity-50"
           >
             המשך לבחירת מוצרים
