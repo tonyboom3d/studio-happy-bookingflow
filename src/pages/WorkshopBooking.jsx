@@ -369,6 +369,7 @@ export default function WorkshopBooking() {
                     selectedSlot={selectedSlot}
                     setSelectedSlot={setSelectedSlot}
                     availableSlots={wixSlots}
+                    pricingByService={pricingByService}
                     onContinue={() => completeSection(1)}
                   />
                 )}
