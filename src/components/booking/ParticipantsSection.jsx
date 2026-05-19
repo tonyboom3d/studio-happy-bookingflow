@@ -159,26 +159,28 @@ export default function ParticipantsSection({
         </div>
       </div>
 
-      {/* הסבר הורה+ילד — מתחת לכרטיסי הבחירה */}
-      {children > 0 && (
-        <div className="w-full max-w-md mb-3 rounded-lg border border-[#5E2F88]/20 bg-[#5E2F88]/5 p-2">
-          <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#581E83]">
-            <Info className="w-3.5 h-3.5 shrink-0" />
-            <span className="font-medium">הורה + ילד = שטיח אחד</span>
-            <span className="text-[#464646]/60">| ילד מצטרף להורה ולא תופס מקום נוסף</span>
-          </div>
-        </div>
-      )}
 
-      {/* סיכום ויזואלי עם אייקונים */}
+      {/* סיכום ויזואלי עם אייקונים — סדר: מבוגר | שטיח | ילד */}
       {!isGroupTooLarge && (
         <div className="w-full max-w-md rounded-xl border border-[#e8e8e8] bg-[#fafafa] p-3 mb-3">
-          <div className="flex items-center justify-around text-center">
+          <div className="flex items-start justify-around text-center">
             {/* מבוגרים */}
             <div className="flex flex-col items-center gap-1">
               <Users className="w-5 h-5 text-[#581E83]" />
               <span className="text-lg font-bold text-[#581E83]">{adults}</span>
               <span className="text-[10px] text-[#464646]/60">{adults === 1 ? 'מבוגר' : 'מבוגרים'}</span>
+            </div>
+
+            {/* שטיחים — באמצע עם הסבר מתחת */}
+            <div className="flex flex-col items-center gap-1">
+              <Ruler className="w-5 h-5 text-[#581E83]" />
+              <span className="text-lg font-bold text-[#581E83]">{totalCarpets}</span>
+              <span className="text-[10px] text-[#464646]/60">{totalCarpets === 1 ? 'שטיח' : 'שטיחים'}</span>
+              {children > 0 && (
+                <span className="text-[9px] text-[#5E2F88]/70 mt-0.5 leading-tight">
+                  הורה + ילד = שטיח אחד
+                </span>
+              )}
             </div>
 
             {/* ילדים */}
@@ -189,17 +191,7 @@ export default function ParticipantsSection({
             </div>
 
             {/* קו מפריד */}
-            <div className="h-10 w-px bg-[#e8e8e8]" />
-
-            {/* שטיחים */}
-            <div className="flex flex-col items-center gap-1">
-              <Ruler className="w-5 h-5 text-[#581E83]" />
-              <span className="text-lg font-bold text-[#581E83]">{totalCarpets}</span>
-              <span className="text-[10px] text-[#464646]/60">{totalCarpets === 1 ? 'שטיח' : 'שטיחים'}</span>
-            </div>
-
-            {/* קו מפריד */}
-            {totalPrice > 0 && <div className="h-10 w-px bg-[#e8e8e8]" />}
+            {totalPrice > 0 && <div className="h-12 w-px bg-[#e8e8e8]" />}
 
             {/* מחיר */}
             {totalPrice > 0 && (
