@@ -25,20 +25,20 @@ const listeners = new Set();
 
 // רשימת origins מותרים
 const ALLOWED_ORIGINS = [
-    // הדומיין הראשי של האתר
-    'https://www.canbonim.com',
-    'https://canbonim.com',
-    'https://www.kan-bonim.co.il',
-    'https://kan-bonim.co.il',
+    // Studio Happy
+    'https://www.studiohappy.art',
+    'https://studiohappy.art',
     // Wix Editor & Management
     'https://editor.wix.com',
     'https://manage.wix.com',
     'https://www.wix.com',
     // GitHub Pages (האפליקציה עצמה)
     'https://tonyboom3d.github.io',
-    // Wix iframes
+    // Wix iframes & static
     'https://static.parastorage.com',
-    'https://www.wixstatic.com'
+    'https://www.wixstatic.com',
+    // Wix hosting domains
+    'https://www.wixsite.com',
 ];
 
 // Debounce timer לשליחת summary
@@ -59,6 +59,12 @@ function isAllowedOrigin(origin) {
     
     // אם אין origin (null או undefined) - יכול להיות מ-Wix iframe
     if (!origin || origin === 'null') return true;
+    
+    // כל דומיין Wix מותר
+    if (origin.includes('.wix.com') || origin.includes('.wixsite.com') || 
+        origin.includes('.wixstatic.com') || origin.includes('.parastorage.com')) {
+        return true;
+    }
     
     // בדיקה אם ה-origin ברשימת המותרים
     return ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed));
