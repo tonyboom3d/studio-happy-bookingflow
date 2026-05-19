@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Minus, Plus, Users, Baby, MessageCircle, Info } from 'lucide-react';
+import { Minus, Plus, Users, Baby, MessageCircle, Info, Ruler, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ParticipantsSection({
@@ -13,16 +13,26 @@ export default function ParticipantsSection({
   selectedSlot,
   onContinue
 }) {
+  const [validationError, setValidationError] = useState(null);
+
   const parentChildPairs = Math.min(adults, children);
   const soloAdults = adults - parentChildPairs;
-  const spotsUsed = parentChildPairs + soloAdults;
+  // מקומות תפוסים: מבוגר ללא ילד = 1, הורה+ילד = 1
+  const spotsUsed = adults;
   const totalParticipants = adults + children;
   const isGroupTooLarge = totalParticipants > 9;
+  const totalCarpets = adults; // כל מבוגר = שטיח (ילד מצטרף)
+
+  // ילדים בלי מספיק מבוגרים
+  const childrenNeedAdult = children > adults;
+  const missingAdults = childrenNeedAdult ? children - adults : 0;
+
+  // חריגה מהמקומות הפנויים
+  const spotsExceeded = spotsUsed > maxParticipants;
+  const spotsRemaining = maxParticipants - spotsUsed;
 
   const { totalPrice } = useMemo(() => {
-    if (!selectedSlot || !pricingByService) {
-      return { totalPrice: 0 };
-    }
+    if (!selectedSlot || !pricingByService) return { totalPrice: 0 };
     const servicePricing = pricingByService[selectedSlot.serviceId];
     if (!servicePricing) return { totalPrice: 0 };
 
@@ -36,21 +46,36 @@ export default function ParticipantsSection({
 
   const handleAdultsDecrease = () => {
     if (adults > 1) {
-      if (adults - 1 < children) setChildren(adults - 1);
       setAdults(adults - 1);
+      setValidationError(null);
     }
   };
   const handleAdultsIncrease = () => {
-    const newSpotsUsed = children > adults ? spotsUsed : spotsUsed + 1;
-    if (newSpotsUsed > maxParticipants) return;
     setAdults(adults + 1);
+    setValidationError(null);
   };
   const handleChildrenDecrease = () => {
-    if (children > 0) setChildren(children - 1);
+    if (children > 0) {
+      setChildren(children - 1);
+      setValidationError(null);
+    }
   };
   const handleChildrenIncrease = () => {
-    if (children >= adults) return;
     setChildren(children + 1);
+    setValidationError(null);
+  };
+
+  const handleContinue = () => {
+    if (childrenNeedAdult) {
+      setValidationError(`יש להוסיף ${missingAdults} ${missingAdults === 1 ? 'מבוגר מלווה' : 'מבוגרים מלווים'} — כל ילד חייב הורה מלווה`);
+      return;
+    }
+    if (spotsExceeded) {
+      setValidationError(`נותרו ${maxParticipants} מקומות בלבד בתאריך שנבחר`);
+      return;
+    }
+    setValidationError(null);
+    onContinue();
   };
 
   return (
@@ -58,10 +83,10 @@ export default function ParticipantsSection({
       <p className="text-sm text-[#464646]/70 mb-4">כמה משתתפים יהיו בסדנה?</p>
 
       {/* מבוגרים + ילדים בשורה אחת */}
-      <div className="w-full max-w-md grid grid-cols-2 gap-3 mb-4">
+      <div className="w-full max-w-md grid grid-cols-2 gap-3 mb-2">
         {/* מבוגרים */}
         <div className="rounded-xl border border-[#e8e8e8] bg-white p-3">
-          <div className="flex items-center gap-1.5 mb-2">
+          <div className="flex items-center justify-center gap-1.5 mb-2">
             <Users className="w-4 h-4 text-[#581E83]" />
             <span className="text-sm font-medium text-[#581E83]">מבוגרים</span>
             <span className="text-[10px] text-[#464646]/50">(14+)</span>
@@ -88,10 +113,8 @@ export default function ParticipantsSection({
             <button
               type="button"
               onClick={handleAdultsIncrease}
-              disabled={spotsUsed >= maxParticipants && children <= adults}
               className="w-8 h-8 rounded-full border-2 border-[#5E2F88] flex items-center justify-center
-                         text-[#5E2F88] hover:bg-[#5E2F88] hover:text-white transition-colors
-                         disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#5E2F88]"
+                         text-[#5E2F88] hover:bg-[#5E2F88] hover:text-white transition-colors"
             >
               <Plus className="w-3 h-3" />
             </button>
@@ -100,7 +123,7 @@ export default function ParticipantsSection({
 
         {/* ילדים */}
         <div className="rounded-xl border border-[#e8e8e8] bg-white p-3">
-          <div className="flex items-center gap-1.5 mb-2">
+          <div className="flex items-center justify-center gap-1.5 mb-2">
             <Baby className="w-4 h-4 text-[#581E83]" />
             <span className="text-sm font-medium text-[#581E83]">ילדים</span>
             <span className="text-[10px] text-[#464646]/50">(8-13)</span>
@@ -127,10 +150,8 @@ export default function ParticipantsSection({
             <button
               type="button"
               onClick={handleChildrenIncrease}
-              disabled={children >= adults}
               className="w-8 h-8 rounded-full border-2 border-[#5E2F88] flex items-center justify-center
-                         text-[#5E2F88] hover:bg-[#5E2F88] hover:text-white transition-colors
-                         disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#5E2F88]"
+                         text-[#5E2F88] hover:bg-[#5E2F88] hover:text-white transition-colors"
             >
               <Plus className="w-3 h-3" />
             </button>
@@ -138,64 +159,105 @@ export default function ParticipantsSection({
         </div>
       </div>
 
-      {/* הסבר על הורה+ילד */}
+      {/* הסבר הורה+ילד — מתחת לכרטיסי הבחירה */}
       {children > 0 && (
-        <div className="w-full max-w-md mb-3 rounded-lg border border-[#5E2F88]/20 bg-[#5E2F88]/5 p-2.5">
+        <div className="w-full max-w-md mb-3 rounded-lg border border-[#5E2F88]/20 bg-[#5E2F88]/5 p-2">
+          <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#581E83]">
+            <Info className="w-3.5 h-3.5 shrink-0" />
+            <span className="font-medium">הורה + ילד = שטיח אחד</span>
+            <span className="text-[#464646]/60">| ילד מצטרף להורה ולא תופס מקום נוסף</span>
+          </div>
+        </div>
+      )}
+
+      {/* סיכום ויזואלי עם אייקונים */}
+      {!isGroupTooLarge && (
+        <div className="w-full max-w-md rounded-xl border border-[#e8e8e8] bg-[#fafafa] p-3 mb-3">
+          <div className="flex items-center justify-around text-center">
+            {/* מבוגרים */}
+            <div className="flex flex-col items-center gap-1">
+              <Users className="w-5 h-5 text-[#581E83]" />
+              <span className="text-lg font-bold text-[#581E83]">{adults}</span>
+              <span className="text-[10px] text-[#464646]/60">{adults === 1 ? 'מבוגר' : 'מבוגרים'}</span>
+            </div>
+
+            {/* ילדים */}
+            <div className="flex flex-col items-center gap-1">
+              <Baby className="w-5 h-5 text-[#581E83]" />
+              <span className="text-lg font-bold text-[#581E83]">{children}</span>
+              <span className="text-[10px] text-[#464646]/60">{children === 1 ? 'ילד' : 'ילדים'}</span>
+            </div>
+
+            {/* קו מפריד */}
+            <div className="h-10 w-px bg-[#e8e8e8]" />
+
+            {/* שטיחים */}
+            <div className="flex flex-col items-center gap-1">
+              <Ruler className="w-5 h-5 text-[#581E83]" />
+              <span className="text-lg font-bold text-[#581E83]">{totalCarpets}</span>
+              <span className="text-[10px] text-[#464646]/60">{totalCarpets === 1 ? 'שטיח' : 'שטיחים'}</span>
+            </div>
+
+            {/* קו מפריד */}
+            {totalPrice > 0 && <div className="h-10 w-px bg-[#e8e8e8]" />}
+
+            {/* מחיר */}
+            {totalPrice > 0 && (
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-[10px] text-[#464646]/60">סה״כ</span>
+                <span className="text-lg font-bold text-[#5E2F88]">₪{totalPrice}</span>
+                <span className="text-[10px] text-[#464646]/60">לסדנה</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* שגיאת חריגה מהמקומות הפנויים */}
+      {spotsExceeded && (
+        <div className="w-full max-w-md mb-3 rounded-lg border border-red-300 bg-red-50 p-2.5">
           <div className="flex items-start gap-2">
-            <Info className="w-3.5 h-3.5 text-[#5E2F88] mt-0.5 shrink-0" />
-            <div className="text-[11px] text-[#464646]/80">
-              <span className="font-medium text-[#581E83]">הורה + ילד = שטיח אחד.</span> ילד מצטרף להורה ולא תופס מקום נוסף.
+            <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+            <div className="text-xs text-red-700">
+              <p className="font-medium mb-1">אין מספיק מקומות בתאריך שנבחר</p>
+              <p>נותרו {maxParticipants} מקומות בלבד. הפחיתו משתתפים, בחרו תאריך אחר, או{' '}
+                <a href="https://wa.link/jbfarf" target="_blank" rel="noopener noreferrer" className="underline font-medium">
+                  צרו קשר בוואטסאפ
+                </a> לבירור.
+              </p>
             </div>
           </div>
         </div>
       )}
 
-      <AnimatePresence mode="wait">
-        {isGroupTooLarge ? (
-          <motion.div
-            key="large-group"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="mt-2 flex flex-col items-center gap-2 text-center"
+      {/* כפתור המשך + שגיאת ולידציה */}
+      {!isGroupTooLarge && (
+        <div className="flex flex-col items-center gap-2">
+          <Button
+            onClick={handleContinue}
+            className="bg-[#5E2F88] hover:bg-[#7B3DB0] text-white px-8 py-2.5 rounded-lg text-base"
           >
-            <p className="text-sm text-[#464646]/80 max-w-[280px]">
-              לקבוצות מעל 9 משתתפים יש לנו הצעות מיוחדות!
-            </p>
-            <a
-              href="https://wa.link/jbfarf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-5 py-2 text-sm text-white font-medium hover:bg-[#20bd5a] transition-colors"
-            >
-              <MessageCircle className="w-4 h-4" />
-              אנחנו קבוצה גדולה - מעל ל 9 משתתפים
-            </a>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="pricing"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="mt-2 text-center"
-          >
-            <div className="text-xs text-[#464646]/70">
-              {soloAdults > 0 && <span>{soloAdults} {soloAdults === 1 ? 'מבוגר' : 'מבוגרים'}</span>}
-              {parentChildPairs > 0 && soloAdults > 0 && <span> + </span>}
-              {parentChildPairs > 0 && <span>{parentChildPairs} {parentChildPairs === 1 ? 'זוג' : 'זוגות'} הורה+ילד</span>}
-            </div>
-            {totalPrice > 0 && (
-              <p className="text-base font-semibold text-[#5E2F88] mt-1">
-                ₪{totalPrice} לסדנה
-              </p>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            המשך לבחירת גודל שטיח
+          </Button>
 
+          <AnimatePresence>
+            {validationError && (
+              <motion.p
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                className="text-xs text-red-600 text-center max-w-[300px]"
+              >
+                {validationError}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* לינק לקבוצות גדולות — מתחת לכפתור */}
       {!isGroupTooLarge && totalParticipants >= 5 && (
-        <div className="mt-2">
+        <div className="mt-3">
           <a
             href="https://wa.link/jbfarf"
             target="_blank"
@@ -207,13 +269,26 @@ export default function ParticipantsSection({
         </div>
       )}
 
-      {!isGroupTooLarge && (
-        <Button
-          onClick={onContinue}
-          className="mt-5 bg-[#5E2F88] hover:bg-[#7B3DB0] text-white px-8 py-2.5 rounded-lg text-base"
+      {/* קבוצה גדולה מעל 9 */}
+      {isGroupTooLarge && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-3 flex flex-col items-center gap-2 text-center"
         >
-          המשך לבחירת גודל שטיח
-        </Button>
+          <p className="text-sm text-[#464646]/80 max-w-[280px]">
+            לקבוצות מעל 9 משתתפים יש לנו הצעות מיוחדות!
+          </p>
+          <a
+            href="https://wa.link/jbfarf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-5 py-2 text-sm text-white font-medium hover:bg-[#20bd5a] transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" />
+            אנחנו קבוצה גדולה - מעל ל 9 משתתפים
+          </a>
+        </motion.div>
       )}
     </div>
   );

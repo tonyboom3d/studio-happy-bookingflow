@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Calendar, MessageCircle, ChevronDown } from 'lucide-react';
+import { MessageCircle, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   format,
@@ -19,10 +19,9 @@ function getAvailabilityInfo(availableSlots) {
   const availableDates = new Set();
   const spotsMap = new Map();
   const slotMap = new Map();
-  const priceMap = new Map(); // תאריך -> מחיר מינימלי לאדם
 
   if (!Array.isArray(availableSlots)) {
-    return { availableDates, spotsMap, slotMap, priceMap };
+    return { availableDates, spotsMap, slotMap };
   }
 
   availableSlots.forEach((slot) => {
@@ -45,11 +44,10 @@ function getAvailabilityInfo(availableSlots) {
       spotsMap.set(dateStr, openSpots);
       slotMap.set(dateStr, slot);
     }
-
     availableDates.add(dateStr);
   });
 
-  return { availableDates, spotsMap, slotMap, priceMap };
+  return { availableDates, spotsMap, slotMap };
 }
 
 function getMinPriceForSlot(slot, pricingByService) {
@@ -70,7 +68,7 @@ export default function TimeSlotsSection({
   const [today] = useState(() => startOfDay(new Date()));
   const [whatsappOpen, setWhatsappOpen] = useState(false);
 
-  const { availableDates, spotsMap, slotMap } = useMemo(
+  const { availableDates, slotMap } = useMemo(
     () => getAvailabilityInfo(Array.isArray(availableSlots) ? availableSlots : []),
     [availableSlots]
   );
@@ -100,40 +98,35 @@ export default function TimeSlotsSection({
 
   return (
     <div className="py-3" dir="rtl">
-      {/* לוח שנה קומפקטי */}
-      <div className="rounded-xl border border-[#e8e8e8] bg-white p-3">
+      <div className="rounded-xl border border-[#e8e8e8] bg-white p-2.5 sm:p-3">
         {/* כותרת חודש */}
         <div className="mb-2 flex items-center justify-between">
           <button
             type="button"
             onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-            className="rounded-md p-1.5 text-sm transition-colors hover:bg-[#f5f5f5]"
-          >
-            →
-          </button>
+            className="rounded-md p-1 text-sm transition-colors hover:bg-[#f5f5f5]"
+          >→</button>
           <h3 className="text-sm font-semibold text-[#581E83]">
             {format(currentMonth, 'MMMM yyyy', { locale: he })}
           </h3>
           <button
             type="button"
             onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-            className="rounded-md p-1.5 text-sm transition-colors hover:bg-[#f5f5f5]"
-          >
-            ←
-          </button>
+            className="rounded-md p-1 text-sm transition-colors hover:bg-[#f5f5f5]"
+          >←</button>
         </div>
 
         {/* ימי השבוע */}
-        <div className="grid grid-cols-7 gap-0.5 mb-1">
+        <div className="grid grid-cols-7 gap-[3px] mb-1">
           {['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].map(day => (
-            <div key={day} className="text-center text-[10px] font-medium text-[#464646]/60 py-0.5">
+            <div key={day} className="text-center text-[10px] font-medium text-[#464646]/60">
               {day}
             </div>
           ))}
         </div>
 
-        {/* ימים */}
-        <div className="grid grid-cols-7 gap-0.5">
+        {/* ימים — ריבועים שווים */}
+        <div className="grid grid-cols-7 gap-[3px]">
           {calendarDays.map((day, i) => {
             const sod = startOfDay(day);
             const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
@@ -143,30 +136,35 @@ export default function TimeSlotsSection({
             const isSelected = isDateSelected(day);
             const slot = slotMap.get(dateStr);
             const minPrice = hasSlot ? getMinPriceForSlot(slot, pricingByService) : null;
+            const isDisabled = !isCurrentMonth || isPast || !hasSlot;
 
             return (
               <button
                 key={i}
                 type="button"
                 onClick={() => handleDateClick(day)}
-                disabled={!isCurrentMonth || isPast || !hasSlot}
+                disabled={isDisabled}
                 className={cn(
-                  'relative flex flex-col items-center justify-center rounded-md py-1 text-xs transition-all min-h-[40px]',
-                  !isCurrentMonth && 'text-[#464646]/20',
-                  isCurrentMonth && isPast && 'text-[#c4c4c4] cursor-default',
-                  isCurrentMonth && !isPast && !hasSlot && 'text-[#c4c4c4] cursor-default',
+                  'relative aspect-square flex flex-col items-center justify-center rounded-md text-xs transition-all',
+                  !isCurrentMonth && 'text-[#464646]/15',
+                  isCurrentMonth && isDisabled && 'text-[#b0b0b0] cursor-default',
                   isCurrentMonth && !isPast && hasSlot && !isSelected &&
                     'text-[#581E83] hover:bg-[#5E2F88]/15 cursor-pointer border border-[#5E2F88]/30 bg-[#5E2F88]/5',
                   isSelected && 'bg-[#5E2F88] text-white shadow-md cursor-pointer'
                 )}
               >
-                <span className="font-semibold leading-none">{format(day, 'd')}</span>
+                <span className={cn(
+                  'font-semibold leading-none',
+                  isCurrentMonth && isDisabled && 'line-through decoration-[#b0b0b0]/60'
+                )}>
+                  {format(day, 'd')}
+                </span>
                 {isCurrentMonth && !isPast && hasSlot && minPrice && (
                   <span className={cn(
-                    'text-[7px] leading-none mt-0.5 whitespace-nowrap',
-                    isSelected ? 'text-white/80' : 'text-[#5E2F88]/70'
+                    'text-[6.5px] leading-none mt-[2px] whitespace-nowrap',
+                    isSelected ? 'text-white/80' : 'text-[#5E2F88]/80'
                   )}>
-                    החל מ₪{minPrice}
+                    החל מ{minPrice}₪
                   </span>
                 )}
               </button>
@@ -187,9 +185,9 @@ export default function TimeSlotsSection({
         </button>
       </div>
 
-      {/* WhatsApp — כותרת בלבד, hover/click פותח פירוט */}
+      {/* WhatsApp — קומפקטי, hover/click פותח */}
       <div
-        className="mt-4 rounded-lg border border-[#5E2F88]/15 bg-[#5E2F88]/5 overflow-hidden transition-all"
+        className="mt-4 rounded-lg border border-[#5E2F88]/15 bg-[#5E2F88]/5 overflow-hidden"
         onMouseEnter={() => setWhatsappOpen(true)}
         onMouseLeave={() => setWhatsappOpen(false)}
       >
