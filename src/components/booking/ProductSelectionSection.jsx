@@ -173,7 +173,7 @@ export default function ProductSelectionSection({
                     </h5>
                     {product.difficulty && (
                       <span className="text-[10px] sm:text-xs text-[#464646]/60 whitespace-nowrap">
-                        רמת קושי: {product.difficulty}
+                        {product.difficulty}
                       </span>
                     )}
                   </div>

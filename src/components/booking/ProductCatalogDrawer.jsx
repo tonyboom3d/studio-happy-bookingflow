@@ -1,67 +1,33 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { addLog } from '@/components/VersionLogger';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { X, Check, Info, Package, ZoomIn, Minus, Plus } from 'lucide-react';
+import { X, Check, ZoomIn, Minus, Plus, Package, Search, ChevronDown, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 const FALLBACK_PRODUCTS = [
-  { id: 'fallback-1', title: 'טוען שטיחים...', price: 0, difficulty: 'קל', image: null }
+  { id: 'fallback-1', title: 'טוען שטיחים...', difficulty: '', image: null, favorites: false }
 ];
 
-const DIFFICULTY_LABELS = {
-  1: 'קל',
-  2: 'בינוני',
-  3: 'מאתגר',
-  easy: 'קל',
-  medium: 'בינוני',
-  hard: 'מאתגר'
-};
-
 function getDifficultyLabel(product) {
-  if (product.difficulty) {
-    if (typeof product.difficulty === 'string') {
-      return DIFFICULTY_LABELS[product.difficulty.toLowerCase()] || product.difficulty;
-    }
-    return DIFFICULTY_LABELS[product.difficulty] || 'קל';
-  }
-  return 'קל';
+  const raw = product.difficulty;
+  if (!raw) return '';
+  if (typeof raw === 'string') return raw;
+  if (Array.isArray(raw)) return raw[0] || '';
+  return '';
 }
 
-function hasProductImage(product) {
-  const u = product?.image;
-  if (u == null) return false;
-  return String(u).trim().length > 0;
-}
-
-function hasProductDimensionInfo(product) {
-  const w = product?.width ?? product?.dimensions?.width;
-  const d = product?.depth ?? product?.dimensions?.depth;
-  const h = product?.height ?? product?.dimensions?.height;
-  const dimText = typeof product?.dimensions === 'string' ? product.dimensions.trim() : '';
-  const meaningful = (v) => {
-    if (v === undefined || v === null) return false;
-    if (typeof v === 'number') return !Number.isNaN(v) && v > 0;
-    const s = String(v).trim();
-    return s.length > 0;
-  };
-  return meaningful(dimText) || meaningful(w) || meaningful(d) || meaningful(h);
+function isHardDifficulty(label) {
+  if (!label) return false;
+  const l = label.toLowerCase();
+  return l === 'קשה' || l === 'hard' || l === 'מאתגר';
 }
 
 function ProductGridCard({ product, isSelected, onClick, onZoom, quantity, onQuantityChange, canIncrease }) {
-  const [showDimensions, setShowDimensions] = useState(false);
-  const showInfoButton = hasProductDimensionInfo(product);
-  const showImage = hasProductImage(product);
-  const dimText = typeof product?.dimensions === 'string' ? product.dimensions.trim() : '';
   const difficultyLabel = getDifficultyLabel(product);
+  const hard = isHardDifficulty(difficultyLabel);
 
   return (
     <motion.div
@@ -83,48 +49,15 @@ function ProductGridCard({ product, isSelected, onClick, onZoom, quantity, onQua
         </motion.div>
       )}
 
-      {showInfoButton && (
-        <TooltipProvider>
-          <Tooltip open={showDimensions} onOpenChange={setShowDimensions}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center shadow-md hover:bg-white transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowDimensions(!showDimensions);
-                }}
-              >
-                <Info className="w-4 h-4 text-[#581E83]" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="z-[500] bg-white border border-[#e8e8e8] p-3">
-              <div className="text-sm text-[#464646]">
-                <p className="font-medium mb-1">מידות:</p>
-                {dimText && <p className="whitespace-pre-wrap">{dimText}</p>}
-                {(product.width || product.dimensions?.width) && (
-                  <p>רוחב: {product.width || product.dimensions?.width} ס״מ</p>
-                )}
-                {(product.depth || product.dimensions?.depth) && (
-                  <p>עומק: {product.depth || product.dimensions?.depth} ס״מ</p>
-                )}
-                {(product.height || product.dimensions?.height) && (
-                  <p>גובה: {product.height || product.dimensions?.height} ס״מ</p>
-                )}
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
-
       <button onClick={onClick} className="w-full text-right">
         <div className="aspect-[4/3] overflow-hidden bg-[#E4C1F9]/30 flex items-center justify-center relative group">
-          {showImage ? (
+          {product.image ? (
             <>
               <img
                 src={product.image}
                 alt={product.title}
                 className="h-full w-full object-contain transition-transform duration-300 hover:scale-105"
+                loading="lazy"
               />
               <button
                 type="button"
@@ -144,13 +77,20 @@ function ProductGridCard({ product, isSelected, onClick, onZoom, quantity, onQua
           )}
         </div>
 
-        <div className="p-2.5 sm:p-4">
-          <h3 className="font-semibold text-[#581E83] text-sm sm:text-base mb-1.5 sm:mb-2 leading-snug">{product.title}</h3>
-
-          <div className="flex flex-nowrap items-center justify-between gap-1 pt-2 border-t border-[#e8e8e8] min-w-0">
-            <span className="text-xs sm:text-sm text-[#464646]/70">
-              רמת קושי: {difficultyLabel}
-            </span>
+        <div className="p-2.5 sm:p-3">
+          <h3 className="font-semibold text-[#581E83] text-sm sm:text-base mb-1 leading-snug">{product.title}</h3>
+          <div className="flex flex-nowrap items-center justify-between gap-1 pt-1.5 border-t border-[#e8e8e8] min-w-0">
+            {difficultyLabel && (
+              <div className="flex items-center gap-1">
+                <span className="text-xs sm:text-sm text-[#464646]/70">{difficultyLabel}</span>
+                {hard && (
+                  <span className="text-[10px] text-orange-500 flex items-center gap-0.5">
+                    <AlertTriangle className="w-3 h-3" />
+                    דורש ניסיון
+                  </span>
+                )}
+              </div>
+            )}
             {isSelected && onQuantityChange && (
               <div
                 className="flex items-center gap-0.5 sm:gap-1.5 shrink-0"
@@ -179,6 +119,49 @@ function ProductGridCard({ product, isSelected, onClick, onZoom, quantity, onQua
   );
 }
 
+function VideoCard({ title, subtitle, videoUrl, onClick, className }) {
+  const videoRef = useRef(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+    if (isHovered) {
+      videoRef.current.play().catch(() => {});
+    } else {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  }, [isHovered]);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={cn(
+        "relative rounded-xl overflow-hidden border-2 border-[#e8e8e8] hover:border-[#5E2F88] transition-all h-[180px] w-full",
+        className
+      )}
+    >
+      <video
+        ref={videoRef}
+        src={videoUrl}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+      <div className="absolute inset-0 bg-black/20" />
+      <div className="relative z-10 p-3 text-right">
+        <h4 className="text-[18px] font-bold text-white drop-shadow-md">{title}</h4>
+        <p className="text-[13px] text-white/90 drop-shadow-md mt-0.5 leading-snug">{subtitle}</p>
+      </div>
+    </button>
+  );
+}
+
 export default function ProductCatalogDrawer({
   isOpen,
   onClose,
@@ -190,17 +173,65 @@ export default function ProductCatalogDrawer({
   updateQuantity
 }) {
   const [enlargedImage, setEnlargedImage] = useState(null);
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState('');
+  const [showFavorites, setShowFavorites] = useState(false);
   const productsContainerRef = useRef(null);
+  const searchTimerRef = useRef(null);
 
   const products = wixProducts && wixProducts.length > 0 ? wixProducts : FALLBACK_PRODUCTS;
 
+  // Debounce search
+  const handleSearchChange = useCallback((value) => {
+    setSearchText(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(value);
+    }, 500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, []);
+
+  // Extract unique difficulty values
+  const difficultyOptions = useMemo(() => {
+    const set = new Set();
+    products.forEach(p => {
+      const d = getDifficultyLabel(p);
+      if (d) set.add(d);
+    });
+    return Array.from(set);
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
-    return [...products].sort((a, b) => {
+    let result = [...products];
+
+    if (showFavorites) {
+      result = result.filter(p => p.favorites === true);
+    }
+
+    if (difficultyFilter) {
+      result = result.filter(p => getDifficultyLabel(p) === difficultyFilter);
+    }
+
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.trim().toLowerCase();
+      result = result.filter(p =>
+        (p.title || '').toLowerCase().includes(q) ||
+        (p.productName || '').toLowerCase().includes(q)
+      );
+    }
+
+    return result.sort((a, b) => {
       const ta = (a.title || '').toString();
       const tb = (b.title || '').toString();
       return ta.localeCompare(tb, 'he');
     });
-  }, [products]);
+  }, [products, debouncedSearch, difficultyFilter, showFavorites]);
 
   const totalItems = cart.reduce((sum, p) => sum + (p.quantity || 1), 0);
 
@@ -211,35 +242,48 @@ export default function ProductCatalogDrawer({
       setCart(cart.filter(p => (p._id || p.id) !== productId));
     } else {
       if (totalItems >= totalCarpets) return;
-      setCart([...cart, { 
-        ...product, 
-        id: productId, 
-        meetings: getMeetings(product), 
+      setCart([...cart, {
+        ...product,
+        id: productId,
+        meetings: getMeetings(product),
         quantity: 1,
         difficulty: getDifficultyLabel(product)
       }]);
     }
   };
 
+  const handleFavoritesClick = () => {
+    setShowFavorites(true);
+    setSearchText('');
+    setDebouncedSearch('');
+    setDifficultyFilter('');
+  };
+
+  const clearFilters = () => {
+    setShowFavorites(false);
+    setSearchText('');
+    setDebouncedSearch('');
+    setDifficultyFilter('');
+  };
+
   useEffect(() => {
     try {
-      window.postMessage({
-        type: 'CATALOG_STATE_CHANGE',
-        data: { isOpen }
-      }, '*');
-      
+      window.postMessage({ type: 'CATALOG_STATE_CHANGE', data: { isOpen } }, '*');
       if (window.parent && window.parent !== window) {
-        window.parent.postMessage({
-          type: 'CATALOG_STATE_CHANGE',
-          data: { isOpen }
-        }, '*');
+        window.parent.postMessage({ type: 'CATALOG_STATE_CHANGE', data: { isOpen } }, '*');
       }
-      
       addLog(`Catalog ${isOpen ? 'opened' : 'closed'}`, isOpen ? 'info' : 'success');
-    } catch (err) {
-      addLog(`Failed to send catalog state: ${err.message}`, 'error');
+    } catch (err) {}
+  }, [isOpen]);
+
+  // Reset filters on open
+  useEffect(() => {
+    if (isOpen) {
+      clearFilters();
     }
   }, [isOpen]);
+
+  const noResults = filteredProducts.length === 0;
 
   return (
     <Sheet
@@ -254,25 +298,72 @@ export default function ProductCatalogDrawer({
         className="flex h-full max-h-[100dvh] w-full flex-col overflow-hidden p-0 sm:max-w-xl"
         style={{ backgroundColor: '#E4C1F9' }}
       >
-        <SheetHeader className="flex flex-col text-center sm:text-left shrink-0 space-y-0 border-b border-[#5E2F88]/20 bg-[#E4C1F9] px-4 py-3 sticky top-0 z-10">
-          <div className="flex items-center justify-between">
+        {/* Header - לבן */}
+        <SheetHeader className="flex flex-col shrink-0 space-y-0 border-b border-[#e8e8e8] bg-white px-4 py-3 sticky top-0 z-10">
+          <div className="flex items-center justify-between mb-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-[#581E83] hover:bg-white transition-colors"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f5f5f5] text-[#581E83] hover:bg-[#e8e8e8] transition-colors"
               aria-label="סגור קטלוג"
             >
               <X className="h-5 w-5" />
             </button>
-            <SheetTitle className="text-lg font-bold text-[#581E83] md:text-xl">
-              קטלוג השטיחים שלנו
+            <SheetTitle className="text-lg font-bold text-[#581E83]">
+              קטלוג העיצובים
             </SheetTitle>
             <div className="w-8" />
           </div>
+
+          {/* חיפוש + סינון */}
+          <div className="flex gap-2">
+            {/* חיפוש */}
+            <div className="flex-1 relative">
+              <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#464646]/50" />
+              <input
+                type="text"
+                value={searchText}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="חיפוש עיצוב..."
+                className="w-full h-9 pr-8 pl-3 rounded-lg border border-[#e8e8e8] text-sm text-[#464646] placeholder:text-[#464646]/40 focus:outline-none focus:border-[#5E2F88] transition-colors"
+                dir="rtl"
+              />
+            </div>
+
+            {/* סינון קושי */}
+            <div className="relative">
+              <select
+                value={difficultyFilter}
+                onChange={(e) => setDifficultyFilter(e.target.value)}
+                className="h-9 pl-7 pr-3 rounded-lg border border-[#e8e8e8] text-sm text-[#464646] bg-white appearance-none focus:outline-none focus:border-[#5E2F88] transition-colors cursor-pointer"
+                dir="rtl"
+              >
+                <option value="">כל הרמות</option>
+                {difficultyOptions.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#464646]/50 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* מועדפים פעיל */}
+          {showFavorites && (
+            <div className="flex items-center justify-between mt-2 bg-[#5E2F88]/10 rounded-lg px-3 py-1.5">
+              <span className="text-xs text-[#581E83] font-medium">מציג הכי WOW!</span>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-xs text-[#5E2F88] underline hover:no-underline"
+              >
+                הצג הכל
+              </button>
+            </div>
+          )}
         </SheetHeader>
 
         {/* מובייל: סיכום + המשך */}
-        <div className="shrink-0 border-b border-[#5E2F88]/20 bg-[#E4C1F9] px-2 pb-2 pt-0 sm:hidden">
+        <div className="shrink-0 border-b border-[#5E2F88]/20 bg-[#E4C1F9] px-2 pb-2 pt-1 sm:hidden">
           <div className="rounded-lg border border-[#5E2F88]/20 bg-white/80 p-2 text-sm text-[#464646]">
             <div className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-1">
@@ -286,7 +377,7 @@ export default function ProductCatalogDrawer({
               className={`mt-1.5 h-11 w-full text-base font-medium text-white shadow-md ${cart.length > 0
                 ? 'bg-[#5E2F88] hover:bg-[#7B3DB0]'
                 : 'cursor-not-allowed bg-gray-300'
-                }`}
+              }`}
             >
               המשך
             </Button>
@@ -298,39 +389,58 @@ export default function ProductCatalogDrawer({
           ref={productsContainerRef}
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 sm:p-4 sm:pb-4"
         >
-          <div className="grid grid-cols-2 gap-2 sm:gap-4">
-            {filteredProducts.map(product => {
-              const productId = product._id || product.id;
-              const cartItem = cart.find(p => (p._id || p.id) === productId);
-              const isSelected = !!cartItem;
-              const canAddMore = totalItems < totalCarpets;
-              return (
-                <div 
-                  key={productId} 
-                  data-product-card 
-                  onClick={() => {
-                    if (!isSelected && !canAddMore) return;
-                    toggleProduct(product);
-                  }}
-                  className={!isSelected && !canAddMore ? 'opacity-40 cursor-not-allowed' : ''}
-                  title={!isSelected && !canAddMore ? `כבר בחרת ${totalCarpets} עיצובים` : ''}
-                >
-                  <ProductGridCard
-                    product={product}
-                    isSelected={isSelected}
-                    onClick={() => {}}
-                    onZoom={setEnlargedImage}
-                    quantity={cartItem?.quantity || 1}
-                    onQuantityChange={updateQuantity}
-                    canIncrease={totalItems < totalCarpets}
-                  />
-                </div>
-              );
-            })}
-          </div>
-          {filteredProducts.length === 0 && (
-            <div className="text-center py-12 text-[#464646]">
-              לא נמצאו שטיחים
+          {noResults ? (
+            <div className="flex flex-col items-center py-8 px-4" dir="rtl">
+              <p className="text-[16px] text-[#464646] mb-6 text-center">
+                לא נמצאו עיצובים תואמים לחיפוש שלך
+              </p>
+              <div className="grid grid-cols-2 gap-3 w-full max-w-md">
+                {/* AI Card */}
+                <VideoCard
+                  title="AI"
+                  subtitle="בוחרים תמונה שרוצים לעצב וה AI מרכיב לכם סקיצה."
+                  videoUrl="https://video.wixstatic.com/video/6b73e9_d8a10308e73b49419878f964bd024d8f/480p/mp4/file.mp4"
+                  onClick={() => {}}
+                />
+                {/* WOW Card */}
+                <VideoCard
+                  title="!הכי WOW"
+                  subtitle="ביחרו ממגון עיצובים מובחרים."
+                  videoUrl="https://video.wixstatic.com/video/6b73e9_089ed022593f497f89d40b07a4e725b5/480p/mp4/file.mp4"
+                  onClick={handleFavoritesClick}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
+              {filteredProducts.map(product => {
+                const productId = product._id || product.id;
+                const cartItem = cart.find(p => (p._id || p.id) === productId);
+                const isSelected = !!cartItem;
+                const canAddMore = totalItems < totalCarpets;
+                return (
+                  <div
+                    key={productId}
+                    data-product-card
+                    onClick={() => {
+                      if (!isSelected && !canAddMore) return;
+                      toggleProduct(product);
+                    }}
+                    className={!isSelected && !canAddMore ? 'opacity-40 cursor-not-allowed' : ''}
+                    title={!isSelected && !canAddMore ? `כבר בחרת ${totalCarpets} עיצובים` : ''}
+                  >
+                    <ProductGridCard
+                      product={product}
+                      isSelected={isSelected}
+                      onClick={() => {}}
+                      onZoom={setEnlargedImage}
+                      quantity={cartItem?.quantity || 1}
+                      onQuantityChange={updateQuantity}
+                      canIncrease={totalItems < totalCarpets}
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -349,7 +459,7 @@ export default function ProductCatalogDrawer({
             className={`h-12 w-full text-base font-medium text-white shadow-md ${cart.length > 0
               ? 'bg-[#5E2F88] hover:bg-[#7B3DB0]'
               : 'cursor-not-allowed bg-gray-300'
-              }`}
+            }`}
           >
             המשך
           </Button>
