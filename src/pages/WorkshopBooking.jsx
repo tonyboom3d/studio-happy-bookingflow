@@ -385,6 +385,7 @@ export default function WorkshopBooking() {
                     setCart={setCart}
                     adults={adults}
                     children={children}
+                    carpetSizes={carpetSizes}
                     wixProducts={wixProducts}
                     onContinue={() => completeSection(4)}
                     updateQuantity={(productId, delta) => {

@@ -254,9 +254,10 @@ export default function ParticipantsSection({
             href="https://wa.link/jbfarf"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-[#5E2F88] underline hover:no-underline"
+            className="inline-flex items-center gap-1 text-xs text-[#5E2F88] underline hover:no-underline"
           >
-            אנחנו קבוצה גדולה - מעל ל 9 משתתפים
+            <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
+            <span>אנחנו קבוצה גדולה - מעל ל 9 משתתפים</span>
           </a>
         </div>
       )}

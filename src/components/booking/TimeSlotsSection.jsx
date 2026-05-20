@@ -152,10 +152,10 @@ function DayTooltip({ slots, pricingByService, holiday, isVisible }) {
       className="absolute z-50 bottom-full right-0 mb-1.5 bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 p-2 whitespace-nowrap text-right"
       style={{ pointerEvents: 'none' }}
     >
-      <div className="space-y-1 text-[10px]">
+      <div className="space-y-1.5 text-[16px]">
         {/* חג */}
         {holiday && (
-          <div className="flex items-center gap-1 text-[#7B3DB0] font-medium">
+          <div className="flex items-center gap-1.5 text-[#7B3DB0] font-medium">
             <span>🎉</span>
             <span>{holiday}</span>
           </div>
@@ -163,22 +163,22 @@ function DayTooltip({ slots, pricingByService, holiday, isVisible }) {
         
         {/* מחיר */}
         {minPrice && (
-          <div className="flex items-center gap-1 text-[#581E83]">
+          <div className="flex items-center gap-1.5 text-[#581E83]">
             <span>💰</span>
             <span>החל מ-{minPrice}₪</span>
           </div>
         )}
         
         {/* שעות הסדנאות */}
-        <div className="flex items-center gap-1 text-[#464646]">
-          <Clock className="w-3 h-3" />
+        <div className="flex items-center gap-1.5 text-[#464646]">
+          <Clock className="w-4 h-4" />
           <span>{uniqueTimes.join(' | ')}</span>
         </div>
         
         {/* משך */}
         {durations.length > 0 && (
-          <div className="flex items-center gap-1 text-[#464646]">
-            <Timer className="w-3 h-3" />
+          <div className="flex items-center gap-1.5 text-[#464646]">
+            <Timer className="w-4 h-4" />
             <span>{durations[0]}</span>
           </div>
         )}
@@ -346,13 +346,9 @@ export default function TimeSlotsSection({
                   {isCurrentMonth && isHoliday && (
                     <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[#DA9BFF]" />
                   )}
-                  {/* אייקון למספר שעות */}
+                  {/* עיגול למספר שעות */}
                   {hasMultipleSlots && !isSelected && (
-                    <img 
-                      src="https://static.wixstatic.com/shapes/6b73e9_394fc0a900b54752a96ef85903f2a8ad.svg" 
-                      alt="" 
-                      className="absolute top-0 left-0 w-3 h-3" 
-                    />
+                    <span className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-[#A9DEF9]" />
                   )}
                 </button>
 
@@ -383,7 +379,7 @@ export default function TimeSlotsSection({
             <span>נבחר</span>
           </div>
           <div className="flex items-center gap-1">
-            <img src="https://static.wixstatic.com/shapes/6b73e9_394fc0a900b54752a96ef85903f2a8ad.svg" alt="" className="w-3 h-3" />
+            <span className="w-2 h-2 rounded-full bg-[#A9DEF9]" />
             <span>כמה שעות</span>
           </div>
           <div className="flex items-center gap-1">
@@ -465,16 +461,16 @@ export default function TimeSlotsSection({
               <span className="text-xs text-[#581E83]">{selectedInfo.dayName}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <img 
-                src="https://static.wixstatic.com/shapes/6b73e9_394fc0a900b54752a96ef85903f2a8ad.svg" 
-                alt="" 
-                className="w-4 h-4" 
-              />
+              <Timer className="w-4 h-4 text-[#581E83]" />
               <span className="text-xs font-medium text-[#581E83]">{selectedInfo.timeFormatted}</span>
             </div>
             {selectedInfo.duration && (
               <div className="flex items-center gap-1.5">
-                <Timer className="w-4 h-4 text-[#581E83]" />
+                <img 
+                  src="https://static.wixstatic.com/shapes/6b73e9_394fc0a900b54752a96ef85903f2a8ad.svg" 
+                  alt="" 
+                  className="w-4 h-4" 
+                />
                 <span className="text-xs font-medium text-[#581E83]">{selectedInfo.duration}</span>
               </div>
             )}

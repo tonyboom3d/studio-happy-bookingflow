@@ -1,17 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ShoppingBag, Wrench, X, Minus, Plus, Sparkles } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import ProductCatalogDrawer from './ProductCatalogDrawer';
-
-const MAX_PRODUCTS = 21;
 
 export default function ProductSelectionSection({
   cart,
   setCart,
   adults,
   children,
+  carpetSizes = {},
   onContinue,
   wixProducts,
   updateQuantity
@@ -19,10 +18,25 @@ export default function ProductSelectionSection({
   const [showCatalog, setShowCatalog] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
   const [pendingLightbox, setPendingLightbox] = useState(null);
+  const [validationError, setValidationError] = useState(null);
   const pendingTimerRef = useRef(null);
 
   // חישוב מספר שטיחים (הורה+ילד = שטיח אחד)
   const totalCarpets = adults;
+
+  // חישוב גדלי שטיחים
+  const carpetSizesList = useMemo(() => {
+    const sizes = [];
+    for (let i = 0; i < totalCarpets; i++) {
+      sizes.push(carpetSizes[i] || '60x60');
+    }
+    return sizes;
+  }, [carpetSizes, totalCarpets]);
+
+  // האם יש רק מידה אחת או יותר
+  const uniqueSizes = useMemo(() => {
+    return [...new Set(carpetSizesList)];
+  }, [carpetSizesList]);
 
   useEffect(() => {
     return () => {
@@ -75,6 +89,19 @@ export default function ProductSelectionSection({
 
   const removeProduct = (productId) => {
     setCart(cart.filter(p => (p._id || p.id) !== productId));
+  };
+
+  const handleContinue = () => {
+    if (totalItems < totalCarpets) {
+      setValidationError(`יש לבחור עוד ${totalCarpets - totalItems} ${totalCarpets - totalItems === 1 ? 'עיצוב' : 'עיצובים'} (סה״כ ${totalCarpets} שטיחים)`);
+      return;
+    }
+    if (totalItems > totalCarpets) {
+      setValidationError(`בחרתם יותר מדי עיצובים. יש להפחית ${totalItems - totalCarpets}`);
+      return;
+    }
+    setValidationError(null);
+    onContinue();
   };
 
   return (
@@ -147,10 +174,16 @@ export default function ProductSelectionSection({
         >
           <h4 className="font-medium text-[#581E83] mb-3">
             העיצובים שנבחרו: ({totalItems}/{totalCarpets} שטיחים)
+            {uniqueSizes.length === 1 && (
+              <span className="text-xs font-normal text-[#464646]/60 mr-2">
+                • גודל: {uniqueSizes[0]}
+              </span>
+            )}
           </h4>
           <div className="space-y-2">
-            {cart.map(product => {
+            {cart.map((product, idx) => {
               const pid = product._id || product.id;
+              const carpetSize = uniqueSizes.length > 1 ? carpetSizesList[idx] : null;
               return (
                 <motion.div
                   key={pid}
@@ -167,13 +200,20 @@ export default function ProductSelectionSection({
                     />
                   </div>
 
-                  <div className="flex-1 min-w-0 flex items-center flex-nowrap gap-1.5 sm:gap-2">
-                    <h5 className="flex-1 min-w-0 font-medium text-[#581E83] text-xs sm:text-sm leading-tight truncate">
-                      {product.title}
-                    </h5>
-                    {product.difficulty && (
-                      <span className="text-[10px] sm:text-xs text-[#464646]/60 whitespace-nowrap">
-                        {product.difficulty}
+                  <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <div className="flex items-center flex-nowrap gap-1.5 sm:gap-2">
+                      <h5 className="flex-1 min-w-0 font-medium text-[#581E83] text-xs sm:text-sm leading-tight truncate">
+                        {product.title}
+                      </h5>
+                      {product.difficulty && (
+                        <span className="text-[10px] sm:text-xs text-[#464646]/60 whitespace-nowrap">
+                          {product.difficulty}
+                        </span>
+                      )}
+                    </div>
+                    {carpetSize && (
+                      <span className="text-[10px] text-[#5E2F88]/70">
+                        גודל שטיח: {carpetSize}
                       </span>
                     )}
                   </div>
@@ -214,16 +254,29 @@ export default function ProductSelectionSection({
         </motion.div>
       )}
 
-      {/* כפתור המשך */}
-      <div className="flex justify-center mt-8">
+      {/* כפתור המשך + שגיאת ולידציה */}
+      <div className="flex flex-col items-center gap-2 mt-8">
         <Button
-          onClick={onContinue}
+          onClick={handleContinue}
           disabled={cart.length === 0}
           className="bg-[#5E2F88] hover:bg-[#7B3DB0] hover:scale-[1.02] text-white px-8 py-3 rounded-lg
                      transition-all duration-200 text-lg disabled:opacity-50"
         >
           המשך לפרטים אישיים
         </Button>
+
+        <AnimatePresence>
+          {validationError && (
+            <motion.p
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              className="text-xs text-red-600 text-center max-w-[300px]"
+            >
+              {validationError}
+            </motion.p>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* קטלוג שטיחים */}
