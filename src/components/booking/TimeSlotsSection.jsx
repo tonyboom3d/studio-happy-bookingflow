@@ -231,7 +231,7 @@ export default function TimeSlotsSection({
 
   const handleTimeSelect = (slot) => {
     setSelectedSlot(slot);
-    setTimePickerDate(null);
+    // לא סוגרים את חלונית השעות - המשתמש יכול לשנות בקלות
   };
 
   const isDateSelected = (date) => {
@@ -416,16 +416,24 @@ export default function TimeSlotsSection({
               <div className="flex flex-wrap gap-2">
                 {timePickerSlots.map((slot, idx) => {
                   const duration = getSlotDuration(slot);
+                  const isThisSlotSelected = selectedSlot && 
+                    getSlotTime(slot) === getSlotTime(selectedSlot) &&
+                    slot.sessionId === selectedSlot.sessionId;
                   return (
                     <button
                       key={idx}
                       type="button"
                       onClick={() => handleTimeSelect(slot)}
-                      className="px-4 py-2 rounded-lg border border-[#5E2F88]/30 bg-white font-medium text-[#581E83] hover:bg-[#5E2F88] hover:text-white hover:border-[#5E2F88] transition-colors"
+                      className={cn(
+                        "px-4 py-2 rounded-lg border font-medium transition-colors",
+                        isThisSlotSelected
+                          ? "bg-[#5E2F88] text-white border-[#5E2F88]"
+                          : "border-[#5E2F88]/30 bg-white text-[#581E83] hover:bg-[#5E2F88] hover:text-white hover:border-[#5E2F88]"
+                      )}
                     >
                       <div className="flex flex-col items-center">
                         <span className="text-[18px]">{getSlotTime(slot)}</span>
-                        <span className="text-[16px] opacity-70">{duration}</span>
+                        <span className={cn("text-[16px]", isThisSlotSelected ? "opacity-80" : "opacity-70")}>{duration}</span>
                       </div>
                     </button>
                   );
@@ -457,7 +465,11 @@ export default function TimeSlotsSection({
               <span className="text-xs text-[#581E83]">{selectedInfo.dayName}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-[#581E83]" />
+              <img 
+                src="https://static.wixstatic.com/shapes/6b73e9_394fc0a900b54752a96ef85903f2a8ad.svg" 
+                alt="" 
+                className="w-4 h-4" 
+              />
               <span className="text-xs font-medium text-[#581E83]">{selectedInfo.timeFormatted}</span>
             </div>
             {selectedInfo.duration && (
