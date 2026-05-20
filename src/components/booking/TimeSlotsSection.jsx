@@ -149,7 +149,7 @@ function DayTooltip({ slots, pricingByService, holiday, isVisible }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 5, scale: 0.95 }}
       transition={{ duration: 0.15 }}
-      className="absolute z-50 bottom-full right-0 mb-1.5 bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 p-2 min-w-[140px] text-right"
+      className="absolute z-50 bottom-full right-0 mb-1.5 bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 p-2 whitespace-nowrap text-right"
       style={{ pointerEvents: 'none' }}
     >
       <div className="space-y-1 text-[10px]">
@@ -346,9 +346,13 @@ export default function TimeSlotsSection({
                   {isCurrentMonth && isHoliday && (
                     <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[#DA9BFF]" />
                   )}
-                  {/* עיגול למספר שעות */}
+                  {/* אייקון למספר שעות */}
                   {hasMultipleSlots && !isSelected && (
-                    <span className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-[#5E2F88]" />
+                    <img 
+                      src="https://static.wixstatic.com/shapes/6b73e9_394fc0a900b54752a96ef85903f2a8ad.svg" 
+                      alt="" 
+                      className="absolute top-0 left-0 w-3 h-3" 
+                    />
                   )}
                 </button>
 
@@ -379,15 +383,11 @@ export default function TimeSlotsSection({
             <span>נבחר</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="relative h-2.5 w-2.5 rounded border border-[#5E2F88]/30 bg-[#5E2F88]/5">
-              <span className="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 rounded-full bg-[#5E2F88]" />
-            </div>
+            <img src="https://static.wixstatic.com/shapes/6b73e9_394fc0a900b54752a96ef85903f2a8ad.svg" alt="" className="w-3 h-3" />
             <span>כמה שעות</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="relative h-2.5 w-2.5 rounded border border-[#5E2F88]/30 bg-[#5E2F88]/5">
-              <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#DA9BFF]" />
-            </div>
+            <span className="w-2 h-2 rounded-full bg-[#DA9BFF]" />
             <span>חג</span>
           </div>
         </div>
@@ -413,7 +413,7 @@ export default function TimeSlotsSection({
                   <X className="w-3.5 h-3.5 text-[#581E83]" />
                 </button>
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {timePickerSlots.map((slot, idx) => {
                   const duration = getSlotDuration(slot);
                   return (
@@ -421,11 +421,11 @@ export default function TimeSlotsSection({
                       key={idx}
                       type="button"
                       onClick={() => handleTimeSelect(slot)}
-                      className="px-3 py-1.5 rounded-lg border border-[#5E2F88]/30 bg-white text-xs font-medium text-[#581E83] hover:bg-[#5E2F88] hover:text-white hover:border-[#5E2F88] transition-colors"
+                      className="px-4 py-2 rounded-lg border border-[#5E2F88]/30 bg-white font-medium text-[#581E83] hover:bg-[#5E2F88] hover:text-white hover:border-[#5E2F88] transition-colors"
                     >
                       <div className="flex flex-col items-center">
-                        <span>{getSlotTime(slot)}</span>
-                        <span className="text-[8px] opacity-70">{duration}</span>
+                        <span className="text-[18px]">{getSlotTime(slot)}</span>
+                        <span className="text-[16px] opacity-70">{duration}</span>
                       </div>
                     </button>
                   );
@@ -483,36 +483,32 @@ export default function TimeSlotsSection({
       </div>
 
       {/* WhatsApp */}
-      <div
-        className="mt-2.5 rounded-lg border border-[#5E2F88]/15 bg-[#5E2F88]/5 overflow-hidden"
-        onMouseEnter={() => setWhatsappOpen(true)}
-        onMouseLeave={() => setWhatsappOpen(false)}
-      >
+      <div className="mt-2.5 rounded-lg border border-[#5E2F88]/15 bg-[#5E2F88]/5 overflow-hidden">
         <button
           type="button"
           onClick={() => setWhatsappOpen(!whatsappOpen)}
-          className="w-full flex items-center justify-between px-2.5 py-1.5 text-right"
+          className="w-full flex items-center justify-between px-3 py-2 text-right"
         >
-          <span className="text-[10px] font-medium text-[#581E83]">
+          <span className="text-[16px] font-medium text-[#581E83]">
             🤔 לא מצאתם מועד שמתאים לכם?
           </span>
           <ChevronDown className={cn(
-            'w-3 h-3 text-[#581E83] transition-transform shrink-0',
+            'w-4 h-4 text-[#581E83] transition-transform shrink-0',
             whatsappOpen && 'rotate-180'
           )} />
         </button>
         {whatsappOpen && (
-          <div className="px-2.5 pb-2 text-center">
-            <p className="text-[10px] text-[#464646]/70 mb-1.5">
+          <div className="px-3 pb-3 text-center">
+            <p className="text-[14px] text-[#464646]/70 mb-2">
               נשמח למצוא עבורכם זמן שנוח. שלחו לנו הודעת וואטסאפ ונחזור אליכם בהקדם.
             </p>
             <a
               href="https://wa.link/jbfarf"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-md bg-[#25D366] px-3 py-1 text-xs text-white font-medium hover:bg-[#20bd5a] transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#25D366] px-4 py-1.5 text-sm text-white font-medium hover:bg-[#20bd5a] transition-colors"
             >
-              <MessageCircle className="h-3 w-3" />
+              <MessageCircle className="h-4 w-4" />
               שלחו הודעה בוואטסאפ
             </a>
           </div>

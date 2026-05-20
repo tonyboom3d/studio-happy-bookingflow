@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Minus, Plus, Users, Baby, MessageCircle, Info, Ruler, AlertTriangle } from 'lucide-react';
+import { Minus, Plus, Users, Baby, MessageCircle, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ParticipantsSection({
@@ -80,16 +80,16 @@ export default function ParticipantsSection({
 
   return (
     <div className="flex flex-col items-center py-4">
-      <p className="text-sm text-[#464646]/70 mb-4">כמה משתתפים יהיו בסדנה?</p>
+      <p className="text-[16px] text-[#464646]/70 mb-4">כמה משתתפים יהיו בסדנה?</p>
 
       {/* מבוגרים + ילדים בשורה אחת */}
       <div className="w-full max-w-md grid grid-cols-2 gap-3 mb-2">
         {/* מבוגרים */}
         <div className="rounded-xl border border-[#e8e8e8] bg-white p-3">
           <div className="flex items-center justify-center gap-1.5 mb-2">
-            <Users className="w-4 h-4 text-[#581E83]" />
-            <span className="text-sm font-medium text-[#581E83]">מבוגרים</span>
-            <span className="text-[10px] text-[#464646]/50">(14+)</span>
+            <Users className="w-5 h-5 text-[#581E83]" />
+            <span className="text-[20px] font-medium text-[#581E83]">מבוגרים</span>
+            <span className="text-[16px] text-[#464646]/50">(14+)</span>
           </div>
           <div className="flex items-center justify-center gap-2">
             <button
@@ -124,9 +124,9 @@ export default function ParticipantsSection({
         {/* ילדים */}
         <div className="rounded-xl border border-[#e8e8e8] bg-white p-3">
           <div className="flex items-center justify-center gap-1.5 mb-2">
-            <Baby className="w-4 h-4 text-[#581E83]" />
-            <span className="text-sm font-medium text-[#581E83]">ילדים</span>
-            <span className="text-[10px] text-[#464646]/50">(8-13)</span>
+            <Baby className="w-5 h-5 text-[#581E83]" />
+            <span className="text-[20px] font-medium text-[#581E83]">ילדים</span>
+            <span className="text-[16px] text-[#464646]/50">(8-13)</span>
           </div>
           <div className="flex items-center justify-center gap-2">
             <button
@@ -167,17 +167,17 @@ export default function ParticipantsSection({
             {/* מבוגרים */}
             <div className="flex flex-col items-center gap-1">
               <Users className="w-5 h-5 text-[#581E83]" />
-              <span className="text-lg font-bold text-[#581E83]">{adults}</span>
-              <span className="text-[10px] text-[#464646]/60">{adults === 1 ? 'מבוגר' : 'מבוגרים'}</span>
+              <span className="text-[20px] font-bold text-[#581E83]">{adults}</span>
+              <span className="text-[16px] text-[#464646]/60">{adults === 1 ? 'מבוגר' : 'מבוגרים'}</span>
             </div>
 
             {/* שטיחים — באמצע עם הסבר מתחת */}
             <div className="flex flex-col items-center gap-1">
-              <Ruler className="w-5 h-5 text-[#581E83]" />
-              <span className="text-lg font-bold text-[#581E83]">{totalCarpets}</span>
-              <span className="text-[10px] text-[#464646]/60">{totalCarpets === 1 ? 'שטיח' : 'שטיחים'}</span>
+              <img src="https://static.wixstatic.com/shapes/6b73e9_f67847d51b16410cae6da5c70fdcae13.svg" alt="" className="w-5 h-5" />
+              <span className="text-[20px] font-bold text-[#581E83]">{totalCarpets}</span>
+              <span className="text-[16px] text-[#464646]/60">{totalCarpets === 1 ? 'שטיח' : 'שטיחים'}</span>
               {children > 0 && (
-                <span className="text-[9px] text-[#5E2F88]/70 mt-0.5 leading-tight">
+                <span className="text-[14px] text-[#5E2F88]/70 mt-0.5 leading-tight">
                   הורה + ילד = שטיח אחד
                 </span>
               )}
@@ -186,8 +186,8 @@ export default function ParticipantsSection({
             {/* ילדים */}
             <div className="flex flex-col items-center gap-1">
               <Baby className="w-5 h-5 text-[#581E83]" />
-              <span className="text-lg font-bold text-[#581E83]">{children}</span>
-              <span className="text-[10px] text-[#464646]/60">{children === 1 ? 'ילד' : 'ילדים'}</span>
+              <span className="text-[20px] font-bold text-[#581E83]">{children}</span>
+              <span className="text-[16px] text-[#464646]/60">{children === 1 ? 'ילד' : 'ילדים'}</span>
             </div>
 
             {/* קו מפריד */}
@@ -196,9 +196,9 @@ export default function ParticipantsSection({
             {/* מחיר */}
             {totalPrice > 0 && (
               <div className="flex flex-col items-center gap-1">
-                <span className="text-[10px] text-[#464646]/60">סה״כ</span>
-                <span className="text-lg font-bold text-[#5E2F88]">₪{totalPrice}</span>
-                <span className="text-[10px] text-[#464646]/60">לסדנה</span>
+                <span className="text-[16px] text-[#464646]/60">סה״כ</span>
+                <span className="text-[20px] font-bold text-[#5E2F88]">₪{totalPrice}</span>
+                <span className="text-[16px] text-[#464646]/60">לסדנה</span>
               </div>
             )}
           </div>
