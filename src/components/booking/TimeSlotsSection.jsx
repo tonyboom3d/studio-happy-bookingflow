@@ -139,50 +139,59 @@ function DayTooltip({ slots, pricingByService, serviceMinPrices, holiday, isVisi
   const uniqueTimes = [...new Set(times)].slice(0, 3);
   const durations = [...new Set(slots.map(slot => formatDuration(getSlotDurationMinutes(slot))).filter(Boolean))];
 
+  // div חיצוני סטטי — מטפל אך ורק במיקום (לא ייסתר על ידי framer-motion)
+  // motion.div פנימי — מטפל אך ורק באנימציה
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 5, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 5, scale: 0.95 }}
-      transition={{ duration: 0.15 }}
-      className="absolute z-[100] bottom-full mb-1.5 bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 p-2 whitespace-nowrap text-right"
+    <div
+      className="absolute z-[100] bottom-full mb-1.5"
       style={{ pointerEvents: 'none', left: '50%', transform: 'translateX(-50%)' }}
     >
-      <div className="space-y-1.5 text-[14px]">
-        {/* חג */}
-        {holiday && (
-          <div className="flex items-center gap-1.5 text-[#7B3DB0] font-medium">
-            <span>🎉</span>
-            <span>{holiday}</span>
-          </div>
-        )}
-        
-        {/* מחיר */}
-        {minPrice && (
-          <div className="flex items-center gap-1.5 text-[#581E83]">
-            <span>💰</span>
-            <span>החל מ: {minPrice}₪</span>
-          </div>
-        )}
-        
-        {/* שעות הסדנאות */}
-        <div className="flex items-center gap-1.5 text-[#464646]">
-          <Clock className="w-4 h-4" />
-          <span>{uniqueTimes.join(' | ')}</span>
-        </div>
-        
-        {/* משך */}
-        {durations.length > 0 && (
+      <motion.div
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 4 }}
+        transition={{ duration: 0.13 }}
+        className="bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 p-2 whitespace-nowrap text-right"
+      >
+        <div className="space-y-1.5 text-[14px]">
+          {/* חג */}
+          {holiday && (
+            <div className="flex items-center gap-1.5 text-[#7B3DB0] font-medium">
+              <span>🎉</span>
+              <span>{holiday}</span>
+            </div>
+          )}
+
+          {/* מחיר */}
+          {minPrice && (
+            <div className="flex items-center gap-1.5 text-[#581E83]">
+              <span>💰</span>
+              <span>החל מ: {minPrice}₪</span>
+            </div>
+          )}
+
+          {/* שעות הסדנאות */}
           <div className="flex items-center gap-1.5 text-[#464646]">
-            <Timer className="w-4 h-4" />
-            <span>{durations[0]}</span>
+            <Clock className="w-4 h-4" />
+            <span>{uniqueTimes.join(' | ')}</span>
           </div>
-        )}
-      </div>
-      
-      {/* חץ */}
-      <div className="absolute top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white" style={{ left: '50%', transform: 'translateX(-50%)' }} />
-    </motion.div>
+
+          {/* משך */}
+          {durations.length > 0 && (
+            <div className="flex items-center gap-1.5 text-[#464646]">
+              <Timer className="w-4 h-4" />
+              <span>{durations[0]}</span>
+            </div>
+          )}
+        </div>
+
+        {/* חץ */}
+        <div
+          className="absolute top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white"
+          style={{ left: '50%', transform: 'translateX(-50%)' }}
+        />
+      </motion.div>
+    </div>
   );
 }
 
