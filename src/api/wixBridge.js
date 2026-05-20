@@ -17,6 +17,7 @@
 let wixData = {
     products: null,
     slots: null,
+    serviceMinPrices: null,
     initialized: false
 };
 
@@ -112,6 +113,12 @@ function handleWixMessage(event) {
 
         case 'WIX_SLOTS':
             wixData.slots = data.slots;
+            notifyListeners();
+            break;
+
+        case 'SERVICE_MIN_PRICES':
+            // עדכון מחירי מינימום משירותי Wix (לא חוסם)
+            wixData.serviceMinPrices = data.serviceMinPrices || {};
             notifyListeners();
             break;
 

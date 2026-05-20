@@ -81,31 +81,27 @@ function getAvailabilityInfo(availableSlots) {
   return { availableDates, spotsMap, slotsMap };
 }
 
-function getMinPriceForDate(slots, pricingByService) {
-  console.log('[TimeSlotsSection] getMinPriceForDate called:', {
-    slotsCount: slots?.length,
-    hasPricingByService: !!pricingByService,
-    pricingByService: JSON.stringify(pricingByService)?.slice(0, 500)
-  });
-  
-  if (!slots?.length || !pricingByService) {
-    console.log('[TimeSlotsSection] No slots or no pricingByService - returning null');
-    return null;
-  }
-  
+function getMinPriceForDate(slots, pricingByService, serviceMinPrices) {
+  if (!slots?.length) return null;
+
   let minPrice = Infinity;
+
   slots.forEach(slot => {
-    console.log('[TimeSlotsSection] Checking slot:', {
-      serviceId: slot.serviceId,
-      pricingForService: pricingByService[slot.serviceId]
-    });
-    const pricing = pricingByService[slot.serviceId];
+    // עדיפות ראשונה: serviceMinPrices מה-SDK
+    if (serviceMinPrices && serviceMinPrices[slot.serviceId]) {
+      const sdkPrice = serviceMinPrices[slot.serviceId].value;
+      if (sdkPrice && sdkPrice < minPrice) {
+        minPrice = sdkPrice;
+      }
+      return;
+    }
+    // Fallback: pricingByService הקיים
+    const pricing = pricingByService?.[slot.serviceId];
     if (pricing?.[1] && pricing[1] < minPrice) {
       minPrice = pricing[1];
     }
   });
-  
-  console.log('[TimeSlotsSection] Final minPrice:', minPrice === Infinity ? null : minPrice);
+
   return minPrice === Infinity ? null : minPrice;
 }
 
@@ -135,10 +131,10 @@ function getSlotDuration(slot) {
 }
 
 // Tooltip קומפוננטה
-function DayTooltip({ slots, pricingByService, holiday, isVisible }) {
+function DayTooltip({ slots, pricingByService, serviceMinPrices, holiday, isVisible }) {
   if (!isVisible || !slots?.length) return null;
 
-  const minPrice = getMinPriceForDate(slots, pricingByService);
+  const minPrice = getMinPriceForDate(slots, pricingByService, serviceMinPrices);
   const times = slots.map(slot => getSlotTime(slot)).sort();
   const uniqueTimes = [...new Set(times)].slice(0, 3);
   const durations = [...new Set(slots.map(slot => formatDuration(getSlotDurationMinutes(slot))).filter(Boolean))];
@@ -165,7 +161,7 @@ function DayTooltip({ slots, pricingByService, holiday, isVisible }) {
         {minPrice && (
           <div className="flex items-center gap-1.5 text-[#581E83]">
             <span>💰</span>
-            <span>החל מ-{minPrice}₪</span>
+            <span>החל מ: {minPrice}₪</span>
           </div>
         )}
         
@@ -195,6 +191,7 @@ export default function TimeSlotsSection({
   setSelectedSlot,
   availableSlots = [],
   pricingByService,
+  serviceMinPrices,
   onContinue
 }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -305,7 +302,7 @@ export default function TimeSlotsSection({
             const hasSlot = availableDates.has(dateStr);
             const isSelected = isDateSelected(day);
             const daySlots = slotsMap.get(dateStr) || [];
-            const minPrice = hasSlot ? getMinPriceForDate(daySlots, pricingByService) : null;
+            const minPrice = hasSlot ? getMinPriceForDate(daySlots, pricingByService, serviceMinPrices) : null;
             const isDisabled = !isCurrentMonth || isPast || !hasSlot;
             const isHoliday = ISRAELI_HOLIDAYS[dateStr];
             const hasMultipleSlots = daySlots.length > 1;
@@ -336,10 +333,10 @@ export default function TimeSlotsSection({
                   </span>
                   {isCurrentMonth && !isPast && hasSlot && minPrice && (
                     <span className={cn(
-                      'text-[8px] leading-none mt-0.5 whitespace-nowrap',
-                      isSelected ? 'text-white/80' : 'text-[#5E2F88]/80'
+                      'text-[9px] leading-none mt-0.5 whitespace-nowrap',
+                      isSelected ? 'text-white/90' : 'text-[#5E2F88]/80'
                     )}>
-                      החל מ{minPrice}₪
+                      החל מ: {minPrice}₪
                     </span>
                   )}
                   {/* עיגול לחגים */}
@@ -358,6 +355,7 @@ export default function TimeSlotsSection({
                     <DayTooltip
                       slots={daySlots}
                       pricingByService={pricingByService}
+                      serviceMinPrices={serviceMinPrices}
                       holiday={isHoliday}
                       isVisible={true}
                     />

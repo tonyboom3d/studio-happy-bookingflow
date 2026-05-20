@@ -32,6 +32,7 @@ export default function WorkshopBooking() {
   const [wixProducts, setWixProducts] = useState(null);
   const [wixSlots, setWixSlots] = useState(null);
   const [pricingByService, setPricingByService] = useState(null);
+  const [serviceMinPrices, setServiceMinPrices] = useState(null);
 
   // סטטוס
   const [isProcessing, setIsProcessing] = useState(false);
@@ -71,6 +72,10 @@ export default function WorkshopBooking() {
       if (data.pricingByService) {
         setPricingByService(data.pricingByService);
         addLog('Loaded pricing by service', 'success');
+      }
+      if (data.serviceMinPrices) {
+        setServiceMinPrices(data.serviceMinPrices);
+        addLog('Loaded service min prices', 'success');
       }
       if (data.bookingConfirmed) {
         setIsProcessing(false);
@@ -380,6 +385,7 @@ export default function WorkshopBooking() {
                     setSelectedSlot={setSelectedSlot}
                     availableSlots={wixSlots}
                     pricingByService={pricingByService}
+                    serviceMinPrices={serviceMinPrices}
                     onContinue={() => completeSection(1)}
                   />
                 )}
