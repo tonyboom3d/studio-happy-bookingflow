@@ -119,7 +119,7 @@ function ProductGridCard({ product, isSelected, onClick, onZoom, quantity, onQua
   );
 }
 
-function VideoCard({ title, subtitle, videoUrl, onClick, className }) {
+function VideoCard({ title, subtitle, videoUrl, onClick, className, videoOffsetY = 0 }) {
   const videoRef = useRef(null);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -140,9 +140,10 @@ function VideoCard({ title, subtitle, videoUrl, onClick, className }) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        "relative rounded-xl overflow-hidden border-2 border-[#e8e8e8] hover:border-[#5E2F88] transition-all h-[180px] w-full",
+        "relative rounded-xl overflow-hidden border-2 border-[#e8e8e8] hover:border-[#5E2F88] transition-all h-[220px] w-full",
         className
       )}
+      dir="rtl"
     >
       <video
         ref={videoRef}
@@ -152,11 +153,11 @@ function VideoCard({ title, subtitle, videoUrl, onClick, className }) {
         playsInline
         preload="metadata"
         className="absolute inset-0 w-full h-full object-cover"
+        style={{ objectPosition: `center ${videoOffsetY}px` }}
       />
-      <div className="absolute inset-0 bg-black/20" />
-      <div className="relative z-10 p-3 text-right">
-        <h4 className="text-[18px] font-bold text-white drop-shadow-md">{title}</h4>
-        <p className="text-[13px] text-white/90 drop-shadow-md mt-0.5 leading-snug">{subtitle}</p>
+      <div className="absolute inset-x-0 top-0 p-3 text-center">
+        <h4 className="text-[20px] font-bold text-[#581E83]">{title}</h4>
+        <p className="text-[13px] text-[#464646]/80 mt-0.5 leading-snug">{subtitle}</p>
       </div>
     </button>
   );
@@ -394,7 +395,7 @@ export default function ProductCatalogDrawer({
               <p className="text-[16px] text-[#464646] mb-6 text-center">
                 לא נמצאו עיצובים תואמים לחיפוש שלך
               </p>
-              <div className="grid grid-cols-2 gap-3 w-full max-w-md">
+              <div className="grid grid-cols-2 gap-4 w-full max-w-lg">
                 {/* AI Card */}
                 <VideoCard
                   title="AI"
@@ -408,6 +409,7 @@ export default function ProductCatalogDrawer({
                   subtitle="ביחרו ממגון עיצובים מובחרים."
                   videoUrl="https://video.wixstatic.com/video/6b73e9_089ed022593f497f89d40b07a4e725b5/480p/mp4/file.mp4"
                   onClick={handleFavoritesClick}
+                  videoOffsetY={40}
                 />
               </div>
             </div>
