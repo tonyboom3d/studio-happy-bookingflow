@@ -119,7 +119,7 @@ function ProductGridCard({ product, isSelected, onClick, onZoom, quantity, onQua
   );
 }
 
-function VideoCard({ title, subtitle, videoUrl, onClick, className, videoOffsetY = 0 }) {
+function VideoCard({ title, subtitle, videoUrl, onClick, className = '', videoOffsetY = 0 }) {
   const videoRef = useRef(null);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -140,7 +140,7 @@ function VideoCard({ title, subtitle, videoUrl, onClick, className, videoOffsetY
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        "relative rounded-xl overflow-hidden border-2 border-[#e8e8e8] hover:border-[#5E2F88] transition-all h-[220px] w-full",
+        "relative rounded-xl overflow-hidden border-2 border-[#e8e8e8] hover:border-[#5E2F88] transition-all h-[220px] w-full bg-[#F3E9F9]",
         className
       )}
       dir="rtl"
@@ -152,12 +152,12 @@ function VideoCard({ title, subtitle, videoUrl, onClick, className, videoOffsetY
         loop
         playsInline
         preload="metadata"
-        className="absolute inset-0 w-full h-full object-cover"
+        className="absolute inset-0 w-full h-full object-contain"
         style={{ objectPosition: `center ${videoOffsetY}px` }}
       />
       <div className="absolute inset-x-0 top-0 p-3 text-center">
         <h4 className="text-[20px] font-bold text-[#581E83]">{title}</h4>
-        <p className="text-[13px] text-[#464646]/80 mt-0.5 leading-snug">{subtitle}</p>
+        <p className="text-[14px] text-[#464646]/80 mt-0.5 leading-snug">{subtitle}</p>
       </div>
     </button>
   );
@@ -396,13 +396,6 @@ export default function ProductCatalogDrawer({
                 לא נמצאו עיצובים תואמים לחיפוש שלך
               </p>
               <div className="grid grid-cols-2 gap-4 w-full max-w-lg">
-                {/* AI Card */}
-                <VideoCard
-                  title="AI"
-                  subtitle="בוחרים תמונה שרוצים לעצב וה AI מרכיב לכם סקיצה."
-                  videoUrl="https://video.wixstatic.com/video/6b73e9_d8a10308e73b49419878f964bd024d8f/480p/mp4/file.mp4"
-                  onClick={() => {}}
-                />
                 {/* WOW Card */}
                 <VideoCard
                   title="!הכי WOW"
@@ -410,6 +403,13 @@ export default function ProductCatalogDrawer({
                   videoUrl="https://video.wixstatic.com/video/6b73e9_089ed022593f497f89d40b07a4e725b5/480p/mp4/file.mp4"
                   onClick={handleFavoritesClick}
                   videoOffsetY={40}
+                />
+                {/* AI Card */}
+                <VideoCard
+                  title="AI"
+                  subtitle="בוחרים תמונה שרוצים לעצב וה AI מרכיב לכם סקיצה."
+                  videoUrl="https://video.wixstatic.com/video/6b73e9_d8a10308e73b49419878f964bd024d8f/480p/mp4/file.mp4"
+                  onClick={() => {}}
                 />
               </div>
             </div>

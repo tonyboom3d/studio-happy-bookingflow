@@ -149,10 +149,10 @@ function DayTooltip({ slots, pricingByService, holiday, isVisible }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 5, scale: 0.95 }}
       transition={{ duration: 0.15 }}
-      className="absolute z-50 bottom-full right-0 mb-1.5 bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 p-2 whitespace-nowrap text-right"
+      className="absolute z-[100] bottom-full left-1/2 -translate-x-1/2 mb-1.5 bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 p-2 whitespace-nowrap text-right"
       style={{ pointerEvents: 'none' }}
     >
-      <div className="space-y-1.5 text-[16px]">
+      <div className="space-y-1.5 text-[14px]">
         {/* חג */}
         {holiday && (
           <div className="flex items-center gap-1.5 text-[#7B3DB0] font-medium">
@@ -185,7 +185,7 @@ function DayTooltip({ slots, pricingByService, holiday, isVisible }) {
       </div>
       
       {/* חץ */}
-      <div className="absolute top-full right-4 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white" />
+      <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white" />
     </motion.div>
   );
 }
