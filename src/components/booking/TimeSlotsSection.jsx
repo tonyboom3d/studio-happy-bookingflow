@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { MessageCircle, ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, Timer, X } from 'lucide-react';
+import { MessageCircle, ChevronDown, ChevronLeft, ChevronRight, Clock, Timer, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -82,14 +82,30 @@ function getAvailabilityInfo(availableSlots) {
 }
 
 function getMinPriceForDate(slots, pricingByService) {
-  if (!slots?.length || !pricingByService) return null;
+  console.log('[TimeSlotsSection] getMinPriceForDate called:', {
+    slotsCount: slots?.length,
+    hasPricingByService: !!pricingByService,
+    pricingByService: JSON.stringify(pricingByService)?.slice(0, 500)
+  });
+  
+  if (!slots?.length || !pricingByService) {
+    console.log('[TimeSlotsSection] No slots or no pricingByService - returning null');
+    return null;
+  }
+  
   let minPrice = Infinity;
   slots.forEach(slot => {
+    console.log('[TimeSlotsSection] Checking slot:', {
+      serviceId: slot.serviceId,
+      pricingForService: pricingByService[slot.serviceId]
+    });
     const pricing = pricingByService[slot.serviceId];
     if (pricing?.[1] && pricing[1] < minPrice) {
       minPrice = pricing[1];
     }
   });
+  
+  console.log('[TimeSlotsSection] Final minPrice:', minPrice === Infinity ? null : minPrice);
   return minPrice === Infinity ? null : minPrice;
 }
 
@@ -124,6 +140,7 @@ function DayTooltip({ slots, pricingByService, holiday, isVisible }) {
 
   const minPrice = getMinPriceForDate(slots, pricingByService);
   const times = slots.map(slot => getSlotTime(slot)).sort();
+  const uniqueTimes = [...new Set(times)].slice(0, 3);
   const durations = [...new Set(slots.map(slot => formatDuration(getSlotDurationMinutes(slot))).filter(Boolean))];
 
   return (
@@ -132,7 +149,7 @@ function DayTooltip({ slots, pricingByService, holiday, isVisible }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 5, scale: 0.95 }}
       transition={{ duration: 0.15 }}
-      className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-1.5 bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 p-2 min-w-[140px] text-right"
+      className="absolute z-50 bottom-full right-0 mb-1.5 bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 p-2 min-w-[140px] text-right"
       style={{ pointerEvents: 'none' }}
     >
       <div className="space-y-1 text-[10px]">
@@ -152,10 +169,10 @@ function DayTooltip({ slots, pricingByService, holiday, isVisible }) {
           </div>
         )}
         
-        {/* שעות */}
+        {/* שעות הסדנאות */}
         <div className="flex items-center gap-1 text-[#464646]">
           <Clock className="w-3 h-3" />
-          <span>{times.length > 1 ? `${times.length} סדנאות` : times[0]}</span>
+          <span>{uniqueTimes.join(' | ')}</span>
         </div>
         
         {/* משך */}
@@ -168,7 +185,7 @@ function DayTooltip({ slots, pricingByService, holiday, isVisible }) {
       </div>
       
       {/* חץ */}
-      <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white" />
+      <div className="absolute top-full right-4 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white" />
     </motion.div>
   );
 }
@@ -270,16 +287,16 @@ export default function TimeSlotsSection({
         </div>
 
         {/* ימי השבוע */}
-        <div className="grid grid-cols-7 gap-1 mb-0.5">
+        <div className="grid grid-cols-7 gap-2 mb-0.5">
           {['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'].map(day => (
-            <div key={day} className="text-center text-[10px] font-semibold text-[#581E83] py-0.5">
+            <div key={day} className="text-center text-[20px] font-semibold text-[#581E83] py-0.5">
               {day}
             </div>
           ))}
         </div>
 
         {/* ימים */}
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-2">
           {calendarDays.map((day, i) => {
             const sod = startOfDay(day);
             const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
@@ -303,30 +320,33 @@ export default function TimeSlotsSection({
                   onMouseLeave={() => setHoveredDate(null)}
                   disabled={isDisabled}
                   className={cn(
-                    'relative flex flex-col items-center justify-center rounded-lg text-[10px] transition-all h-9 w-full',
+                    'relative flex flex-col items-center justify-center rounded-lg text-[18px] transition-all h-10 w-full',
                     !isCurrentMonth && 'text-[#464646]/15',
-                    isCurrentMonth && isDisabled && !isHoliday && 'text-[#b0b0b0] cursor-default',
-                    isCurrentMonth && isHoliday && isDisabled && 'bg-[#DA9BFF]/30 text-[#7B3DB0] cursor-default',
-                    isCurrentMonth && isHoliday && hasSlot && !isSelected && 'bg-[#DA9BFF]/40 text-[#581E83] hover:bg-[#DA9BFF]/60 cursor-pointer border border-[#DA9BFF]',
-                    isCurrentMonth && !isPast && hasSlot && !isSelected && !isHoliday &&
+                    isCurrentMonth && isDisabled && 'text-[#b0b0b0] cursor-default',
+                    isCurrentMonth && !isPast && hasSlot && !isSelected &&
                       'text-[#581E83] hover:bg-[#5E2F88]/15 cursor-pointer border border-[#5E2F88]/30 bg-[#5E2F88]/5',
                     isSelected && 'bg-[#5E2F88] text-white shadow-md cursor-pointer'
                   )}
                 >
                   <span className={cn(
                     'font-semibold leading-none',
-                    isCurrentMonth && isDisabled && !isHoliday && 'line-through decoration-[#b0b0b0]/60'
+                    isCurrentMonth && isDisabled && 'line-through decoration-[#b0b0b0]/60'
                   )}>
                     {format(day, 'd')}
                   </span>
                   {isCurrentMonth && !isPast && hasSlot && minPrice && (
                     <span className={cn(
-                      'text-[5px] leading-none mt-0.5 whitespace-nowrap',
+                      'text-[8px] leading-none mt-0.5 whitespace-nowrap',
                       isSelected ? 'text-white/80' : 'text-[#5E2F88]/80'
                     )}>
                       החל מ{minPrice}₪
                     </span>
                   )}
+                  {/* עיגול לחגים */}
+                  {isCurrentMonth && isHoliday && (
+                    <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[#DA9BFF]" />
+                  )}
+                  {/* עיגול למספר שעות */}
                   {hasMultipleSlots && !isSelected && (
                     <span className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-[#5E2F88]" />
                   )}
@@ -349,24 +369,26 @@ export default function TimeSlotsSection({
         </div>
 
         {/* מקרא */}
-        <div className="mt-1.5 flex items-center justify-center gap-2 text-[9px] text-[#464646]/70">
-          <div className="flex items-center gap-0.5">
-            <div className="h-2 w-2 rounded bg-[#DA9BFF]/50 border border-[#DA9BFF]"></div>
-            <span>חג</span>
-          </div>
-          <div className="flex items-center gap-0.5">
-            <div className="h-2 w-2 rounded border border-[#5E2F88]/30 bg-[#5E2F88]/5"></div>
+        <div className="mt-1.5 flex items-center justify-center gap-3 text-[11px] text-[#464646]/70">
+          <div className="flex items-center gap-1">
+            <div className="h-2.5 w-2.5 rounded border border-[#5E2F88]/30 bg-[#5E2F88]/5"></div>
             <span>זמין</span>
           </div>
-          <div className="flex items-center gap-0.5">
-            <div className="h-2 w-2 rounded bg-[#5E2F88]"></div>
+          <div className="flex items-center gap-1">
+            <div className="h-2.5 w-2.5 rounded bg-[#5E2F88]"></div>
             <span>נבחר</span>
           </div>
-          <div className="flex items-center gap-0.5">
-            <div className="relative h-2 w-2 rounded border border-[#5E2F88]/30 bg-[#5E2F88]/5">
-              <span className="absolute -top-0.5 -left-0.5 w-1 h-1 rounded-full bg-[#5E2F88]" />
+          <div className="flex items-center gap-1">
+            <div className="relative h-2.5 w-2.5 rounded border border-[#5E2F88]/30 bg-[#5E2F88]/5">
+              <span className="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 rounded-full bg-[#5E2F88]" />
             </div>
             <span>כמה שעות</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="relative h-2.5 w-2.5 rounded border border-[#5E2F88]/30 bg-[#5E2F88]/5">
+              <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#DA9BFF]" />
+            </div>
+            <span>חג</span>
           </div>
         </div>
       </div>
@@ -403,7 +425,7 @@ export default function TimeSlotsSection({
                     >
                       <div className="flex flex-col items-center">
                         <span>{getSlotTime(slot)}</span>
-                        <span className="text-[8px] opacity-70">{duration} • {slot.openSpots} מקומות</span>
+                        <span className="text-[8px] opacity-70">{duration}</span>
                       </div>
                     </button>
                   );
@@ -419,10 +441,19 @@ export default function TimeSlotsSection({
         <div className="mt-3 rounded-xl border border-[#5E2F88]/20 bg-[#5E2F88]/5 p-2.5">
           <div className="flex items-center justify-center gap-4 flex-wrap">
             <div className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-[#581E83]" />
+              <img 
+                src="https://static.wixstatic.com/shapes/6b73e9_730f64536d7c4e65919f5fb531baee7d.svg" 
+                alt="" 
+                className="w-4 h-4" 
+              />
               <span className="text-xs font-medium text-[#581E83]">{selectedInfo.dateFormatted}</span>
             </div>
             <div className="flex items-center gap-1.5">
+              <img 
+                src="https://static.wixstatic.com/shapes/6b73e9_e859379a99324600ae234a67d9615e62.svg" 
+                alt="" 
+                className="w-4 h-4" 
+              />
               <span className="text-xs text-[#581E83]">{selectedInfo.dayName}</span>
             </div>
             <div className="flex items-center gap-1.5">
