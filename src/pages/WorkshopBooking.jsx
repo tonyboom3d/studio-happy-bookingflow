@@ -17,6 +17,8 @@ export default function WorkshopBooking() {
   // State ראשי
   const [activeSection, setActiveSection] = useState(1);
   const [completedSections, setCompletedSections] = useState([]);
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const [prevActiveSection, setPrevActiveSection] = useState(1);
 
   // נתוני ההזמנה — סדר חדש: תאריך → משתתפים → גודל שטיח → עיצוב → פרטים
   const [selectedSlot, setSelectedSlot] = useState(null); // slot יחיד (לא מערך)
@@ -115,6 +117,19 @@ export default function WorkshopBooking() {
       cartCount: cart.length
     });
   }, [activeSection, adults, children, selectedSlot, cart.length]);
+
+  // פתיחה/סגירה אוטומטית של סיכום הזמנה
+  useEffect(() => {
+    // כשמגיעים לשלב 5 (פרטים אישיים) - פותחים את הסיכום
+    if (activeSection === 5 && prevActiveSection !== 5) {
+      setSummaryExpanded(true);
+    }
+    // כשיורדים משלב 5 - סוגרים את הסיכום
+    if (prevActiveSection === 5 && activeSection < 5) {
+      setSummaryExpanded(false);
+    }
+    setPrevActiveSection(activeSection);
+  }, [activeSection, prevActiveSection]);
 
   // חישוב מספר יחידות (מבוגר+ילד = יחידה אחת)
   const totalUnits = adults; // כל מבוגר = יחידה, ילדים מצטרפים להורה
@@ -327,7 +342,8 @@ export default function WorkshopBooking() {
                 ? false
                 : section.id > 1 && !completedSections.includes(section.id - 1);
             const isCompleted = completedSections.includes(section.id);
-            const isActive = activeSection === section.id;
+            // סקשן 6 (סיכום) - נשלט ע״י summaryExpanded
+            const isActive = section.id === 6 ? summaryExpanded : activeSection === section.id;
 
             const headerRight =
               section.id === 6 ? (
@@ -336,6 +352,15 @@ export default function WorkshopBooking() {
                   ₪{Math.round(orderTotalPreview)}
                 </span>
               ) : null;
+
+            const handleSectionClick = () => {
+              if (section.id === 6) {
+                // סיכום - טוגל פתיחה/סגירה
+                setSummaryExpanded(!summaryExpanded);
+              } else {
+                openSection(section.id);
+              }
+            };
 
             return (
               <AccordionSection
@@ -347,7 +372,7 @@ export default function WorkshopBooking() {
                 isActive={isActive}
                 isCompleted={isCompleted}
                 isLocked={isLocked}
-                onClick={() => openSection(section.id)}
+                onClick={handleSectionClick}
               >
                 {section.id === 1 && (
                   <TimeSlotsSection

@@ -140,24 +140,31 @@ function VideoCard({ title, subtitle, videoUrl, onClick, className = '', videoOf
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        "relative rounded-xl overflow-hidden border-2 border-[#e8e8e8] hover:border-[#5E2F88] transition-all h-[220px] w-full bg-[#F3E9F9]",
+        "relative rounded-xl overflow-hidden border-2 border-[#e8e8e8] hover:border-[#5E2F88] transition-all h-[220px] w-full bg-[#F3E9F9] flex flex-col",
         className
       )}
       dir="rtl"
     >
-      <video
-        ref={videoRef}
-        src={videoUrl}
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        className="absolute inset-0 w-full h-full object-contain"
-        style={{ objectPosition: `center ${videoOffsetY}px` }}
-      />
-      <div className="absolute inset-x-0 top-0 p-3 text-center">
+      {/* טקסט למעלה */}
+      <div className="shrink-0 p-3 pb-1 text-center z-10">
         <h4 className="text-[20px] font-bold text-[#581E83]">{title}</h4>
         <p className="text-[14px] text-[#464646]/80 mt-0.5 leading-snug">{subtitle}</p>
+      </div>
+      {/* סרטון למטה - ממלא את השטח הנותר */}
+      <div className="flex-1 relative overflow-hidden">
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ 
+            objectPosition: `center ${videoOffsetY}px`,
+            transform: 'scale(1.1)'
+          }}
+        />
       </div>
     </button>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Minus, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,6 +14,17 @@ export default function CarpetSizeSection({
   const totalCarpets = adults;
   const [validationError, setValidationError] = useState(null);
 
+  // אתחול: כל השטיחים כ-60x60 בעת כניסה לקומפוננט
+  useEffect(() => {
+    if (Object.keys(carpetSizes).length === 0 && totalCarpets > 0) {
+      const initialSizes = {};
+      for (let i = 0; i < totalCarpets; i++) {
+        initialSizes[i] = '60x60';
+      }
+      setCarpetSizes(initialSizes);
+    }
+  }, [totalCarpets, carpetSizes, setCarpetSizes]);
+
   // חישוב כמות שטיחים לפי גודל
   const count60 = useMemo(() => {
     return Object.values(carpetSizes).filter(s => s === '60x60').length;
@@ -25,27 +36,30 @@ export default function CarpetSizeSection({
 
   const totalSelected = count60 + count90;
 
-  // שינוי כמות שטיחים - בחירה חופשית
+  // שינוי כמות שטיחים - איזון אוטומטי (הסכום תמיד שווה ל-totalCarpets)
   const handleQuantityChange = (sizeId, delta) => {
     const currentCount = sizeId === '60x60' ? count60 : count90;
+    const otherCount = sizeId === '60x60' ? count90 : count60;
     const newCount = currentCount + delta;
 
-    if (newCount < 0) return;
+    // לא מאפשרים ערכים שליליים או יותר מהסכום הכולל
+    if (newCount < 0 || newCount > totalCarpets) return;
 
     setValidationError(null);
 
-    // בניית מחדש של carpetSizes
+    // בניית מחדש של carpetSizes - איזון אוטומטי
     const newSizes = {};
     let idx = 0;
 
+    const new60 = sizeId === '60x60' ? newCount : (totalCarpets - newCount);
+    const new90 = sizeId === '90x90' ? newCount : (totalCarpets - newCount);
+
     // קודם שטיחים 60x60
-    const new60 = sizeId === '60x60' ? newCount : count60;
     for (let i = 0; i < new60; i++) {
       newSizes[idx++] = '60x60';
     }
 
     // אחר כך שטיחים 90x90
-    const new90 = sizeId === '90x90' ? newCount : count90;
     for (let i = 0; i < new90; i++) {
       newSizes[idx++] = '90x90';
     }
@@ -56,18 +70,10 @@ export default function CarpetSizeSection({
   // תוספת מחיר
   const totalUpgradePrice = count90 * 100;
 
-  // האם נבחרו כל השטיחים
+  // האם נבחרו כל השטיחים (תמיד נכון כי יש איזון אוטומטי)
   const allSelected = totalSelected === totalCarpets;
 
   const handleContinue = () => {
-    if (!allSelected) {
-      if (totalSelected < totalCarpets) {
-        setValidationError(`יש לבחור עוד ${totalCarpets - totalSelected} ${totalCarpets - totalSelected === 1 ? 'שטיח' : 'שטיחים'}`);
-      } else {
-        setValidationError(`בחרתם יותר מדי שטיחים. יש להפחית ${totalSelected - totalCarpets}`);
-      }
-      return;
-    }
     setValidationError(null);
     onContinue();
   };
@@ -187,27 +193,16 @@ export default function CarpetSizeSection({
         </div>
       </div>
 
-      {/* סטטוס בחירה + תוספת מחיר */}
-      <div className="mt-3 text-center">
-        <p className={cn(
-          "text-[14px]",
-          allSelected ? "text-green-600" : totalSelected > totalCarpets ? "text-red-500" : "text-[#464646]/70"
-        )}>
-          {allSelected 
-            ? `נבחרו ${totalCarpets} שטיחים ✓`
-            : totalSelected > totalCarpets
-              ? `בחרתם ${totalSelected} מתוך ${totalCarpets} — יותר מדי!`
-              : `נבחרו ${totalSelected} מתוך ${totalCarpets} שטיחים`
-          }
-        </p>
-        {totalUpgradePrice > 0 && (
-          <p className="text-[16px] font-semibold text-[#5E2F88] mt-1">
-            תוספת: +₪{totalUpgradePrice}
+      {/* תוספת מחיר */}
+      {totalUpgradePrice > 0 && (
+        <div className="mt-3 text-center">
+          <p className="text-[16px] font-semibold text-[#5E2F88]">
+            תוספת לשטיחים גדולים: +₪{totalUpgradePrice}
           </p>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* כפתור המשך + שגיאת ולידציה */}
+      {/* כפתור המשך */}
       <div className="flex flex-col items-center gap-2 mt-4">
         <Button
           onClick={handleContinue}
@@ -215,19 +210,6 @@ export default function CarpetSizeSection({
         >
           המשך לבחירת עיצוב
         </Button>
-
-        <AnimatePresence>
-          {validationError && (
-            <motion.p
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-              className="text-xs text-red-600 text-center"
-            >
-              {validationError}
-            </motion.p>
-          )}
-        </AnimatePresence>
       </div>
     </div>
   );
