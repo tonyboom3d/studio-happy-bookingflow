@@ -58,13 +58,13 @@ export default function ProductSelectionSection({
     {
       id: 'catalog',
       title: 'בחירה מהקטלוג',
-      description: 'בחרו מתוך מגוון עיצובים מוכנים',
+      description: 'בחרו מתוך מגוון עיצובים',
       icon: ShoppingBag,
       recommended: true
     },
     {
       id: 'custom',
-      title: 'לבנות משהו משלי',
+      title: 'לתפור משהו משלי',
       description: 'יש לכם רעיון משלכם? ספרו לנו!',
       icon: Wrench,
       recommended: false

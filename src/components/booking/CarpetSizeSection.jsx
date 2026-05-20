@@ -1,27 +1,8 @@
 import React, { useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Ruler, User, Baby, Info, Users } from 'lucide-react';
+import { Minus, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-
-const CARPET_SIZES = [
-  {
-    id: '60x60',
-    label: '60×60 ס"מ',
-    price: 0,
-    priceLabel: 'כלול במחיר',
-    note: 'למתחילים',
-    recommended: true
-  },
-  {
-    id: '90x90',
-    label: '90×90 ס"מ',
-    price: 100,
-    priceLabel: '+₪100',
-    note: 'למנוסים יותר',
-    recommended: false
-  }
-];
 
 export default function CarpetSizeSection({
   adults,
@@ -30,156 +11,215 @@ export default function CarpetSizeSection({
   setCarpetSizes,
   onContinue
 }) {
-  // חישוב יחידות שטיח: כל מבוגר = שטיח אחד (הורה+ילד עובדים יחד על אותו שטיח)
-  const parentChildPairs = Math.min(adults, children);
-  const soloAdults = adults - parentChildPairs;
-  const totalCarpets = adults; // מספר השטיחים = מספר המבוגרים
+  const totalCarpets = adults;
 
-  // יצירת מבנה של יחידות השטיח
-  const carpetUnits = useMemo(() => {
-    const units = [];
-    let childrenAssigned = 0;
+  // חישוב כמות שטיחים לפי גודל
+  const count60 = useMemo(() => {
+    return Object.values(carpetSizes).filter(s => s === '60x60').length;
+  }, [carpetSizes]);
 
-    for (let i = 0; i < adults; i++) {
-      const hasChild = childrenAssigned < children;
-      units.push({
-        index: i,
-        isParentChild: hasChild,
-        label: hasChild 
-          ? `הורה + ילד ${units.filter(u => u.isParentChild).length + 1}`
-          : soloAdults === 1 && parentChildPairs === 0 
-            ? 'המשתתף'
-            : `משתתף ${i + 1 - childrenAssigned}`
-      });
-      if (hasChild) childrenAssigned++;
-    }
+  const count90 = useMemo(() => {
+    return Object.values(carpetSizes).filter(s => s === '90x90').length;
+  }, [carpetSizes]);
 
-    return units;
-  }, [adults, children, soloAdults, parentChildPairs]);
+  const totalSelected = count60 + count90;
 
-  // אתחול ברירות מחדל - כל יחידה מתחילה עם 60x60
+  // אתחול ברירות מחדל - כל השטיחים מתחילים ב-60x60
   useEffect(() => {
-    const defaultSizes = {};
-    for (let i = 0; i < totalCarpets; i++) {
-      if (!carpetSizes[i]) {
-        defaultSizes[i] = '60x60';
+    const currentCount = Object.keys(carpetSizes).length;
+    if (currentCount < totalCarpets) {
+      const newSizes = { ...carpetSizes };
+      for (let i = currentCount; i < totalCarpets; i++) {
+        newSizes[i] = '60x60';
       }
-    }
-    if (Object.keys(defaultSizes).length > 0) {
-      setCarpetSizes(prev => ({ ...prev, ...defaultSizes }));
+      setCarpetSizes(newSizes);
+    } else if (currentCount > totalCarpets) {
+      const newSizes = {};
+      for (let i = 0; i < totalCarpets; i++) {
+        newSizes[i] = carpetSizes[i] || '60x60';
+      }
+      setCarpetSizes(newSizes);
     }
   }, [totalCarpets, carpetSizes, setCarpetSizes]);
 
-  const handleSizeChange = (unitIndex, sizeId) => {
-    setCarpetSizes(prev => ({
-      ...prev,
-      [unitIndex]: sizeId
-    }));
+  // שינוי כמות שטיחים מגודל מסוים
+  const handleQuantityChange = (sizeId, delta) => {
+    const currentCount = sizeId === '60x60' ? count60 : count90;
+    const otherCount = sizeId === '60x60' ? count90 : count60;
+    const newCount = currentCount + delta;
+
+    if (newCount < 0) return;
+    if (newCount + otherCount > totalCarpets) return;
+
+    // בניית מחדש של carpetSizes
+    const newSizes = {};
+    let idx = 0;
+
+    // קודם שטיחים 60x60
+    const new60 = sizeId === '60x60' ? newCount : count60;
+    for (let i = 0; i < new60; i++) {
+      newSizes[idx++] = '60x60';
+    }
+
+    // אחר כך שטיחים 90x90
+    const new90 = sizeId === '90x90' ? newCount : count90;
+    for (let i = 0; i < new90; i++) {
+      newSizes[idx++] = '90x90';
+    }
+
+    setCarpetSizes(newSizes);
   };
 
-  // חישוב תוספת מחיר
-  const totalUpgradePrice = Object.values(carpetSizes)
-    .filter(size => size === '90x90')
-    .length * 100;
+  // תוספת מחיר
+  const totalUpgradePrice = count90 * 100;
 
-  // האם כל היחידות בחרו גודל
-  const allSelected = carpetUnits.every((_, i) => carpetSizes[i]);
+  // האם נבחרו כל השטיחים
+  const allSelected = totalSelected === totalCarpets;
 
   return (
-    <div className="py-6" dir="rtl">
+    <div className="py-4" dir="rtl">
       {/* כותרת */}
-      <div className="text-center mb-6">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <Ruler className="w-5 h-5 text-[#581E83]" />
-          <h3 className="text-lg font-medium text-[#581E83]">ביחרו את גודל השטיח שלכם</h3>
-        </div>
-        <p className="text-sm text-[#464646]/70">
-          {totalCarpets === 1 ? 'בחרו את גודל השטיח' : `${totalCarpets} שטיחים להכנה`}
+      <div className="text-center mb-4">
+        <h3 className="text-[20px] font-medium text-[#581E83]">בחרו את גודל השטיח</h3>
+        <p className="text-[16px] text-[#464646]/70 mt-1">
+          {totalCarpets === 1 ? 'שטיח אחד להכנה' : `${totalCarpets} שטיחים להכנה`}
         </p>
       </div>
 
-      {/* הסבר על הגדלים */}
-      <div className="mb-6 rounded-lg border border-[#5E2F88]/20 bg-[#5E2F88]/5 p-3">
-        <div className="flex items-start gap-2">
-          <Info className="w-4 h-4 text-[#5E2F88] mt-0.5 shrink-0" />
-          <div className="text-xs text-[#464646]/80 space-y-1">
-            <p><strong>60×60 ס"מ</strong> — גודל מושלם למתחילים, מספיק לכרית נוי או תמונה קטנה</p>
-            <p><strong>90×90 ס"מ</strong> — לציין שזה נועד למי שכבר יצא לו לעשות שטיח בעבר</p>
+      {/* תמונת השוואה והסבר גדלים */}
+      <div className="mb-5 rounded-xl border border-[#e8e8e8] bg-white p-4">
+        {/* תמונת השוואה */}
+        <div className="flex justify-center mb-4">
+          <div className="relative flex items-end justify-center gap-6">
+            {/* 60x60 */}
+            <div className="flex flex-col items-center">
+              <div 
+                className="bg-[#5E2F88]/10 border-2 border-[#5E2F88]/30 rounded-lg flex items-center justify-center"
+                style={{ width: '60px', height: '60px' }}
+              >
+                <span className="text-[12px] font-medium text-[#5E2F88]">60×60</span>
+              </div>
+              <span className="text-[14px] text-[#464646]/70 mt-2">ס״מ</span>
+            </div>
+
+            {/* 90x90 */}
+            <div className="flex flex-col items-center">
+              <div 
+                className="bg-[#5E2F88]/10 border-2 border-[#5E2F88]/30 rounded-lg flex items-center justify-center"
+                style={{ width: '90px', height: '90px' }}
+              >
+                <span className="text-[14px] font-medium text-[#5E2F88]">90×90</span>
+              </div>
+              <span className="text-[14px] text-[#464646]/70 mt-2">ס״מ</span>
+            </div>
+          </div>
+        </div>
+
+        {/* הסברים */}
+        <div className="space-y-2 text-center">
+          <p className="text-[16px] text-[#581E83]">
+            <strong>60×60</strong> — גודל מושלם למתחילים
+          </p>
+          <p className="text-[16px] text-[#581E83]">
+            <strong>90×90</strong> — למתקדמים שכבר התנסו
+          </p>
+        </div>
+      </div>
+
+      {/* בחירת כמויות */}
+      <div className="space-y-3">
+        {/* 60x60 */}
+        <div className="rounded-xl border border-[#e8e8e8] bg-white p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[18px] font-medium text-[#581E83]">60×60 ס״מ</div>
+              <div className="text-[14px] text-green-600">כלול במחיר</div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => handleQuantityChange('60x60', -1)}
+                disabled={count60 <= 0}
+                className="w-9 h-9 rounded-full border-2 border-[#5E2F88] flex items-center justify-center
+                           text-[#5E2F88] hover:bg-[#5E2F88] hover:text-white transition-colors
+                           disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#5E2F88]"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+              <motion.span
+                key={count60}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="text-[24px] font-bold text-[#581E83] w-8 text-center"
+              >
+                {count60}
+              </motion.span>
+              <button
+                type="button"
+                onClick={() => handleQuantityChange('60x60', 1)}
+                disabled={totalSelected >= totalCarpets}
+                className="w-9 h-9 rounded-full border-2 border-[#5E2F88] flex items-center justify-center
+                           text-[#5E2F88] hover:bg-[#5E2F88] hover:text-white transition-colors
+                           disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#5E2F88]"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 90x90 */}
+        <div className="rounded-xl border border-[#e8e8e8] bg-white p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[18px] font-medium text-[#581E83]">90×90 ס״מ</div>
+              <div className="text-[14px] text-[#5E2F88]">+₪100 לשטיח</div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => handleQuantityChange('90x90', -1)}
+                disabled={count90 <= 0}
+                className="w-9 h-9 rounded-full border-2 border-[#5E2F88] flex items-center justify-center
+                           text-[#5E2F88] hover:bg-[#5E2F88] hover:text-white transition-colors
+                           disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#5E2F88]"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+              <motion.span
+                key={count90}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="text-[24px] font-bold text-[#581E83] w-8 text-center"
+              >
+                {count90}
+              </motion.span>
+              <button
+                type="button"
+                onClick={() => handleQuantityChange('90x90', 1)}
+                disabled={totalSelected >= totalCarpets}
+                className="w-9 h-9 rounded-full border-2 border-[#5E2F88] flex items-center justify-center
+                           text-[#5E2F88] hover:bg-[#5E2F88] hover:text-white transition-colors
+                           disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#5E2F88]"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* בחירה לכל יחידת שטיח */}
-      <div className="space-y-4">
-        {carpetUnits.map((unit, unitIndex) => (
-          <motion.div
-            key={unitIndex}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: unitIndex * 0.1 }}
-            className="rounded-xl border border-[#e8e8e8] bg-white p-4"
-          >
-            {/* כותרת יחידה */}
-            <div className="flex items-center gap-2 mb-3">
-              <div className="flex items-center gap-1.5">
-                {unit.isParentChild ? (
-                  <Users className="w-4 h-4 text-[#581E83]" />
-                ) : (
-                  <User className="w-4 h-4 text-[#581E83]" />
-                )}
-                <span className="font-medium text-[#581E83]">{unit.label}</span>
-              </div>
-              {unit.isParentChild && (
-                <div className="flex items-center gap-1 bg-[#5E2F88]/10 rounded-full px-2 py-0.5">
-                  <Baby className="w-3 h-3 text-[#5E2F88]" />
-                  <span className="text-xs text-[#5E2F88]">שטיח משותף</span>
-                </div>
-              )}
-            </div>
-
-            {/* אפשרויות גודל */}
-            <div className="grid grid-cols-2 gap-2">
-              {CARPET_SIZES.map((size) => {
-                const isSelected = carpetSizes[unitIndex] === size.id;
-                return (
-                  <button
-                    key={size.id}
-                    type="button"
-                    onClick={() => handleSizeChange(unitIndex, size.id)}
-                    className={cn(
-                      'relative rounded-lg border-2 p-3 text-right transition-all',
-                      isSelected
-                        ? 'border-[#5E2F88] bg-[#5E2F88]/10'
-                        : 'border-[#e8e8e8] hover:border-[#5E2F88]/50'
-                    )}
-                  >
-                    {size.recommended && (
-                      <span className="absolute -top-2 right-2 text-[10px] bg-[#5E2F88] text-white px-2 py-0.5 rounded-full">
-                        מומלץ
-                      </span>
-                    )}
-                    <div className="font-medium text-[#581E83]">{size.label}</div>
-                    <div className={cn(
-                      'text-sm mt-1',
-                      size.price === 0 ? 'text-green-600' : 'text-[#5E2F88]'
-                    )}>
-                      {size.priceLabel}
-                    </div>
-                    <div className="text-xs text-[#464646]/60 mt-1">{size.note}</div>
-                    {isSelected && (
-                      <motion.div
-                        layoutId={`check-${unitIndex}`}
-                        className="absolute top-2 left-2 w-5 h-5 bg-[#5E2F88] rounded-full flex items-center justify-center"
-                      >
-                        <span className="text-white text-xs">✓</span>
-                      </motion.div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </motion.div>
-        ))}
+      {/* סטטוס בחירה */}
+      <div className="mt-4 text-center">
+        <p className={cn(
+          "text-[16px]",
+          allSelected ? "text-green-600" : "text-[#464646]/70"
+        )}>
+          {allSelected 
+            ? `נבחרו ${totalCarpets} שטיחים ✓`
+            : `נבחרו ${totalSelected} מתוך ${totalCarpets} שטיחים`
+          }
+        </p>
       </div>
 
       {/* סיכום תוספת */}
@@ -187,23 +227,23 @@ export default function CarpetSizeSection({
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="mt-4 text-center"
+          className="mt-3 text-center"
         >
-          <p className="text-sm text-[#464646]/70">
+          <p className="text-[14px] text-[#464646]/70">
             תוספת עבור שטיחים גדולים:
           </p>
-          <p className="text-lg font-semibold text-[#5E2F88]">
+          <p className="text-[20px] font-semibold text-[#5E2F88]">
             +₪{totalUpgradePrice}
           </p>
         </motion.div>
       )}
 
       {/* כפתור המשך */}
-      <div className="flex justify-center mt-6">
+      <div className="flex justify-center mt-5">
         <Button
           onClick={onContinue}
           disabled={!allSelected}
-          className="bg-[#5E2F88] hover:bg-[#7B3DB0] text-white px-8 py-3 rounded-lg text-lg disabled:opacity-50"
+          className="bg-[#5E2F88] hover:bg-[#7B3DB0] text-white px-8 py-3 rounded-lg text-[18px] disabled:opacity-50"
         >
           המשך לבחירת עיצוב
         </Button>
