@@ -21,6 +21,10 @@ let wixData = {
     initialized: false
 };
 
+// Pending response callbacks for request-reply pattern
+const pendingCallbacks = new Map();
+let callbackIdCounter = 0;
+
 // Callbacks for data updates
 const listeners = new Set();
 
@@ -147,7 +151,41 @@ function handleWixMessage(event) {
             notifyListeners({ bookingError: data.error });
             break;
 
-        // התעלמות מ-types לא מוכרים
+        case 'ORDER_CONTEXT':
+            notifyListeners({
+                orderContext: data.orderContext,
+                role: data.role || 'organizer',
+            });
+            break;
+
+        case 'PARTICIPANT_CONTEXT':
+            notifyListeners({
+                participantContext: data.participantContext,
+                role: 'participant',
+            });
+            break;
+
+        case 'RESPONSE': {
+            const cb = pendingCallbacks.get(data.callbackId);
+            if (cb) {
+                pendingCallbacks.delete(data.callbackId);
+                cb(data.result);
+            }
+            break;
+        }
+
+        case 'SKETCH_SELECTION_SAVED':
+            notifyListeners({ sketchSelectionSaved: data.selection });
+            break;
+
+        case 'UPGRADE_PAYMENT_RESULT':
+            notifyListeners({ upgradePaymentResult: data });
+            break;
+
+        case 'TOKEN_ACCESS':
+            notifyListeners({ tokenAccess: data.token });
+            break;
+
         default:
             break;
     }
@@ -254,14 +292,41 @@ export function isWixEditorOrPreview() {
  * עם Debounce למניעת שליחות מיותרות
  */
 export function sendSummaryUpdate(summaryData) {
-    // ביטול טיימר קודם אם קיים
     if (summaryDebounceTimer) {
         clearTimeout(summaryDebounceTimer);
     }
-    
-    // Debounce - המתנה לפני שליחה
     summaryDebounceTimer = setTimeout(() => {
         sendToWix('SUMMARY_UPDATE', summaryData);
         summaryDebounceTimer = null;
     }, SUMMARY_DEBOUNCE_DELAY);
+}
+
+/**
+ * Send a message to Wix with a callback for the response (request-reply pattern).
+ * The Wix page script sends back { type: 'RESPONSE', callbackId, result }.
+ */
+export function sendWithCallback(type, data, callback) {
+    const callbackId = ++callbackIdCounter;
+    pendingCallbacks.set(callbackId, callback);
+    sendToWix(type, { ...data, _callbackId: callbackId });
+    setTimeout(() => {
+        if (pendingCallbacks.has(callbackId)) {
+            pendingCallbacks.delete(callbackId);
+            callback({ error: 'timeout' });
+        }
+    }, 30000);
+}
+
+/**
+ * Request order context for the post-payment hub
+ */
+export function requestOrderContext(params = {}) {
+    sendToWix('LOAD_ORDER_CONTEXT', params);
+}
+
+/**
+ * Verify a participant token + phone
+ */
+export function verifyParticipantAccess(token, phone) {
+    sendToWix('VERIFY_ACCESS_TOKEN', { token, phone });
 }

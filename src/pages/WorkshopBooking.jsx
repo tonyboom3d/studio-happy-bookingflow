@@ -1,31 +1,28 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, CreditCard } from 'lucide-react';
 import AccordionSection from '../components/booking/AccordionSection';
 import TimeSlotsSection from '../components/booking/TimeSlotsSection';
 import ParticipantsSection from '../components/booking/ParticipantsSection';
-import CarpetSizeSection from '../components/booking/CarpetSizeSection';
-import ProductSelectionSection from '../components/booking/ProductSelectionSection';
 import PersonalDetailsSection from '../components/booking/PersonalDetailsSection';
 import OrderSummarySection from '../components/booking/OrderSummarySection';
-import ThankYouScreen from '../components/booking/ThankYouScreen';
 import { submitBooking, subscribeToWix, notifyProgress, isWixEditorOrPreview } from '@/api/wixBridge';
-import { computeOrderSummary } from '@/components/booking/FloatingSummary';
-import { addLog, APP_VERSION } from '@/components/VersionLogger';
+import { addLog } from '@/components/VersionLogger';
 
 export default function WorkshopBooking() {
+  const navigate = useNavigate();
+
   // State ראשי
   const [activeSection, setActiveSection] = useState(1);
   const [completedSections, setCompletedSections] = useState([]);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [prevActiveSection, setPrevActiveSection] = useState(1);
 
-  // נתוני ההזמנה — סדר חדש: תאריך → משתתפים → גודל שטיח → עיצוב → פרטים
+  // נתוני ההזמנה — תאריך → משתתפים → פרטים אישיים
   const [selectedSlot, setSelectedSlot] = useState(null); // slot יחיד (לא מערך)
   const [adults, setAdults] = useState(1); // מבוגרים 14+
   const [children, setChildren] = useState(0); // ילדים 8-13
-  const [carpetSizes, setCarpetSizes] = useState({}); // { 0: '60x60', 1: '90x90' } לפי אינדקס מבוגר
-  const [cart, setCart] = useState([]);
   const [userDetails, setUserDetails] = useState({ name: '', email: '', phone: '' });
 
   // נתונים מ-Wix
@@ -107,10 +104,18 @@ export default function WorkshopBooking() {
         setBookingError(data.bookingError);
         addLog(`Booking error: ${data.bookingError}`, 'error');
       }
+      if (data.orderContext) {
+        addLog('Order context received, navigating to order hub', 'info');
+        navigate('/order');
+      }
+      if (data.tokenAccess) {
+        addLog('Token access detected, navigating to selection', 'info');
+        navigate(`/select/${data.tokenAccess}`);
+      }
     });
 
     return unsubscribe;
-  }, []);
+  }, [navigate]);
 
   // עדכון Wix על התקדמות
   useEffect(() => {
@@ -118,19 +123,16 @@ export default function WorkshopBooking() {
     notifyProgress(activeSection, {
       adults,
       children,
-      hasSelectedSlot: !!selectedSlot,
-      cartCount: cart.length
+      hasSelectedSlot: !!selectedSlot
     });
-  }, [activeSection, adults, children, selectedSlot, cart.length]);
+  }, [activeSection, adults, children, selectedSlot]);
 
   // פתיחה/סגירה אוטומטית של סיכום הזמנה
   useEffect(() => {
-    // כשמגיעים לשלב 5 (פרטים אישיים) - פותחים את הסיכום
-    if (activeSection === 5 && prevActiveSection !== 5) {
+    if (activeSection === 3 && prevActiveSection !== 3) {
       setSummaryExpanded(true);
     }
-    // כשיורדים משלב 5 - סוגרים את הסיכום
-    if (prevActiveSection === 5 && activeSection < 5) {
+    if (prevActiveSection === 3 && activeSection < 3) {
       setSummaryExpanded(false);
     }
     setPrevActiveSection(activeSection);
@@ -140,12 +142,6 @@ export default function WorkshopBooking() {
   const totalUnits = adults; // כל מבוגר = יחידה, ילדים מצטרפים להורה
   const parentChildPairs = Math.min(adults, children); // זוגות הורה+ילד
   const soloAdults = adults - parentChildPairs; // מבוגרים בלי ילד
-
-  // חישוב תוספת מחיר עבור שטיחים 90x90
-  const carpetSizeUpgradePrice = useMemo(() => {
-    const upgradeCount = Object.values(carpetSizes).filter(s => s === '90x90').length;
-    return upgradeCount * 100;
-  }, [carpetSizes]);
 
   // מחיר בסיס לפי שירות ומספר מבוגרים + זוגות הורה+ילד
   const basePrice = useMemo(() => {
@@ -160,10 +156,7 @@ export default function WorkshopBooking() {
     return (soloAdults * pricePerAdult) + (parentChildPairs * parentChildPrice);
   }, [selectedSlot, pricingByService, soloAdults, parentChildPairs]);
 
-  const orderTotalPreview = useMemo(
-    () => basePrice + carpetSizeUpgradePrice,
-    [basePrice, carpetSizeUpgradePrice]
-  );
+  const orderTotalPreview = basePrice;
 
   // מעבר לסקשן הבא
   const completeSection = (sectionNum) => {
@@ -174,9 +167,8 @@ export default function WorkshopBooking() {
     addLog(`Section ${sectionNum} completed, moving to section ${sectionNum + 1}`, 'success');
   };
 
-  /** סיכום הזמנה (6) — ניתן לפתוח בכל עת */
   const canOpenSection = (sectionNum) => {
-    if (sectionNum === 6) return true;
+    if (sectionNum === 4) return true;
     if (sectionNum <= activeSection) return true;
     if (completedSections.includes(sectionNum - 1)) return true;
     return false;
@@ -191,21 +183,12 @@ export default function WorkshopBooking() {
   const handleSubmit = async () => {
     setBookingError(null);
     addLog('Starting booking submission...', 'info');
-    setCompletedSections((prev) => (prev.includes(5) ? prev : [...prev, 5]));
+    setCompletedSections((prev) => (prev.includes(3) ? prev : [...prev, 3]));
     setIsProcessing(true);
 
     const bookingData = {
       adults,
       children,
-      carpetSizes,
-      products: cart.map(p => ({ 
-        product_id: p.id, 
-        _id: p._id || p.id, 
-        title: p.title, 
-        price: p.price, 
-        quantity: p.quantity || 1, 
-        addOnId: p.addOnId 
-      })),
       selectedSlot: selectedSlot ? {
         slot_id: selectedSlot._id || selectedSlot.sessionId,
         date: selectedSlot.start?.timestamp,
@@ -223,7 +206,7 @@ export default function WorkshopBooking() {
 
     console.log('[Booking][Frontend] bookingData being sent to Wix:', JSON.stringify(bookingData, null, 2));
 
-    addLog(`Submitting booking with ${cart.length} products`, 'info');
+    addLog('Submitting booking', 'info');
     submitBooking(bookingData);
 
     setTimeout(() => {
@@ -266,26 +249,29 @@ export default function WorkshopBooking() {
     );
   }
 
-  // אם ההזמנה הושלמה
+  // אם ההזמנה הושלמה — ניווט אוטומטי לדף ההזמנה (post-payment)
+  // ORDER_CONTEXT יגיע מהדף ויעביר ל-/order, כאן מציגים מסך ביניים
   if (isComplete) {
     return (
-      <ThankYouScreen
-        booking={booking}
-        paymentStatus={paymentStatus}
-        onGoHome={() => {
-          setIsComplete(false);
-          setActiveSection(1);
-          setCompletedSections([]);
-          setSelectedSlot(null);
-          setAdults(1);
-          setChildren(0);
-          setCarpetSizes({});
-          setCart([]);
-          setUserDetails({ name: '', email: '', phone: '' });
-          setBooking(null);
-          setPaymentStatus('Successful');
-        }}
-      />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-transparent" dir="rtl">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center"
+        >
+          <div className="w-20 h-20 rounded-full bg-[#5E2F88] flex items-center justify-center mb-4">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <p className="text-lg font-semibold text-[#581E83]">
+            ההזמנה בוצעה בהצלחה!
+          </p>
+          <p className="text-sm text-[#464646]/70 mt-2">
+            טוען את מסך בחירת הסקיצות...
+          </p>
+        </motion.div>
+      </div>
     );
   }
 
@@ -299,14 +285,11 @@ export default function WorkshopBooking() {
     );
   }
 
-  // סדר חדש של הטאבים
   const sections = [
     { id: 1, title: 'בחירת תאריך' },
     { id: 2, title: 'כמה תהיו ?' },
-    { id: 3, title: 'גודל שטיח' },
-    { id: 4, title: 'בחירת עיצוב' },
-    { id: 5, title: 'פרטים אישיים' },
-    { id: 6, title: 'סיכום הזמנה' }
+    { id: 3, title: 'פרטים אישיים' },
+    { id: 4, title: 'סיכום הזמנה' }
   ];
 
   return (
@@ -343,15 +326,14 @@ export default function WorkshopBooking() {
         <div className="space-y-4">
           {sections.map((section) => {
             const isLocked =
-              section.id === 6
+              section.id === 4
                 ? false
                 : section.id > 1 && !completedSections.includes(section.id - 1);
             const isCompleted = completedSections.includes(section.id);
-            // סקשן 6 (סיכום) - נשלט ע״י summaryExpanded
-            const isActive = section.id === 6 ? summaryExpanded : activeSection === section.id;
+            const isActive = section.id === 4 ? summaryExpanded : activeSection === section.id;
 
             const headerRight =
-              section.id === 6 ? (
+              section.id === 4 ? (
                 <span className="flex items-center gap-1 text-sm font-bold tabular-nums text-white">
                   <CreditCard className="h-4 w-4 shrink-0 opacity-95" aria-hidden />
                   ₪{Math.round(orderTotalPreview)}
@@ -359,8 +341,7 @@ export default function WorkshopBooking() {
               ) : null;
 
             const handleSectionClick = () => {
-              if (section.id === 6) {
-                // סיכום - טוגל פתיחה/סגירה
+              if (section.id === 4) {
                 setSummaryExpanded(!summaryExpanded);
               } else {
                 openSection(section.id);
@@ -372,7 +353,7 @@ export default function WorkshopBooking() {
                 key={section.id}
                 title={section.title}
                 headerRight={headerRight}
-                variant={section.id === 6 ? 'summary' : 'default'}
+                variant={section.id === 4 ? 'summary' : 'default'}
                 stepNumber={section.id}
                 isActive={isActive}
                 isCompleted={isCompleted}
@@ -402,38 +383,6 @@ export default function WorkshopBooking() {
                   />
                 )}
                 {section.id === 3 && (
-                  <CarpetSizeSection
-                    adults={adults}
-                    children={children}
-                    carpetSizes={carpetSizes}
-                    setCarpetSizes={setCarpetSizes}
-                    onContinue={() => completeSection(3)}
-                  />
-                )}
-                {section.id === 4 && (
-                  <ProductSelectionSection
-                    cart={cart}
-                    setCart={setCart}
-                    adults={adults}
-                    children={children}
-                    carpetSizes={carpetSizes}
-                    wixProducts={wixProducts}
-                    onContinue={() => completeSection(4)}
-                    updateQuantity={(productId, delta) => {
-                      setCart(prevCart => {
-                        const totalItems = prevCart.reduce((sum, p) => sum + (p.quantity || 1), 0);
-                        return prevCart.map(p => {
-                          if ((p._id || p.id) !== productId) return p;
-                          const newQty = (p.quantity || 1) + delta;
-                          if (newQty < 1) return null;
-                          if (delta > 0 && totalItems >= adults) return p;
-                          return { ...p, quantity: newQty };
-                        }).filter(Boolean);
-                      });
-                    }}
-                  />
-                )}
-                {section.id === 5 && (
                   <PersonalDetailsSection
                     userDetails={userDetails}
                     setUserDetails={setUserDetails}
@@ -441,15 +390,12 @@ export default function WorkshopBooking() {
                     isSubmitting={isProcessing}
                   />
                 )}
-                {section.id === 6 && (
+                {section.id === 4 && (
                   <OrderSummarySection
                     adults={adults}
                     children={children}
-                    carpetSizes={carpetSizes}
-                    cart={cart}
                     selectedSlot={selectedSlot}
                     basePrice={basePrice}
-                    carpetSizeUpgradePrice={carpetSizeUpgradePrice}
                     totalPrice={orderTotalPreview}
                   />
                 )}
