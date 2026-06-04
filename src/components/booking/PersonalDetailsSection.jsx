@@ -1,20 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function PersonalDetailsSection({
-  onPay,
-  isSubmitting
-}) {
-  const hasFired = useRef(false);
-
-  useEffect(() => {
-    if (!isSubmitting && !hasFired.current) {
-      hasFired.current = true;
-      onPay();
-    }
-  }, []);
-
+export default function PersonalDetailsSection() {
   return (
     <div className="flex flex-col items-center justify-center py-10 px-2" dir="rtl">
       <motion.div

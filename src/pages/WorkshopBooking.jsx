@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, CreditCard, Loader2 } from 'lucide-react';
@@ -30,6 +30,9 @@ export default function WorkshopBooking() {
   const [wixSlots, setWixSlots] = useState(null);
   const [pricingByService, setPricingByService] = useState(null);
   const [serviceMinPrices, setServiceMinPrices] = useState(null);
+
+  // guard שמונע קריאה כפולה ל-handleSubmit — ref לא מאפס בין renders
+  const submittingRef = useRef(false);
 
   // סטטוס
   const [isProcessing, setIsProcessing] = useState(false);
@@ -181,7 +184,8 @@ export default function WorkshopBooking() {
 
   // שליחת ההזמנה — מפעיל את תהליך ה-checkout ב-Wix
   const handleSubmit = async () => {
-    if (isProcessing) return; // guard against double-call
+    if (submittingRef.current) return; // ref-based guard — immune to stale closures
+    submittingRef.current = true;
     setBookingError(null);
     addLog('Starting booking submission...', 'info');
     setCompletedSections((prev) => (prev.includes(4) ? prev : [...prev, 4]));
@@ -381,14 +385,14 @@ export default function WorkshopBooking() {
                 )}
                 {section.id === 3 && (
                   <SketchInfoSection
-                    onContinue={() => completeSection(3)}
+                    onContinue={() => {
+                      completeSection(3);
+                      handleSubmit();
+                    }}
                   />
                 )}
                 {section.id === 4 && (
-                  <PersonalDetailsSection
-                    onPay={handleSubmit}
-                    isSubmitting={isProcessing}
-                  />
+                  <PersonalDetailsSection />
                 )}
                 {section.id === 5 && (
                   <OrderSummarySection
