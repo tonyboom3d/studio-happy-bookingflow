@@ -383,8 +383,10 @@ export default function WorkshopBooking() {
                   <OrderSummarySection
                     adults={adults}
                     children={children}
+                    soloAdults={soloAdults}
+                    parentChildPairs={parentChildPairs}
                     selectedSlot={selectedSlot}
-                    basePrice={basePrice}
+                    servicePricing={servicePricing}
                     totalPrice={orderTotalPreview}
                   />
                 )}
