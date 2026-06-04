@@ -329,27 +329,26 @@ export default function WorkshopBooking() {
         className="py-8 px-8 text-center border-b border-[#e8e8e8] bg-transparent"
         style={{ paddingTop: 10, paddingBottom: 10 }}
       >
-        <div className="flex items-center justify-between">
+        <div className="relative mb-2 min-h-[28px]">
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="inline-flex items-center gap-2 text-sm font-medium text-[#581E83] hover:text-[#7B3DB0] transition-colors"
+            className="absolute top-0 start-0 inline-flex items-center gap-2 text-sm font-medium text-[#581E83] hover:text-[#7B3DB0] transition-colors"
           >
             <ArrowRight className="h-4 w-4" aria-hidden />
             חזרה לדף הקודם
           </button>
-          {/* טיימר session */}
-          {!skipInitialLoadingScreen && (
-            <div className="flex flex-col items-end gap-0.5">
-              <span className={`text-sm font-mono font-semibold tabular-nums ${remainingMs < 120000 ? 'text-red-500' : 'text-[#5E2F88]'}`}>
-                ⏱ {timerText}
-              </span>
-              <span className="text-[10px] text-[#464646]/60 leading-none">
-                *בסיום הדף יתרענן
-              </span>
-            </div>
-          )}
         </div>
+        {!skipInitialLoadingScreen && (
+          <div className="flex flex-col items-center gap-0.5 mb-2">
+            <span className={`text-sm font-mono font-semibold tabular-nums ${remainingMs < 120000 ? 'text-red-500' : 'text-[#5E2F88]'}`}>
+              ⏱ {timerText}
+            </span>
+            <span className="text-[10px] text-[#464646]/60 leading-none">
+              *בסיום הדף יתרענן
+            </span>
+          </div>
+        )}
         <h1 className="text-xl md:text-2xl font-bold text-[#581E83]" style={{ opacity: 1, transform: 'none' }}>
           סטודיו האפי
         </h1>
@@ -370,8 +369,8 @@ export default function WorkshopBooking() {
 
             const headerRight =
               section.id === 4 ? (
-                <span className="flex items-center gap-1 text-sm font-bold tabular-nums text-white">
-                  <CreditCard className="h-4 w-4 shrink-0 opacity-95" aria-hidden />
+                <span className="flex items-center gap-1.5 text-base font-bold tabular-nums text-white">
+                  <CreditCard className="h-5 w-5 shrink-0 opacity-95" aria-hidden />
                   ₪{Math.round(orderTotalPreview)}
                 </span>
               ) : null;

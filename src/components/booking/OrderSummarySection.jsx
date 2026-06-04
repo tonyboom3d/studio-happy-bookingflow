@@ -30,55 +30,55 @@ export default function OrderSummarySection({
   const parentChildUnitPrice = pricing?.parentChild || soloUnitPrice;
 
   return (
-    <div className="flex flex-col py-2 px-1 space-y-2" dir="rtl">
+    <div className="flex flex-col py-3 px-1 space-y-3" dir="rtl">
       {/* שורת תאריך + משתתפים */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-[#464646]">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 text-base text-[#464646]">
         {dateTimeInfo && (
           <>
-            <span className="flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-[#5E2F88]" />
+            <span className="flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-[#5E2F88]" />
               {dateTimeInfo.date}
             </span>
-            <span className="flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-[#5E2F88]" />
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-[#5E2F88]" />
               {dateTimeInfo.time}
             </span>
           </>
         )}
-        <span className="flex items-center gap-1">
-          <Users className="w-3.5 h-3.5 text-[#5E2F88]" />
+        <span className="flex items-center gap-1.5">
+          <Users className="w-4 h-4 text-[#5E2F88]" />
           {adults} {adults === 1 ? 'מבוגר' : 'מבוגרים'}
           {children > 0 && ` + ${children} ${children === 1 ? 'ילד' : 'ילדים'}`}
         </span>
       </div>
 
       {/* פירוט מחיר */}
-      <div className="border-t border-[#e8e8e8] pt-2 space-y-1 text-[13px] text-[#464646]">
+      <div className="border-t border-[#e8e8e8] pt-3 space-y-2 text-base text-[#464646]">
         {soloAdults > 0 && (
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-3">
             <span>{soloAdults} × כרטיס יחיד</span>
-            <span>₪{soloAdults * soloUnitPrice}</span>
+            <span className="font-medium tabular-nums">₪{soloAdults * soloUnitPrice}</span>
           </div>
         )}
         {parentChildPairs > 0 && (
-          <div className="flex justify-between">
-            <span className="flex items-center gap-1">
-              <Baby className="w-3.5 h-3.5" />
+          <div className="flex justify-between gap-3">
+            <span className="flex items-center gap-1.5">
+              <Baby className="w-4 h-4" />
               {parentChildPairs} × הורה + ילד
             </span>
-            <span>₪{parentChildPairs * parentChildUnitPrice}</span>
+            <span className="font-medium tabular-nums">₪{parentChildPairs * parentChildUnitPrice}</span>
           </div>
         )}
       </div>
 
       {/* סה"כ */}
-      <div className="flex items-center justify-between border-t-2 border-[#5E2F88]/30 pt-2">
-        <span className="font-bold text-[15px] text-[#581E83]">סה״כ לתשלום</span>
-        <span className="text-[20px] font-bold text-[#581E83]">₪{Math.round(totalPrice)}</span>
+      <div className="flex items-center justify-between border-t-2 border-[#5E2F88]/30 pt-3">
+        <span className="font-bold text-lg text-[#581E83]">סה״כ לתשלום</span>
+        <span className="text-2xl font-bold text-[#581E83] tabular-nums">₪{Math.round(totalPrice)}</span>
       </div>
 
       {/* כפתור מעבר לתשלום */}
-      <div className="pt-2">
+      <div className="pt-3">
         <motion.button
           type="button"
           onClick={onPay}
@@ -98,7 +98,7 @@ export default function OrderSummarySection({
             ease: 'easeInOut',
           }}
           className="w-full flex items-center justify-center gap-2 bg-[#5E2F88] hover:bg-[#7B3DB0]
-                     text-white font-semibold py-3.5 rounded-xl text-[15px]
+                     text-white font-semibold py-4 rounded-xl text-base md:text-lg
                      transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isProcessing ? (
