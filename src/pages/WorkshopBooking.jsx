@@ -181,6 +181,7 @@ export default function WorkshopBooking() {
 
   // שליחת ההזמנה — מפעיל את תהליך ה-checkout ב-Wix
   const handleSubmit = async () => {
+    if (isProcessing) return; // guard against double-call
     setBookingError(null);
     addLog('Starting booking submission...', 'info');
     setCompletedSections((prev) => (prev.includes(4) ? prev : [...prev, 4]));

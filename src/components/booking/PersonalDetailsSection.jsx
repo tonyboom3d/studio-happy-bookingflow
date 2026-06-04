@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -6,8 +6,11 @@ export default function PersonalDetailsSection({
   onPay,
   isSubmitting
 }) {
+  const hasFired = useRef(false);
+
   useEffect(() => {
-    if (!isSubmitting) {
+    if (!isSubmitting && !hasFired.current) {
+      hasFired.current = true;
       onPay();
     }
   }, []);
