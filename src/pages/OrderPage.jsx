@@ -13,6 +13,7 @@ export default function OrderPage() {
   const { token } = useParams();
   const [role, setRole] = useState(token ? 'participant' : 'organizer');
   const [orderContext, setOrderContext] = useState(null);
+  const [ecomSummary, setEcomSummary] = useState(null);
   const [participantContext, setParticipantContext] = useState(null);
   const [catalog, setCatalog] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,8 +28,8 @@ export default function OrderPage() {
       if (data.orderContext) {
         setOrderContext(data.orderContext);
         setRole(data.role || 'organizer');
+        if (data.ecomSummary) setEcomSummary(data.ecomSummary);
         setIsLoading(false);
-        // Store orderId in sessionStorage for page reloads
         if (data.orderContext?.order?._id) {
           try { sessionStorage.setItem('workshop_order_id', data.orderContext.order._id); } catch (e) {}
         }
@@ -89,6 +90,7 @@ export default function OrderPage() {
 
       <PostPaymentHub
         orderContext={orderContext}
+        ecomSummary={ecomSummary}
         participantContext={participantContext}
         role={role}
         catalog={catalog || []}

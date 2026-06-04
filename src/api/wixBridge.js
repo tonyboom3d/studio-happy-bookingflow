@@ -149,6 +149,7 @@ function handleWixMessage(event) {
             notifyListeners({
                 orderContext: data.orderContext,
                 role: data.role || 'organizer',
+                ecomSummary: data.ecomSummary || null,
             });
             break;
 
