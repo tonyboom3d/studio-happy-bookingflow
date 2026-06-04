@@ -275,16 +275,6 @@ export default function WorkshopBooking() {
     );
   }
 
-  // מסך עיבוד
-  if (isProcessing) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-transparent">
-        <Loader2 className="w-12 h-12 text-[#5E2F88] animate-spin" />
-        <p className="mt-4 text-lg text-[#581E83]">דף התשלום נטען, כמה רגעים...</p>
-      </div>
-    );
-  }
-
   const sections = [
     { id: 1, title: 'בחירת תאריך' },
     { id: 2, title: 'כמה תהיו ?' },
@@ -326,8 +316,10 @@ export default function WorkshopBooking() {
       <main className="max-w-2xl mx-auto p-4 md:p-6">
         <div className="space-y-4">
           {sections.map((section) => {
-            const isLocked =
-              section.id === 5
+            // כשמעבדים תשלום — כל הכרטיסיות נעולות מלבד 4 (שמציג טעינה)
+            const isLocked = isProcessing
+              ? section.id !== 4
+              : section.id === 5
                 ? false
                 : section.id > 1 && !completedSections.includes(section.id - 1);
             const isCompleted = completedSections.includes(section.id);
