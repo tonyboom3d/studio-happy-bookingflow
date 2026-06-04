@@ -340,9 +340,14 @@ export default function WorkshopBooking() {
           </button>
           {/* טיימר session */}
           {!skipInitialLoadingScreen && (
-            <span className={`text-xs font-mono tabular-nums ${remainingMs < 120000 ? 'text-red-500 font-semibold' : 'text-[#464646]/50'}`}>
-              {timerText}
-            </span>
+            <div className="flex flex-col items-end gap-0.5">
+              <span className={`text-sm font-mono font-semibold tabular-nums ${remainingMs < 120000 ? 'text-red-500' : 'text-[#5E2F88]'}`}>
+                ⏱ {timerText}
+              </span>
+              <span className="text-[10px] text-[#464646]/60 leading-none">
+                *בסיום הדף יתרענן
+              </span>
+            </div>
           )}
         </div>
         <h1 className="text-xl md:text-2xl font-bold text-[#581E83]" style={{ opacity: 1, transform: 'none' }}>
