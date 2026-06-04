@@ -43,6 +43,21 @@ const ISRAELI_HOLIDAYS = {
   '2027-05-11': 'יום העצמאות', '2027-06-10': 'שבועות', '2027-06-11': 'שבועות',
 };
 
+const CLOSING_SOON_HOURS = 8;
+
+function isSlotClosingSoon(slot) {
+  if (!slot?.start?.timestamp) return false;
+  const startTime = new Date(slot.start.timestamp).getTime();
+  const now = Date.now();
+  const hoursUntilStart = (startTime - now) / (1000 * 60 * 60);
+  return hoursUntilStart > 0 && hoursUntilStart <= CLOSING_SOON_HOURS;
+}
+
+function isDayClosingSoon(slots) {
+  if (!slots?.length) return false;
+  return slots.some(isSlotClosingSoon);
+}
+
 function getAvailabilityInfo(availableSlots) {
   const availableDates = new Set();
   const spotsMap = new Map();
@@ -131,7 +146,7 @@ function getSlotDuration(slot) {
 }
 
 // Tooltip קומפוננטה
-function DayTooltip({ slots, pricingByService, serviceMinPrices, holiday, isVisible }) {
+function DayTooltip({ slots, pricingByService, serviceMinPrices, holiday, closingSoon, isVisible }) {
   if (!isVisible || !slots?.length) return null;
 
   const minPrice = getMinPriceForDate(slots, pricingByService, serviceMinPrices);
@@ -154,6 +169,13 @@ function DayTooltip({ slots, pricingByService, serviceMinPrices, holiday, isVisi
         className="bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 p-2 whitespace-nowrap text-right"
       >
         <div className="space-y-1.5 text-[14px]">
+          {/* הרשמה נסגרת בקרוב */}
+          {closingSoon && (
+            <div className="flex items-center gap-1.5 text-red-600 font-medium">
+              <span>⏰</span>
+              <span>ההרשמה נסגרת בקרוב!</span>
+            </div>
+          )}
           {/* חג */}
           {holiday && (
             <div className="flex items-center gap-1.5 text-[#7B3DB0] font-medium">
@@ -315,6 +337,7 @@ export default function TimeSlotsSection({
             const isDisabled = !isCurrentMonth || isPast || !hasSlot;
             const isHoliday = ISRAELI_HOLIDAYS[dateStr];
             const hasMultipleSlots = daySlots.length > 1;
+            const closingSoon = hasSlot && isDayClosingSoon(daySlots);
             const isHovered = hoveredDate === dateStr && hasSlot;
 
             return (
@@ -352,6 +375,10 @@ export default function TimeSlotsSection({
                   {isCurrentMonth && isHoliday && (
                     <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[#DA9BFF]" />
                   )}
+                  {/* נקודה אדומה — ההרשמה נסגרת בקרוב */}
+                  {closingSoon && !isSelected && (
+                    <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  )}
                   {/* עיגול למספר שעות */}
                   {hasMultipleSlots && !isSelected && (
                     <span className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-[#A9DEF9]" />
@@ -366,6 +393,7 @@ export default function TimeSlotsSection({
                       pricingByService={pricingByService}
                       serviceMinPrices={serviceMinPrices}
                       holiday={isHoliday}
+                      closingSoon={closingSoon}
                       isVisible={true}
                     />
                   )}
@@ -392,6 +420,10 @@ export default function TimeSlotsSection({
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-[#DA9BFF]" />
             <span>חג</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-red-500" />
+            <span>נסגר בקרוב</span>
           </div>
         </div>
       </div>

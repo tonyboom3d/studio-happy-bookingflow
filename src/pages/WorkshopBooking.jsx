@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, CreditCard } from 'lucide-react';
+import { ArrowRight, CreditCard, Loader2 } from 'lucide-react';
 import AccordionSection from '../components/booking/AccordionSection';
 import TimeSlotsSection from '../components/booking/TimeSlotsSection';
 import ParticipantsSection from '../components/booking/ParticipantsSection';
+import SketchInfoSection from '../components/booking/SketchInfoSection';
 import PersonalDetailsSection from '../components/booking/PersonalDetailsSection';
 import OrderSummarySection from '../components/booking/OrderSummarySection';
 import { submitBooking, subscribeToWix, notifyProgress, isWixEditorOrPreview } from '@/api/wixBridge';
@@ -23,7 +24,6 @@ export default function WorkshopBooking() {
   const [selectedSlot, setSelectedSlot] = useState(null); // slot יחיד (לא מערך)
   const [adults, setAdults] = useState(1); // מבוגרים 14+
   const [children, setChildren] = useState(0); // ילדים 8-13
-  const [userDetails, setUserDetails] = useState({ name: '', email: '', phone: '' });
 
   // נתונים מ-Wix
   const [wixProducts, setWixProducts] = useState(null);
@@ -129,10 +129,10 @@ export default function WorkshopBooking() {
 
   // פתיחה/סגירה אוטומטית של סיכום הזמנה
   useEffect(() => {
-    if (activeSection === 3 && prevActiveSection !== 3) {
+    if (activeSection === 4 && prevActiveSection !== 4) {
       setSummaryExpanded(true);
     }
-    if (prevActiveSection === 3 && activeSection < 3) {
+    if (prevActiveSection === 4 && activeSection < 4) {
       setSummaryExpanded(false);
     }
     setPrevActiveSection(activeSection);
@@ -168,7 +168,7 @@ export default function WorkshopBooking() {
   };
 
   const canOpenSection = (sectionNum) => {
-    if (sectionNum === 4) return true;
+    if (sectionNum === 5) return true;
     if (sectionNum <= activeSection) return true;
     if (completedSections.includes(sectionNum - 1)) return true;
     return false;
@@ -183,7 +183,7 @@ export default function WorkshopBooking() {
   const handleSubmit = async () => {
     setBookingError(null);
     addLog('Starting booking submission...', 'info');
-    setCompletedSections((prev) => (prev.includes(3) ? prev : [...prev, 3]));
+    setCompletedSections((prev) => (prev.includes(4) ? prev : [...prev, 4]));
     setIsProcessing(true);
 
     const bookingData = {
@@ -197,11 +197,6 @@ export default function WorkshopBooking() {
         openSpots: selectedSlot.openSpots
       } : null,
       total_price: orderTotalPreview,
-      userDetails: {
-        name: userDetails.name?.trim() || '',
-        email: userDetails.email?.trim() || '',
-        phone: userDetails.phone?.trim() || ''
-      }
     };
 
     console.log('[Booking][Frontend] bookingData being sent to Wix:', JSON.stringify(bookingData, null, 2));
@@ -288,8 +283,9 @@ export default function WorkshopBooking() {
   const sections = [
     { id: 1, title: 'בחירת תאריך' },
     { id: 2, title: 'כמה תהיו ?' },
-    { id: 3, title: 'פרטים אישיים' },
-    { id: 4, title: 'סיכום הזמנה' }
+    { id: 3, title: 'בחירת סקיצה' },
+    { id: 4, title: 'פרטים אישיים ותשלום' },
+    { id: 5, title: 'סיכום הזמנה' }
   ];
 
   return (
@@ -326,14 +322,14 @@ export default function WorkshopBooking() {
         <div className="space-y-4">
           {sections.map((section) => {
             const isLocked =
-              section.id === 4
+              section.id === 5
                 ? false
                 : section.id > 1 && !completedSections.includes(section.id - 1);
             const isCompleted = completedSections.includes(section.id);
-            const isActive = section.id === 4 ? summaryExpanded : activeSection === section.id;
+            const isActive = section.id === 5 ? summaryExpanded : activeSection === section.id;
 
             const headerRight =
-              section.id === 4 ? (
+              section.id === 5 ? (
                 <span className="flex items-center gap-1 text-sm font-bold tabular-nums text-white">
                   <CreditCard className="h-4 w-4 shrink-0 opacity-95" aria-hidden />
                   ₪{Math.round(orderTotalPreview)}
@@ -341,7 +337,7 @@ export default function WorkshopBooking() {
               ) : null;
 
             const handleSectionClick = () => {
-              if (section.id === 4) {
+              if (section.id === 5) {
                 setSummaryExpanded(!summaryExpanded);
               } else {
                 openSection(section.id);
@@ -353,7 +349,7 @@ export default function WorkshopBooking() {
                 key={section.id}
                 title={section.title}
                 headerRight={headerRight}
-                variant={section.id === 4 ? 'summary' : 'default'}
+                variant={section.id === 5 ? 'summary' : 'default'}
                 stepNumber={section.id}
                 isActive={isActive}
                 isCompleted={isCompleted}
@@ -383,14 +379,17 @@ export default function WorkshopBooking() {
                   />
                 )}
                 {section.id === 3 && (
+                  <SketchInfoSection
+                    onContinue={() => completeSection(3)}
+                  />
+                )}
+                {section.id === 4 && (
                   <PersonalDetailsSection
-                    userDetails={userDetails}
-                    setUserDetails={setUserDetails}
                     onPay={handleSubmit}
                     isSubmitting={isProcessing}
                   />
                 )}
-                {section.id === 4 && (
+                {section.id === 5 && (
                   <OrderSummarySection
                     adults={adults}
                     children={children}
