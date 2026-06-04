@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, CreditCard, Loader2 } from 'lucide-react';
+import { ArrowRight, CreditCard, RefreshCw } from 'lucide-react';
 import AccordionSection from '../components/booking/AccordionSection';
 import TimeSlotsSection from '../components/booking/TimeSlotsSection';
 import ParticipantsSection from '../components/booking/ParticipantsSection';
 import SketchInfoSection from '../components/booking/SketchInfoSection';
-import PersonalDetailsSection from '../components/booking/PersonalDetailsSection';
 import OrderSummarySection from '../components/booking/OrderSummarySection';
 import { submitBooking, subscribeToWix, notifyProgress, isWixEditorOrPreview } from '@/api/wixBridge';
 import { addLog } from '@/components/VersionLogger';
+
+const SESSION_TIMEOUT_MS = 8 * 60 * 1000; // 8 דקות
 
 export default function WorkshopBooking() {
   const navigate = useNavigate();
@@ -20,17 +21,17 @@ export default function WorkshopBooking() {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [prevActiveSection, setPrevActiveSection] = useState(1);
 
-  // נתוני ההזמנה — תאריך → משתתפים → פרטים אישיים
-  const [selectedSlot, setSelectedSlot] = useState(null); // slot יחיד (לא מערך)
-  const [adults, setAdults] = useState(1); // מבוגרים 14+
-  const [children, setChildren] = useState(0); // ילדים 8-13
+  // נתוני ההזמנה
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
 
   // נתונים מ-Wix
   const [wixProducts, setWixProducts] = useState(null);
   const [wixSlots, setWixSlots] = useState(null);
   const [servicePricing, setServicePricing] = useState(null);
 
-  // guard שמונע קריאה כפולה ל-handleSubmit — ref לא מאפס בין renders
+  // guard שמונע קריאה כפולה ל-handleSubmit
   const submittingRef = useRef(false);
 
   // סטטוס
@@ -41,18 +42,43 @@ export default function WorkshopBooking() {
   const [paymentStatus, setPaymentStatus] = useState('Successful');
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
 
-  /** בעורך Wix — לא מציגים מסך טעינה מלא (מפריע לעריכה) */
+  // טיימר 8 דקות
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [remainingMs, setRemainingMs] = useState(SESSION_TIMEOUT_MS);
+  const sessionStartRef = useRef(Date.now());
+
   const skipInitialLoadingScreen = useMemo(() => isWixEditorOrPreview(), []);
 
-  // טיימר מינימום 3 שניות לטעינה (מושבת כשמדלגים על מסך הטעינה)
+  // --- טיימר 8 דקות ---
+  useEffect(() => {
+    if (skipInitialLoadingScreen) return;
+
+    const tick = setInterval(() => {
+      const elapsed = Date.now() - sessionStartRef.current;
+      const remaining = SESSION_TIMEOUT_MS - elapsed;
+      if (remaining <= 0) {
+        setRemainingMs(0);
+        setSessionExpired(true);
+        clearInterval(tick);
+      } else {
+        setRemainingMs(remaining);
+      }
+    }, 1000);
+
+    return () => clearInterval(tick);
+  }, [skipInitialLoadingScreen]);
+
+  const timerMinutes = Math.floor(remainingMs / 60000);
+  const timerSeconds = Math.floor((remainingMs % 60000) / 1000);
+  const timerText = `${timerMinutes}:${String(timerSeconds).padStart(2, '0')}`;
+
+  // טיימר מינימום 3 שניות לטעינה
   useEffect(() => {
     if (skipInitialLoadingScreen) {
       setMinTimeElapsed(true);
       return;
     }
-    const timer = setTimeout(() => {
-      setMinTimeElapsed(true);
-    }, 3000);
+    const timer = setTimeout(() => setMinTimeElapsed(true), 3000);
     return () => clearTimeout(timer);
   }, [skipInitialLoadingScreen]);
 
@@ -99,6 +125,7 @@ export default function WorkshopBooking() {
       }
       if (data.bookingError) {
         setIsProcessing(false);
+        submittingRef.current = false;
         setBookingError(data.bookingError);
         addLog(`Booking error: ${data.bookingError}`, 'error');
       }
@@ -118,11 +145,7 @@ export default function WorkshopBooking() {
   // עדכון Wix על התקדמות
   useEffect(() => {
     addLog(`Active section changed to: ${activeSection}`, 'info');
-    notifyProgress(activeSection, {
-      adults,
-      children,
-      hasSelectedSlot: !!selectedSlot
-    });
+    notifyProgress(activeSection, { adults, children, hasSelectedSlot: !!selectedSlot });
   }, [activeSection, adults, children, selectedSlot]);
 
   // פתיחה/סגירה אוטומטית של סיכום הזמנה
@@ -136,20 +159,19 @@ export default function WorkshopBooking() {
     setPrevActiveSection(activeSection);
   }, [activeSection, prevActiveSection]);
 
-  // חישוב מספר יחידות (מבוגר+ילד = יחידה אחת)
-  const totalUnits = adults; // כל מבוגר = יחידה, ילדים מצטרפים להורה
-  const parentChildPairs = Math.min(adults, children); // זוגות הורה+ילד
-  const soloAdults = adults - parentChildPairs; // מבוגרים בלי ילד
+  // חישוב מספר יחידות
+  const parentChildPairs = Math.min(adults, children);
+  const soloAdults = adults - parentChildPairs;
 
-  // מחיר בסיס לפי שירות ומספר מבוגרים + זוגות הורה+ילד
+  // מחיר בסיס
   const basePrice = useMemo(() => {
     if (!selectedSlot || !servicePricing) return 0;
     const pricing = servicePricing[selectedSlot.serviceId];
     if (!pricing) return 0;
-    
+
     const pricePerAdult = pricing.solo || 0;
     const parentChildPrice = pricing.parentChild || pricePerAdult;
-    
+
     return (soloAdults * pricePerAdult) + (parentChildPairs * parentChildPrice);
   }, [selectedSlot, servicePricing, soloAdults, parentChildPairs]);
 
@@ -165,7 +187,7 @@ export default function WorkshopBooking() {
   };
 
   const canOpenSection = (sectionNum) => {
-    if (sectionNum === 5) return true;
+    if (sectionNum === 4) return true;
     if (sectionNum <= activeSection) return true;
     if (completedSections.includes(sectionNum - 1)) return true;
     return false;
@@ -176,13 +198,12 @@ export default function WorkshopBooking() {
     setActiveSection(sectionNum);
   };
 
-  // שליחת ההזמנה — מפעיל את תהליך ה-checkout ב-Wix
+  // שליחת ההזמנה
   const handleSubmit = async () => {
-    if (submittingRef.current) return; // ref-based guard — immune to stale closures
+    if (submittingRef.current) return;
     submittingRef.current = true;
     setBookingError(null);
     addLog('Starting booking submission...', 'info');
-    setCompletedSections((prev) => (prev.includes(4) ? prev : [...prev, 4]));
     setIsProcessing(true);
 
     const bookingData = {
@@ -199,7 +220,6 @@ export default function WorkshopBooking() {
     };
 
     console.log('[Booking][Frontend] bookingData being sent to Wix:', JSON.stringify(bookingData, null, 2));
-
     addLog('Submitting booking', 'info');
     submitBooking(bookingData);
 
@@ -207,10 +227,46 @@ export default function WorkshopBooking() {
       setIsProcessing(prev => {
         if (!prev) return prev;
         setBookingError(prevError => prevError || 'timeout');
+        submittingRef.current = false;
         return false;
       });
     }, 60000);
   };
+
+  // --- חלונית סשן פג תוקף (לא ניתנת לסגירה) ---
+  if (sessionExpired) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60" dir="rtl">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm mx-4 text-center"
+        >
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#FEE2E2] flex items-center justify-center">
+            <RefreshCw className="w-8 h-8 text-red-500" />
+          </div>
+          <h2 className="text-xl font-bold text-[#581E83] mb-2">
+            פג תוקף ההזמנה
+          </h2>
+          <p className="text-sm text-[#464646] mb-6 leading-relaxed">
+            חלפו 8 דקות מאז שנכנסת לעמוד ההזמנה.
+            <br />
+            יש לרענן את העמוד ולהתחיל מחדש כדי להבטיח
+            <br />
+            שהמועדים והמחירים עדכניים.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="w-full bg-[#5E2F88] hover:bg-[#7B3DB0] text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            רענון העמוד
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   // מסך טעינה ראשוני
   if (!skipInitialLoadingScreen && (!minTimeElapsed || wixSlots == null)) {
@@ -222,19 +278,14 @@ export default function WorkshopBooking() {
           transition={{ duration: 0.5 }}
           className="flex flex-col items-center"
         >
-          {/* לוגו עם טבעת סיבוב */}
           <div className="relative flex items-center justify-center">
-            {/* טבעת חיצונית מסתובבת */}
             <div className="w-28 h-28 rounded-full border-4 border-[#e8e8e8] border-t-[#5E2F88] animate-spin absolute" />
-            {/* תמונת לוגו במרכז */}
             <img
               src="https://static.wixstatic.com/media/6b73e9_6e7c52763bb24ba6812aaac51ecb4296~mv2.png"
               alt="סטודיו האפי"
               className="w-14 h-14 object-contain rounded-full"
             />
           </div>
-
-          {/* מרווח בין האנימציה לטקסט */}
           <p className="text-lg font-semibold text-[#581E83] tracking-wide mt-8">
             טוען סדנת טאפטינג
           </p>
@@ -243,8 +294,7 @@ export default function WorkshopBooking() {
     );
   }
 
-  // אם ההזמנה הושלמה — ניווט אוטומטי לדף ההזמנה (post-payment)
-  // ORDER_CONTEXT יגיע מהדף ויעביר ל-/order, כאן מציגים מסך ביניים
+  // הזמנה הושלמה — מסך ביניים
   if (isComplete) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-transparent" dir="rtl">
@@ -258,12 +308,8 @@ export default function WorkshopBooking() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <p className="text-lg font-semibold text-[#581E83]">
-            ההזמנה בוצעה בהצלחה!
-          </p>
-          <p className="text-sm text-[#464646]/70 mt-2">
-            טוען את מסך בחירת הסקיצות...
-          </p>
+          <p className="text-lg font-semibold text-[#581E83]">ההזמנה בוצעה בהצלחה!</p>
+          <p className="text-sm text-[#464646]/70 mt-2">טוען את מסך בחירת הסקיצות...</p>
         </motion.div>
       </div>
     );
@@ -273,8 +319,7 @@ export default function WorkshopBooking() {
     { id: 1, title: 'בחירת תאריך' },
     { id: 2, title: 'כמה תהיו ?' },
     { id: 3, title: 'בחירת סקיצה' },
-    { id: 4, title: 'פרטים אישיים ותשלום' },
-    { id: 5, title: 'סיכום הזמנה' }
+    { id: 4, title: 'סיכום הזמנה' }
   ];
 
   return (
@@ -293,34 +338,33 @@ export default function WorkshopBooking() {
             <ArrowRight className="h-4 w-4" aria-hidden />
             חזרה לדף הקודם
           </button>
-          <div className="w-[1px]" aria-hidden />
+          {/* טיימר session */}
+          {!skipInitialLoadingScreen && (
+            <span className={`text-xs font-mono tabular-nums ${remainingMs < 120000 ? 'text-red-500 font-semibold' : 'text-[#464646]/50'}`}>
+              {timerText}
+            </span>
+          )}
         </div>
-        <h1
-          className="text-xl md:text-2xl font-bold text-[#581E83]"
-          style={{ opacity: 1, transform: 'none' }}
-        >
+        <h1 className="text-xl md:text-2xl font-bold text-[#581E83]" style={{ opacity: 1, transform: 'none' }}>
           סטודיו האפי
         </h1>
-        <p className="text-[#464646]" style={{ marginTop: 0 }}>
-          הזמנת סדנת טאפטינג
-        </p>
+        <p className="text-[#464646]" style={{ marginTop: 0 }}>הזמנת סדנת טאפטינג</p>
       </header>
 
       {/* Main Content */}
       <main className="max-w-2xl mx-auto p-4 md:p-6">
         <div className="space-y-4">
           {sections.map((section) => {
-            // כשמעבדים תשלום — כל הכרטיסיות נעולות מלבד 4 (שמציג טעינה)
             const isLocked = isProcessing
               ? section.id !== 4
-              : section.id === 5
+              : section.id === 4
                 ? false
                 : section.id > 1 && !completedSections.includes(section.id - 1);
             const isCompleted = completedSections.includes(section.id);
-            const isActive = section.id === 5 ? summaryExpanded : activeSection === section.id;
+            const isActive = section.id === 4 ? summaryExpanded : activeSection === section.id;
 
             const headerRight =
-              section.id === 5 ? (
+              section.id === 4 ? (
                 <span className="flex items-center gap-1 text-sm font-bold tabular-nums text-white">
                   <CreditCard className="h-4 w-4 shrink-0 opacity-95" aria-hidden />
                   ₪{Math.round(orderTotalPreview)}
@@ -328,7 +372,7 @@ export default function WorkshopBooking() {
               ) : null;
 
             const handleSectionClick = () => {
-              if (section.id === 5) {
+              if (section.id === 4) {
                 setSummaryExpanded(!summaryExpanded);
               } else {
                 openSection(section.id);
@@ -340,7 +384,7 @@ export default function WorkshopBooking() {
                 key={section.id}
                 title={section.title}
                 headerRight={headerRight}
-                variant={section.id === 5 ? 'summary' : 'default'}
+                variant={section.id === 4 ? 'summary' : 'default'}
                 stepNumber={section.id}
                 isActive={isActive}
                 isCompleted={isCompleted}
@@ -370,16 +414,10 @@ export default function WorkshopBooking() {
                 )}
                 {section.id === 3 && (
                   <SketchInfoSection
-                    onContinue={() => {
-                      completeSection(3);
-                      handleSubmit();
-                    }}
+                    onContinue={() => completeSection(3)}
                   />
                 )}
                 {section.id === 4 && (
-                  <PersonalDetailsSection />
-                )}
-                {section.id === 5 && (
                   <OrderSummarySection
                     adults={adults}
                     children={children}
@@ -388,6 +426,8 @@ export default function WorkshopBooking() {
                     selectedSlot={selectedSlot}
                     servicePricing={servicePricing}
                     totalPrice={orderTotalPreview}
+                    onPay={handleSubmit}
+                    isProcessing={isProcessing}
                   />
                 )}
               </AccordionSection>

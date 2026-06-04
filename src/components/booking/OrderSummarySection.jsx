@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Calendar, Clock, Users, Baby } from 'lucide-react';
+import { Calendar, Clock, Users, Baby, ArrowLeft } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 
@@ -10,7 +11,9 @@ export default function OrderSummarySection({
   parentChildPairs,
   selectedSlot,
   servicePricing,
-  totalPrice
+  totalPrice,
+  onPay,
+  isProcessing
 }) {
   const dateTimeInfo = useMemo(() => {
     if (!selectedSlot?.start?.localDateTime) return null;
@@ -72,6 +75,44 @@ export default function OrderSummarySection({
       <div className="flex items-center justify-between border-t-2 border-[#5E2F88]/30 pt-2">
         <span className="font-bold text-[15px] text-[#581E83]">סה״כ לתשלום</span>
         <span className="text-[20px] font-bold text-[#581E83]">₪{Math.round(totalPrice)}</span>
+      </div>
+
+      {/* כפתור מעבר לתשלום */}
+      <div className="pt-2">
+        <motion.button
+          type="button"
+          onClick={onPay}
+          disabled={isProcessing || totalPrice <= 0}
+          animate={isProcessing ? {} : {
+            scale: [1, 1.02, 1],
+            boxShadow: [
+              '0 0 0 0 rgba(94,47,136,0)',
+              '0 0 12px 4px rgba(94,47,136,0.25)',
+              '0 0 0 0 rgba(94,47,136,0)',
+            ],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            repeatDelay: 6.5,
+            ease: 'easeInOut',
+          }}
+          className="w-full flex items-center justify-center gap-2 bg-[#5E2F88] hover:bg-[#7B3DB0]
+                     text-white font-semibold py-3.5 rounded-xl text-[15px]
+                     transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isProcessing ? (
+            <>
+              <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              מעביר לדף התשלום...
+            </>
+          ) : (
+            <>
+              המשך להשלמת פרטים ותשלום
+              <ArrowLeft className="w-4 h-4" />
+            </>
+          )}
+        </motion.button>
       </div>
     </div>
   );
