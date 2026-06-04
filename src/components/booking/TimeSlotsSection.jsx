@@ -96,24 +96,17 @@ function getAvailabilityInfo(availableSlots) {
   return { availableDates, spotsMap, slotsMap };
 }
 
-function getMinPriceForDate(slots, pricingByService, serviceMinPrices) {
-  if (!slots?.length) return null;
+function getMinPriceForDate(slots, servicePricing) {
+  if (!slots?.length || !servicePricing) return null;
 
   let minPrice = Infinity;
 
   slots.forEach(slot => {
-    // עדיפות ראשונה: serviceMinPrices מה-SDK
-    if (serviceMinPrices && serviceMinPrices[slot.serviceId]) {
-      const sdkPrice = serviceMinPrices[slot.serviceId].value;
-      if (sdkPrice && sdkPrice < minPrice) {
-        minPrice = sdkPrice;
-      }
-      return;
-    }
-    // Fallback: pricingByService הקיים
-    const pricing = pricingByService?.[slot.serviceId];
-    if (pricing?.[1] && pricing[1] < minPrice) {
-      minPrice = pricing[1];
+    const pricing = servicePricing[slot.serviceId];
+    if (pricing?.minPrice && pricing.minPrice < minPrice) {
+      minPrice = pricing.minPrice;
+    } else if (pricing?.solo && pricing.solo < minPrice) {
+      minPrice = pricing.solo;
     }
   });
 
@@ -146,10 +139,10 @@ function getSlotDuration(slot) {
 }
 
 // Tooltip קומפוננטה
-function DayTooltip({ slots, pricingByService, serviceMinPrices, holiday, closingSoon, isVisible }) {
+function DayTooltip({ slots, servicePricing, holiday, closingSoon, isVisible }) {
   if (!isVisible || !slots?.length) return null;
 
-  const minPrice = getMinPriceForDate(slots, pricingByService, serviceMinPrices);
+  const minPrice = getMinPriceForDate(slots, servicePricing);
   const times = slots.map(slot => getSlotTime(slot)).sort();
   const uniqueTimes = [...new Set(times)].slice(0, 3);
   const durations = [...new Set(slots.map(slot => formatDuration(getSlotDurationMinutes(slot))).filter(Boolean))];
@@ -221,8 +214,7 @@ export default function TimeSlotsSection({
   selectedSlot,
   setSelectedSlot,
   availableSlots = [],
-  pricingByService,
-  serviceMinPrices,
+  servicePricing,
   onContinue
 }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -333,7 +325,7 @@ export default function TimeSlotsSection({
             const hasSlot = availableDates.has(dateStr);
             const isSelected = isDateSelected(day);
             const daySlots = slotsMap.get(dateStr) || [];
-            const minPrice = hasSlot ? getMinPriceForDate(daySlots, pricingByService, serviceMinPrices) : null;
+            const minPrice = hasSlot ? getMinPriceForDate(daySlots, servicePricing) : null;
             const isDisabled = !isCurrentMonth || isPast || !hasSlot;
             const isHoliday = ISRAELI_HOLIDAYS[dateStr];
             const hasMultipleSlots = daySlots.length > 1;
@@ -390,8 +382,7 @@ export default function TimeSlotsSection({
                   {isHovered && (
                     <DayTooltip
                       slots={daySlots}
-                      pricingByService={pricingByService}
-                      serviceMinPrices={serviceMinPrices}
+                      servicePricing={servicePricing}
                       holiday={isHoliday}
                       closingSoon={closingSoon}
                       isVisible={true}

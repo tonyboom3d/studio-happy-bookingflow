@@ -28,8 +28,7 @@ export default function WorkshopBooking() {
   // נתונים מ-Wix
   const [wixProducts, setWixProducts] = useState(null);
   const [wixSlots, setWixSlots] = useState(null);
-  const [pricingByService, setPricingByService] = useState(null);
-  const [serviceMinPrices, setServiceMinPrices] = useState(null);
+  const [servicePricing, setServicePricing] = useState(null);
 
   // guard שמונע קריאה כפולה ל-handleSubmit — ref לא מאפס בין renders
   const submittingRef = useRef(false);
@@ -69,13 +68,9 @@ export default function WorkshopBooking() {
         setWixSlots(data.slots);
         addLog(`Loaded ${data.slots.length} time slots`, 'success');
       }
-      if (data.pricingByService) {
-        setPricingByService(data.pricingByService);
-        addLog('Loaded pricing by service', 'success');
-      }
-      if (data.serviceMinPrices) {
-        setServiceMinPrices(data.serviceMinPrices);
-        addLog('Loaded service min prices', 'success');
+      if (data.servicePricing) {
+        setServicePricing(data.servicePricing);
+        addLog('Loaded service pricing', 'success');
       }
       if (data.bookingConfirmed) {
         setIsProcessing(false);
@@ -148,16 +143,15 @@ export default function WorkshopBooking() {
 
   // מחיר בסיס לפי שירות ומספר מבוגרים + זוגות הורה+ילד
   const basePrice = useMemo(() => {
-    if (!selectedSlot || !pricingByService) return 0;
-    const servicePricing = pricingByService[selectedSlot.serviceId];
-    if (!servicePricing) return 0;
+    if (!selectedSlot || !servicePricing) return 0;
+    const pricing = servicePricing[selectedSlot.serviceId];
+    if (!pricing) return 0;
     
-    const pricePerAdult = servicePricing[1] || 250;
-    const parentChildPrice = servicePricing.parentChild || pricePerAdult;
+    const pricePerAdult = pricing.solo || 0;
+    const parentChildPrice = pricing.parentChild || pricePerAdult;
     
-    // מחיר מבוגרים רגילים + מחיר זוגות הורה+ילד
     return (soloAdults * pricePerAdult) + (parentChildPairs * parentChildPrice);
-  }, [selectedSlot, pricingByService, soloAdults, parentChildPairs]);
+  }, [selectedSlot, servicePricing, soloAdults, parentChildPairs]);
 
   const orderTotalPreview = basePrice;
 
@@ -358,8 +352,7 @@ export default function WorkshopBooking() {
                     selectedSlot={selectedSlot}
                     setSelectedSlot={setSelectedSlot}
                     availableSlots={wixSlots}
-                    pricingByService={pricingByService}
-                    serviceMinPrices={serviceMinPrices}
+                    servicePricing={servicePricing}
                     onContinue={() => completeSection(1)}
                   />
                 )}
@@ -370,7 +363,7 @@ export default function WorkshopBooking() {
                     children={children}
                     setChildren={setChildren}
                     maxParticipants={selectedSlot?.openSpots || 10}
-                    pricingByService={pricingByService}
+                    servicePricing={servicePricing}
                     selectedSlot={selectedSlot}
                     onContinue={() => completeSection(2)}
                   />

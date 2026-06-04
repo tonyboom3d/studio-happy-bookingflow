@@ -17,7 +17,7 @@
 let wixData = {
     products: null,
     slots: null,
-    serviceMinPrices: null,
+    servicePricing: null,
     initialized: false
 };
 
@@ -103,9 +103,9 @@ function handleWixMessage(event) {
     // טיפול רק ב-types שאנחנו מכירים
     switch (data.type) {
         case 'WIX_DATA':
-            // Wix sent products/slots data
             if (data.products) wixData.products = data.products;
             if (data.slots) wixData.slots = data.slots;
+            if (data.servicePricing) wixData.servicePricing = data.servicePricing;
             wixData.initialized = true;
             notifyListeners();
             break;
@@ -117,12 +117,6 @@ function handleWixMessage(event) {
 
         case 'WIX_SLOTS':
             wixData.slots = data.slots;
-            notifyListeners();
-            break;
-
-        case 'SERVICE_MIN_PRICES':
-            // עדכון מחירי מינימום משירותי Wix (לא חוסם)
-            wixData.serviceMinPrices = data.serviceMinPrices || {};
             notifyListeners();
             break;
 

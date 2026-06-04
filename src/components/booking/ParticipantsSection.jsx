@@ -9,7 +9,7 @@ export default function ParticipantsSection({
   children,
   setChildren,
   maxParticipants = 10,
-  pricingByService,
+  servicePricing,
   selectedSlot,
   onContinue
 }) {
@@ -32,17 +32,15 @@ export default function ParticipantsSection({
   const spotsRemaining = maxParticipants - spotsUsed;
 
   const { totalPrice } = useMemo(() => {
-    if (!selectedSlot || !pricingByService) return { totalPrice: 0 };
-    const servicePricing = pricingByService[selectedSlot.serviceId];
-    if (!servicePricing) return { totalPrice: 0 };
+    if (!selectedSlot || !servicePricing) return { totalPrice: 0 };
+    const pricing = servicePricing[selectedSlot.serviceId];
+    if (!pricing) return { totalPrice: 0 };
 
-    const pricePerAdult = servicePricing[1] || 250;
-    const regularPrice = soloAdults * pricePerAdult;
-    const parentChildTicketPrice = servicePricing['parentChild'] || servicePricing[1] || 250;
-    const pairsPrice = parentChildPairs * parentChildTicketPrice;
+    const pricePerAdult = pricing.solo || 0;
+    const parentChildTicketPrice = pricing.parentChild || pricePerAdult;
 
-    return { totalPrice: regularPrice + pairsPrice };
-  }, [selectedSlot, pricingByService, soloAdults, parentChildPairs]);
+    return { totalPrice: (soloAdults * pricePerAdult) + (parentChildPairs * parentChildTicketPrice) };
+  }, [selectedSlot, servicePricing, soloAdults, parentChildPairs]);
 
   const handleAdultsDecrease = () => {
     if (adults > 1) {
