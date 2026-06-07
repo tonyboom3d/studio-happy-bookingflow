@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, AlertTriangle, Users, Baby } from 'lucide-react';
+import { Plus, Trash2, AlertTriangle, Users, Baby, Minus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function validatePhone(phone) {
@@ -9,8 +9,35 @@ function validatePhone(phone) {
   return digits.length === 10 && digits.startsWith('05');
 }
 
+function Stepper({ value, min, max, onChange, disabled }) {
+  const canDec = value > min && !disabled;
+  const canInc = value < max && !disabled;
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => canDec && onChange(value - 1)}
+        disabled={!canDec}
+        className="w-7 h-7 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center text-[#581E83] hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <Minus className="w-3.5 h-3.5" />
+      </button>
+      <span className="min-w-[28px] text-center text-sm font-bold text-[#581E83] tabular-nums">{value}</span>
+      <button
+        type="button"
+        onClick={() => canInc && onChange(value + 1)}
+        disabled={!canInc}
+        className="w-7 h-7 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center text-[#581E83] hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <Plus className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
 export default function ParticipantSetupForm({
   rugCount,
+  childrenCount = 0,
   onSave,
   isSaving,
 }) {
@@ -23,6 +50,9 @@ export default function ParticipantSetupForm({
 
   const totalRugs = participants.reduce((sum, p) => sum + (p.rugAllowance || 1), 0);
   const rugsRemaining = rugCount - totalRugs;
+  const childrenAssigned = participants.filter(p => p.hasChildren).length;
+  const childrenRemaining = childrenCount - childrenAssigned;
+  const showChildren = childrenCount > 0;
 
   const addParticipant = () => {
     if (totalRugs >= rugCount) return;
@@ -48,14 +78,19 @@ export default function ParticipantSetupForm({
       if (field === 'phone') {
         return { ...p, phone: value.replace(/\D/g, '').slice(0, 10) };
       }
-      if (field === 'rugAllowance') {
-        const num = Math.max(1, Math.min(rugCount, parseInt(value) || 1));
-        return { ...p, rugAllowance: num };
-      }
       return { ...p, [field]: value };
     }));
     setErrors(prev => ({ ...prev, [index]: undefined }));
     setDuplicatesApproved(false);
+  };
+
+  const setRugAllowance = (index, next) => {
+    setParticipants(prev => prev.map((p, i) => (i === index ? { ...p, rugAllowance: next } : p)));
+  };
+
+  const toggleChildren = (index, checked) => {
+    if (checked && childrenRemaining <= 0) return;
+    updateField(index, 'hasChildren', checked);
   };
 
   const duplicatePhones = useMemo(() => {
@@ -78,7 +113,6 @@ export default function ParticipantSetupForm({
       const errs = [];
       if (!p.name.trim()) errs.push('שם הוא שדה חובה');
       if (!validatePhone(p.phone)) errs.push('מספר טלפון לא תקין');
-      if (p.rugAllowance < 1) errs.push('כמות שטיחים חייבת להיות לפחות 1');
       if (errs.length > 0) newErrors[i] = errs;
     });
 
@@ -103,57 +137,58 @@ export default function ParticipantSetupForm({
   };
 
   return (
-    <div className="py-4 space-y-4" dir="rtl">
-      <div className="text-center mb-4">
-        <h3 className="text-lg font-bold text-[#581E83]">הגדרת משתתפים</h3>
-        <p className="text-sm text-[#464646]/70 mt-1">
-          הזן שם, מספר טלפון וכמות שטיחים לכל משתתף
+    <div className="py-3 space-y-3" dir="rtl">
+      <div className="text-center">
+        <h3 className="text-base font-bold text-[#581E83]">הגדרת משתתפים</h3>
+        <p className="text-xs text-[#464646]/70">
+          חלקו את {rugCount} השטיחים בין המשתתפים
         </p>
       </div>
 
-      <div className="flex items-center justify-between bg-[#f5f0fa] rounded-lg px-3 py-2 text-sm">
-        <span className="text-[#581E83] font-medium">
-          <Users className="w-4 h-4 inline ml-1" />
+      {/* Allocation status bar */}
+      <div className="flex items-center justify-between bg-[#f5f0fa] rounded-lg px-3 py-2 text-xs">
+        <span className="text-[#581E83] font-medium flex items-center gap-1">
+          <Users className="w-3.5 h-3.5" />
           {participants.length} משתתפים
         </span>
-        <span className={`font-medium ${rugsRemaining === 0 ? 'text-green-600' : rugsRemaining < 0 ? 'text-red-600' : 'text-[#581E83]'}`}>
-          {totalRugs}/{rugCount} שטיחים מוקצים
+        <span className={`font-medium ${rugsRemaining === 0 ? 'text-green-600' : 'text-orange-600'}`}>
+          {rugsRemaining === 0 ? 'כל השטיחים חולקו' : `נותרו ${rugsRemaining} שטיחים לחלוקה`}
         </span>
       </div>
 
       {errors._global && (
-        <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
+        <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
           {errors._global.join(', ')}
         </div>
       )}
 
       <AnimatePresence mode="popLayout">
-        {participants.map((p, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="border border-[#e8e8e8] rounded-xl p-4 space-y-3 bg-white"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-[#581E83]">
-                משתתף {index + 1}
-              </span>
-              {participants.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeParticipant(index)}
-                  className="text-red-400 hover:text-red-600 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+        {participants.map((p, index) => {
+          const maxForThis = (p.rugAllowance || 1) + rugsRemaining;
+          return (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="border border-[#e8e8e8] rounded-xl p-3 space-y-2.5 bg-white"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[#581E83]">
+                  משתתף {index + 1}
+                </span>
+                {participants.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeParticipant(index)}
+                    className="text-red-400 hover:text-red-600 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-[#464646]/60 mb-1 block">שם</label>
+              <div className="grid grid-cols-2 gap-2">
                 <input
                   type="text"
                   value={p.name}
@@ -161,9 +196,6 @@ export default function ParticipantSetupForm({
                   placeholder="שם מלא"
                   className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#5E2F88] focus:outline-none"
                 />
-              </div>
-              <div>
-                <label className="text-xs text-[#464646]/60 mb-1 block">טלפון</label>
                 <input
                   type="tel"
                   inputMode="numeric"
@@ -174,44 +206,52 @@ export default function ParticipantSetupForm({
                   className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm text-left focus:border-[#5E2F88] focus:outline-none"
                 />
               </div>
-            </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <label className="text-xs text-[#464646]/60 mb-1 block">כמות שטיחים</label>
-                <select
-                  value={p.rugAllowance}
-                  onChange={(e) => updateField(index, 'rugAllowance', e.target.value)}
-                  className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm focus:border-[#5E2F88] focus:outline-none bg-white"
-                >
-                  {Array.from({ length: rugCount }, (_, i) => i + 1).map(n => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2 pt-4">
-                <input
-                  type="checkbox"
-                  id={`child-${index}`}
-                  checked={p.hasChildren}
-                  onChange={(e) => updateField(index, 'hasChildren', e.target.checked)}
-                  className="w-4 h-4 accent-[#5E2F88]"
-                />
-                <label htmlFor={`child-${index}`} className="text-xs text-[#464646]/70 flex items-center gap-1">
-                  <Baby className="w-3 h-3" />
-                  עם ילדים
-                </label>
-              </div>
-            </div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[#464646]/70">שטיחים:</span>
+                  <Stepper
+                    value={p.rugAllowance || 1}
+                    min={1}
+                    max={maxForThis}
+                    onChange={(v) => setRugAllowance(index, v)}
+                  />
+                </div>
 
-            {errors[index] && (
-              <div className="text-xs text-red-500 space-y-0.5">
-                {errors[index].map((err, ei) => <p key={ei}>{err}</p>)}
+                {showChildren && (
+                  <label
+                    className={`flex items-center gap-1.5 text-xs cursor-pointer ${
+                      !p.hasChildren && childrenRemaining <= 0 ? 'opacity-40 cursor-not-allowed' : 'text-[#464646]/70'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={p.hasChildren}
+                      onChange={(e) => toggleChildren(index, e.target.checked)}
+                      disabled={!p.hasChildren && childrenRemaining <= 0}
+                      className="w-4 h-4 accent-[#5E2F88]"
+                    />
+                    <Baby className="w-3.5 h-3.5" />
+                    עם ילדים
+                  </label>
+                )}
               </div>
-            )}
-          </motion.div>
-        ))}
+
+              {errors[index] && (
+                <div className="text-[11px] text-red-500 space-y-0.5">
+                  {errors[index].map((err, ei) => <p key={ei}>{err}</p>)}
+                </div>
+              )}
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
+
+      {showChildren && childrenRemaining > 0 && (
+        <p className="text-[11px] text-center text-[#464646]/50">
+          נותר לשייך {childrenRemaining} {childrenRemaining === 1 ? 'ילד' : 'ילדים'}
+        </p>
+      )}
 
       {duplicateWarnings.length > 0 && !duplicatesApproved && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
@@ -245,12 +285,12 @@ export default function ParticipantSetupForm({
         </div>
       )}
 
-      {totalRugs < rugCount && (
+      {rugsRemaining > 0 && (
         <Button
           type="button"
           variant="outline"
           onClick={addParticipant}
-          className="w-full border-dashed border-[#5E2F88]/30 text-[#5E2F88]"
+          className="w-full border-dashed border-[#5E2F88]/30 text-[#5E2F88] py-2 text-sm"
         >
           <Plus className="w-4 h-4 ml-1" />
           הוסף משתתף

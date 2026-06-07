@@ -21,6 +21,7 @@ let wixData = {
     orderContext: null,
     ecomSummary: null,
     orderRole: null,
+    orderError: false,
     initialized: false,
     orderContextReady: false,
 };
@@ -156,10 +157,17 @@ function handleWixMessage(event) {
             break;
 
         case 'ORDER_CONTEXT':
+            if (data.error) {
+                wixData.orderError = true;
+                wixData.orderContextReady = true;
+                notifyListeners({ orderError: true });
+                break;
+            }
             wixData.orderContext = data.orderContext || null;
             wixData.ecomSummary = data.ecomSummary || null;
             wixData.orderRole = data.role || 'organizer';
             wixData.orderContextReady = !!data.orderContext;
+            wixData.orderError = false;
             notifyListeners({
                 orderContext: wixData.orderContext,
                 role: wixData.orderRole,

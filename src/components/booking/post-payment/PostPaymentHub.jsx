@@ -5,6 +5,7 @@ import OrganizerOrderHub from './OrganizerOrderHub';
 import PhoneVerification from './PhoneVerification';
 import SketchSelectionView from './SketchSelectionView';
 import InvalidLinkMessage from './InvalidLinkMessage';
+import OrderLoadError from './OrderLoadError';
 import DeadlineCountdown from './DeadlineCountdown';
 
 export default function PostPaymentHub({
@@ -15,6 +16,7 @@ export default function PostPaymentHub({
   catalog,
   onSendMessage,
   isLoading,
+  orderError,
 }) {
   const [localOrder, setLocalOrder] = useState(orderContext?.order || null);
   const [localParticipants, setLocalParticipants] = useState(orderContext?.participants || []);
@@ -150,6 +152,10 @@ export default function PostPaymentHub({
         <p className="mt-3 text-sm text-[#581E83]">טוען פרטי הזמנה...</p>
       </div>
     );
+  }
+
+  if (orderError && !localOrder) {
+    return <OrderLoadError />;
   }
 
   if (!localOrder) {

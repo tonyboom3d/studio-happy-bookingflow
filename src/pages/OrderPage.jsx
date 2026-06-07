@@ -19,6 +19,7 @@ export default function OrderPage() {
   const [participantContext, setParticipantContext] = useState(null);
   const [catalog, setCatalog] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [orderError, setOrderError] = useState(false);
 
   useEffect(() => {
     const cached = getWixData();
@@ -33,7 +34,14 @@ export default function OrderPage() {
     const unsubscribe = subscribeToWix((data) => {
       if (data.products) setCatalog(data.products);
 
+      if (data.orderError) {
+        setOrderError(true);
+        setIsLoading(false);
+        return;
+      }
+
       if (data.orderContext) {
+        setOrderError(false);
         setOrderContext(data.orderContext);
         setRole(data.role || 'organizer');
         if (data.ecomSummary) setEcomSummary(data.ecomSummary);
@@ -108,6 +116,7 @@ export default function OrderPage() {
         catalog={catalog || []}
         onSendMessage={handleSendMessage}
         isLoading={isLoading}
+        orderError={orderError}
       />
     </div>
   );
