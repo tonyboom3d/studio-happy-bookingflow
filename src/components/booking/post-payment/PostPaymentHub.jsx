@@ -214,7 +214,11 @@ export default function PostPaymentHub({
           </p>
         </motion.div>
 
-        <DeadlineCountdown deadlineAt={localOrder.deadlineAt} />
+        <DeadlineCountdown
+          deadlineAt={localOrder.deadlineAt}
+          rugCount={verifiedParticipant.rugAllowance || 1}
+          participantCount={1}
+        />
 
         <SketchSelectionView
           rugSlots={rugSlots}

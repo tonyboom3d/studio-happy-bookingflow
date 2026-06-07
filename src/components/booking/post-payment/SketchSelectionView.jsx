@@ -1,16 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Check, ZoomIn, Sparkles } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Check, Sparkles, LayoutGrid } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import ConfirmationModal from './ConfirmationModal';
-
-function getDifficultyLabel(product) {
-  const raw = product.difficulty;
-  if (!raw) return '';
-  if (typeof raw === 'string') return raw;
-  if (Array.isArray(raw)) return raw[0] || '';
-  return '';
-}
+import SketchCatalogSheet from './SketchCatalogSheet';
 
 export default function SketchSelectionView({
   rugSlots,
@@ -22,7 +14,7 @@ export default function SketchSelectionView({
   isReadOnly = false,
 }) {
   const [activeSlot, setActiveSlot] = useState(0);
-  const [zoomedImage, setZoomedImage] = useState(null);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [pendingSelection, setPendingSelection] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
@@ -33,7 +25,7 @@ export default function SketchSelectionView({
 
   const selectionsMap = useMemo(() => {
     const map = {};
-    existingSelections.forEach(s => {
+    existingSelections.forEach((s) => {
       map[s.rugIndex] = s;
     });
     return map;
@@ -75,9 +67,12 @@ export default function SketchSelectionView({
     setPendingSelection(null);
   };
 
+  const slotLabel = rugSlots.length > 1
+    ? `בחירת עיצוב לשטיח ${currentSlot.rugIndex + 1}`
+    : 'בחירת עיצוב לשטיח';
+
   return (
     <div className="py-4" dir="rtl">
-      {/* Rug slot tabs */}
       {rugSlots.length > 1 && (
         <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
           {rugSlots.map((slot, idx) => {
@@ -107,21 +102,20 @@ export default function SketchSelectionView({
         </div>
       )}
 
-      {/* Current selection status */}
-      {currentSelection && (
-        <div className="bg-[#f5f0fa] rounded-xl p-3 mb-4 flex items-center gap-3">
+      {currentSelection ? (
+        <div className="bg-[#f5f0fa] rounded-xl p-4 mb-4 flex items-center gap-3">
           {currentSelection.productSnapshot?.image && (
             <img
               src={currentSelection.productSnapshot.image}
               alt=""
-              className="w-12 h-12 rounded-lg object-cover"
+              className="w-16 h-16 rounded-lg object-cover shrink-0"
             />
           )}
-          <div className="flex-1">
-            <p className="text-sm font-medium text-[#581E83]">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-[#581E83]">
               {currentSelection.productSnapshot?.title || 'סקיצה שנבחרה'}
             </p>
-            <p className="text-xs text-[#464646]/60">
+            <p className="text-xs text-[#464646]/60 mt-0.5">
               {currentSelection.canvasSize} •{' '}
               {currentSelection.selectionStatus === 'preparing' ? 'בהכנה' :
                currentSelection.selectionStatus === 'ready' ? 'מוכנה' :
@@ -129,81 +123,35 @@ export default function SketchSelectionView({
             </p>
           </div>
           {isSlotLocked && (
-            <span className="text-xs bg-[#5E2F88] text-white rounded-full px-2 py-0.5">נעול</span>
+            <span className="text-xs bg-[#5E2F88] text-white rounded-full px-2 py-0.5 shrink-0">נעול</span>
           )}
+        </div>
+      ) : (
+        <div className="bg-white border-2 border-dashed border-[#5E2F88]/30 rounded-xl p-6 mb-4 text-center">
+          <LayoutGrid className="w-8 h-8 text-[#5E2F88]/40 mx-auto mb-2" />
+          <p className="text-sm text-[#464646]/70">עדיין לא נבחר עיצוב {rugSlots.length > 1 ? `לשטיח ${currentSlot.rugIndex + 1}` : ''}</p>
         </div>
       )}
 
-      {/* Catalog grid */}
-      <div className="mb-4">
-        <div className="flex items-center gap-2 mb-3">
-          <h4 className="font-medium text-[#581E83]">
-            {isSlotLocked ? 'הקטלוג (לצפייה בלבד)' : 'בחרו סקיצה מהקטלוג'}
-          </h4>
-        </div>
+      <Button
+        type="button"
+        onClick={() => setCatalogOpen(true)}
+        className="w-full bg-[#5E2F88] hover:bg-[#7B3DB0] text-white py-3 text-base font-medium mb-4"
+      >
+        <LayoutGrid className="w-4 h-4 ml-2" />
+        {isSlotLocked || isReadOnly ? 'צפייה בקטלוג העיצובים' : currentSelection ? 'שינוי עיצוב מהקטלוג' : 'פתיחת קטלוג העיצובים'}
+      </Button>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {(catalog || []).map(product => {
-            const isSelected = currentSelection?.productId === product._id;
-            const diffLabel = getDifficultyLabel(product);
+      <SketchCatalogSheet
+        isOpen={catalogOpen}
+        onClose={() => setCatalogOpen(false)}
+        catalog={catalog}
+        selectedProductId={currentSelection?.productId}
+        onPick={handleSketchPick}
+        slotLabel={slotLabel}
+        readOnly={isReadOnly || isSlotLocked}
+      />
 
-            return (
-              <motion.div
-                key={product._id}
-                whileTap={isSlotLocked ? {} : { scale: 0.98 }}
-                className={`relative bg-white rounded-xl overflow-hidden border-2 transition-all ${
-                  isSelected
-                    ? 'border-[#5E2F88] shadow-lg'
-                    : 'border-[#e8e8e8] hover:border-[#5E2F88]/50 hover:shadow-md'
-                } ${isSlotLocked && !isSelected ? 'opacity-50' : ''}`}
-              >
-                {isSelected && (
-                  <div className="absolute top-2 left-2 z-10 w-5 h-5 rounded-full bg-[#5E2F88] flex items-center justify-center">
-                    <Check className="w-3 h-3 text-white" />
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => handleSketchPick(product)}
-                  disabled={isSlotLocked || isReadOnly}
-                  className="w-full text-right disabled:cursor-not-allowed"
-                >
-                  <div className="aspect-[4/3] overflow-hidden bg-[#E4C1F9]/20 flex items-center justify-center relative">
-                    {product.image ? (
-                      <>
-                        <img
-                          src={product.image}
-                          alt={product.title}
-                          className="h-full w-full object-contain"
-                          loading="lazy"
-                        />
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setZoomedImage(product.image); }}
-                          className="absolute bottom-1.5 left-1.5 rounded-full bg-white/80 p-1 hover:bg-white"
-                        >
-                          <ZoomIn className="h-3 w-3 text-[#581E83]" />
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-xs text-[#464646]/40">אין תמונה</span>
-                    )}
-                  </div>
-                  <div className="p-2">
-                    <h3 className="font-medium text-[#581E83] text-xs leading-snug">{product.title}</h3>
-                    {diffLabel && (
-                      <span className="text-[10px] text-[#464646]/60">{diffLabel}</span>
-                    )}
-                  </div>
-                </button>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* AI / Custom placeholder */}
       <div className="border-2 border-dashed border-[#e8e8e8] rounded-xl p-4 text-center opacity-60">
         <div className="flex items-center justify-center gap-2 text-sm text-[#464646]/70">
           <Sparkles className="w-4 h-4 text-[#5E2F88]" />
@@ -211,16 +159,6 @@ export default function SketchSelectionView({
         </div>
       </div>
 
-      {/* Zoom dialog */}
-      <Dialog open={!!zoomedImage} onOpenChange={() => setZoomedImage(null)}>
-        <DialogContent className="max-w-lg p-2">
-          {zoomedImage && (
-            <img src={zoomedImage} alt="תקריב" className="w-full h-auto rounded-lg" />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Confirmation modal */}
       <ConfirmationModal
         open={showConfirmation}
         onClose={() => { setShowConfirmation(false); setPendingSelection(null); }}

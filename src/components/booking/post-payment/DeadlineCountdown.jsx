@@ -1,7 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Clock } from 'lucide-react';
 
-export default function DeadlineCountdown({ deadlineAt }) {
+function pad(n) {
+  return String(n).padStart(2, '0');
+}
+
+function TimeBox({ value, label }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-white border-2 border-[#5E2F88]/20 flex items-center justify-center shadow-sm">
+        <span className="text-xl sm:text-2xl font-bold text-[#581E83] tabular-nums">
+          {pad(value)}
+        </span>
+      </div>
+      <span className="text-[10px] sm:text-xs text-[#464646]/60 font-medium">{label}</span>
+    </div>
+  );
+}
+
+export default function DeadlineCountdown({ deadlineAt, rugCount = 1, participantCount = 1 }) {
   const [remaining, setRemaining] = useState(null);
 
   useEffect(() => {
@@ -17,38 +33,55 @@ export default function DeadlineCountdown({ deadlineAt }) {
       const days = Math.floor(diff / 86400000);
       const hours = Math.floor((diff % 86400000) / 3600000);
       const minutes = Math.floor((diff % 3600000) / 60000);
-      setRemaining({ days, hours, minutes, expired: false });
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setRemaining({ days, hours, minutes, seconds, expired: false });
     }
 
     update();
-    const interval = setInterval(update, 60000);
+    const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
   }, [deadlineAt]);
 
   if (!remaining) return null;
 
+  const isPluralPeople = participantCount > 1;
+  const isPluralSketches = rugCount > 1;
+  const pronoun = isPluralPeople ? 'לכם' : 'לך';
+  const sketchLabel = isPluralSketches ? 'לבחירת סקיצות' : 'לבחירת סקיצה';
+
   if (remaining.expired) {
     return (
-      <div className="flex items-center gap-2 text-red-600 text-sm font-medium bg-red-50 rounded-lg px-3 py-2">
-        <Clock className="w-4 h-4" />
-        <span>המועד האחרון לבחירת סקיצות חלף</span>
+      <div className="text-center py-3">
+        <p className="text-red-600 text-sm font-medium bg-red-50 rounded-xl px-4 py-3">
+          המועד האחרון {sketchLabel} חלף
+        </p>
       </div>
     );
   }
 
-  const parts = [];
-  if (remaining.days > 0) parts.push(`${remaining.days} ימים`);
-  if (remaining.hours > 0) parts.push(`${remaining.hours} שעות`);
-  if (remaining.days === 0) parts.push(`${remaining.minutes} דקות`);
-
   const isUrgent = remaining.days === 0 && remaining.hours < 12;
 
   return (
-    <div className={`flex items-center gap-2 text-sm font-medium rounded-lg px-3 py-2 ${
-      isUrgent ? 'text-orange-700 bg-orange-50' : 'text-[#581E83] bg-[#f5f0fa]'
-    }`}>
-      <Clock className="w-4 h-4" />
-      <span>נותרו {parts.join(' ו-')} לבחירת סקיצות</span>
+    <div
+      className={`rounded-2xl px-4 py-5 text-center ${
+        isUrgent ? 'bg-orange-50 border border-orange-200' : 'bg-[#f5f0fa] border border-[#5E2F88]/10'
+      }`}
+      dir="rtl"
+    >
+      <p className={`text-sm font-medium mb-3 ${isUrgent ? 'text-orange-800' : 'text-[#581E83]'}`}>
+        נשארו {pronoun} עוד
+      </p>
+
+      <div className="flex items-center justify-center gap-2 sm:gap-3">
+        {remaining.days > 0 && <TimeBox value={remaining.days} label="ימים" />}
+        <TimeBox value={remaining.hours} label="שעות" />
+        <TimeBox value={remaining.minutes} label="דקות" />
+        <TimeBox value={remaining.seconds} label="שניות" />
+      </div>
+
+      <p className={`text-sm font-medium mt-3 ${isUrgent ? 'text-orange-700' : 'text-[#581E83]/80'}`}>
+        {sketchLabel}
+      </p>
     </div>
   );
 }

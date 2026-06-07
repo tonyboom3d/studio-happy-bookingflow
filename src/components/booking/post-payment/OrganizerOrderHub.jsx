@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Check, UserCheck, Send, Copy, Settings, ChevronDown, ChevronUp,
-  Calendar, MapPin, Clock, Tag, CreditCard, CalendarPlus,
+  Calendar, MapPin, Tag, CreditCard, CalendarPlus, MessageCircle,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
@@ -70,6 +70,15 @@ export default function OrganizerOrderHub({
   const hasCoupon = !!ecomSummary?.coupon;
   const hasDiscount = ecomSummary?.discount > 0;
 
+  const organizerPhone = order.organizerPhone || ecomSummary?.buyerPhone || '';
+  const formatPhone = (phone) => {
+    const digits = String(phone).replace(/\D/g, '');
+    if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+    return phone;
+  };
+
+  const participantCount = order.adults || 1;
+
   return (
     <div className="py-4 space-y-5" dir="rtl">
       {/* Order header */}
@@ -89,6 +98,15 @@ export default function OrganizerOrderHub({
           <p className="text-xs text-[#464646]/50 mt-1">
             מס׳ הזמנה: {ecomSummary.orderNumber}
           </p>
+        )}
+        {organizerPhone && (
+          <div className="mt-3 mx-auto max-w-sm flex items-center justify-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 text-sm text-green-800">
+            <MessageCircle className="w-4 h-4 shrink-0 text-green-600" />
+            <span>
+              פרטי ההזמנה נשלחו אליך גם בוואטסאפ ל-
+              <span className="font-semibold mx-1" dir="ltr">{formatPhone(organizerPhone)}</span>
+            </span>
+          </div>
         )}
       </motion.div>
 
@@ -192,45 +210,61 @@ export default function OrganizerOrderHub({
         </a>
       )}
 
-      <DeadlineCountdown deadlineAt={order.deadlineAt} />
+      <DeadlineCountdown
+        deadlineAt={order.deadlineAt}
+        rugCount={order.rugCount}
+        participantCount={participantCount}
+      />
 
-      {/* Selection mode choice */}
-      {!order.selectionMode && (
-        <div className="space-y-3">
-          <h3 className="text-base font-bold text-[#581E83] text-center">
-            מי בוחר את הסקיצות?
-          </h3>
-          <div className="grid grid-cols-1 gap-3 max-w-md mx-auto">
-            <button
-              type="button"
-              onClick={() => onChooseMode('organizer')}
-              className="flex items-center gap-3 p-4 rounded-xl border-2 border-[#e8e8e8] hover:border-[#5E2F88] bg-white hover:shadow-md transition-all text-right"
-            >
-              <div className="w-10 h-10 rounded-full bg-[#f5f0fa] flex items-center justify-center shrink-0">
-                <UserCheck className="w-5 h-5 text-[#5E2F88]" />
-              </div>
-              <div>
-                <h4 className="text-sm font-semibold text-[#581E83]">אבחר בעצמי לכולם</h4>
-                <p className="text-xs text-[#464646]/60 mt-0.5">אני אבחר את הסקיצות לכל השטיחים</p>
-              </div>
-            </button>
+      {/* Selection mode — always switchable */}
+      <div className="space-y-3">
+        <h3 className="text-base font-bold text-[#581E83] text-center">
+          מי בוחר את הסקיצות?
+        </h3>
+        <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">
+          <button
+            type="button"
+            onClick={() => onChooseMode('organizer')}
+            disabled={isSaving}
+            className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center ${
+              order.selectionMode === 'organizer'
+                ? 'border-[#5E2F88] bg-[#f5f0fa] shadow-md'
+                : 'border-[#e8e8e8] bg-white hover:border-[#5E2F88]/50'
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
+              order.selectionMode === 'organizer' ? 'bg-[#5E2F88]' : 'bg-[#f5f0fa]'
+            }`}>
+              <UserCheck className={`w-4 h-4 ${order.selectionMode === 'organizer' ? 'text-white' : 'text-[#5E2F88]'}`} />
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold text-[#581E83]">אבחר בעצמי</h4>
+              <p className="text-[10px] text-[#464646]/60 mt-0.5">בחירה לכל השטיחים</p>
+            </div>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => onChooseMode('participants')}
-              className="flex items-center gap-3 p-4 rounded-xl border-2 border-[#e8e8e8] hover:border-[#5E2F88] bg-white hover:shadow-md transition-all text-right"
-            >
-              <div className="w-10 h-10 rounded-full bg-[#f5f0fa] flex items-center justify-center shrink-0">
-                <Send className="w-5 h-5 text-[#5E2F88]" />
-              </div>
-              <div>
-                <h4 className="text-sm font-semibold text-[#581E83]">לשלוח לחברי הקבוצה</h4>
-                <p className="text-xs text-[#464646]/60 mt-0.5">כל משתתף יבחר את הסקיצה שלו בעצמו</p>
-              </div>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => onChooseMode('participants')}
+            disabled={isSaving}
+            className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center ${
+              order.selectionMode === 'participants'
+                ? 'border-[#5E2F88] bg-[#f5f0fa] shadow-md'
+                : 'border-[#e8e8e8] bg-white hover:border-[#5E2F88]/50'
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
+              order.selectionMode === 'participants' ? 'bg-[#5E2F88]' : 'bg-[#f5f0fa]'
+            }`}>
+              <Send className={`w-4 h-4 ${order.selectionMode === 'participants' ? 'text-white' : 'text-[#5E2F88]'}`} />
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold text-[#581E83]">שליחה לקבוצה</h4>
+              <p className="text-[10px] text-[#464646]/60 mt-0.5">כל משתתף יבחר בעצמו</p>
+            </div>
+          </button>
         </div>
-      )}
+      </div>
 
       {/* Organizer picks all sketches */}
       {order.selectionMode === 'organizer' && (
