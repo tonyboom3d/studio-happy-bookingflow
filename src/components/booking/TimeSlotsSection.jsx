@@ -1,6 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { MessageCircle, ChevronDown, ChevronLeft, ChevronRight, Clock, Timer, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  getSlotDateStrIsrael,
+  getSlotLocalDate,
+  getSlotTimeRange,
+  sortSlotsByStartTime,
+} from '@/lib/slotTime';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   format,
@@ -72,15 +78,8 @@ function getAvailabilityInfo(availableSlots) {
     const start = slot?.start;
     if (!start || openSpots <= 0) return;
 
-    let dateStr;
-    if (start.localDateTime) {
-      const { year, monthOfYear, dayOfMonth } = start.localDateTime;
-      dateStr = `${year}-${String(monthOfYear).padStart(2, '0')}-${String(dayOfMonth).padStart(2, '0')}`;
-    } else if (start.timestamp) {
-      dateStr = format(new Date(start.timestamp), 'yyyy-MM-dd');
-    } else {
-      return;
-    }
+    const dateStr = getSlotDateStrIsrael(slot);
+    if (!dateStr) return;
 
     const currentMax = spotsMap.get(dateStr) || 0;
     if (openSpots > currentMax) {
@@ -113,58 +112,13 @@ function getMinPriceForDate(slots, servicePricing) {
   return minPrice === Infinity ? null : minPrice;
 }
 
-function getSlotTime(slot) {
-  const dt = slot?.start?.localDateTime;
-  if (!dt) return '';
-  return `${String(dt.hourOfDay || 0).padStart(2, '0')}:${String(dt.minutesOfHour || 0).padStart(2, '0')}`;
-}
-
-function logSlotTimeDebug(label, slot) {
-  if (!slot?.start) return;
-  const dt = slot.start.localDateTime;
-  const ts = slot.start.timestamp;
-  const parsed = ts ? new Date(ts) : null;
-  console.log(`[TIME DEBUG calendar] ${label}`, {
-    sessionId: slot.sessionId,
-    timestamp: ts,
-    timestampISO: parsed?.toISOString?.() ?? null,
-    timestampLocal: parsed?.toString?.() ?? null,
-    timestampIsrael: parsed
-      ? parsed.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })
-      : null,
-    localDateTime: dt ?? null,
-    displayedTime: getSlotTime(slot),
-    browserTZ: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  });
-}
-
-function getSlotDurationMinutes(slot) {
-  if (!slot?.start?.timestamp || !slot?.end?.timestamp) return 0;
-  const startMs = new Date(slot.start.timestamp).getTime();
-  const endMs = new Date(slot.end.timestamp).getTime();
-  return Math.round((endMs - startMs) / 60000);
-}
-
-function formatDuration(minutes) {
-  if (!minutes) return null;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (mins === 0) return `${hours} שעות`;
-  return `${hours}:${String(mins).padStart(2, '0')} שעות`;
-}
-
-function getSlotDuration(slot) {
-  return formatDuration(getSlotDurationMinutes(slot));
-}
-
 // Tooltip קומפוננטה
 function DayTooltip({ slots, servicePricing, holiday, closingSoon, isVisible }) {
   if (!isVisible || !slots?.length) return null;
 
   const minPrice = getMinPriceForDate(slots, servicePricing);
-  const times = slots.map(slot => getSlotTime(slot)).sort();
+  const times = slots.map(slot => getSlotTimeRange(slot)).sort();
   const uniqueTimes = [...new Set(times)].slice(0, 3);
-  const durations = [...new Set(slots.map(slot => formatDuration(getSlotDurationMinutes(slot))).filter(Boolean))];
 
   // div חיצוני סטטי — מטפל אך ורק במיקום (לא ייסתר על ידי framer-motion)
   // motion.div פנימי — מטפל אך ורק באנימציה
@@ -210,13 +164,6 @@ function DayTooltip({ slots, servicePricing, holiday, closingSoon, isVisible }) 
             <span>{uniqueTimes.join(' | ')}</span>
           </div>
 
-          {/* משך */}
-          {durations.length > 0 && (
-            <div className="flex items-center gap-1.5 text-[#464646]">
-              <Timer className="w-4 h-4" />
-              <span>{durations[0]}</span>
-            </div>
-          )}
         </div>
 
         {/* חץ */}
@@ -247,18 +194,6 @@ export default function TimeSlotsSection({
     [availableSlots]
   );
 
-  useEffect(() => {
-    const slots = Array.isArray(availableSlots) ? availableSlots : [];
-    console.log('[TIME DEBUG calendar] slots loaded', {
-      count: slots.length,
-      browserTZ: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    });
-    slots.slice(0, 5).forEach((slot, i) => logSlotTimeDebug(`slot[${i}]`, slot));
-    if (slots.length > 5) {
-      console.log('[TIME DEBUG calendar] ... and', slots.length - 5, 'more slots');
-    }
-  }, [availableSlots]);
-
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
@@ -273,7 +208,6 @@ export default function TimeSlotsSection({
 
     const daySlots = slotsMap.get(dateStr) || [];
     if (daySlots.length === 1) {
-      logSlotTimeDebug('dateClick auto-select', daySlots[0]);
       setSelectedSlot(daySlots[0]);
       setTimePickerDate(null);
     } else if (daySlots.length > 1) {
@@ -282,38 +216,32 @@ export default function TimeSlotsSection({
   };
 
   const handleTimeSelect = (slot) => {
-    logSlotTimeDebug('timePicker select', slot);
     setSelectedSlot(slot);
     // לא סוגרים את חלונית השעות - המשתמש יכול לשנות בקלות
   };
 
   const isDateSelected = (date) => {
     if (!selectedSlot?.start) return false;
-    const selectedDateStr = selectedSlot.start.localDateTime
-      ? `${selectedSlot.start.localDateTime.year}-${String(selectedSlot.start.localDateTime.monthOfYear).padStart(2, '0')}-${String(selectedSlot.start.localDateTime.dayOfMonth).padStart(2, '0')}`
-      : format(new Date(selectedSlot.start.timestamp), 'yyyy-MM-dd');
+    const selectedDateStr = getSlotDateStrIsrael(selectedSlot);
     return format(startOfDay(date), 'yyyy-MM-dd') === selectedDateStr;
   };
 
   const selectedInfo = useMemo(() => {
-    if (!selectedSlot?.start) return null;
-    const dt = selectedSlot.start.localDateTime;
-    if (!dt) return null;
+    if (!selectedSlot?.start?.timestamp) return null;
+    const ld = getSlotLocalDate(selectedSlot);
+    if (!ld) return null;
 
-    const date = new Date(dt.year, dt.monthOfYear - 1, dt.dayOfMonth, dt.hourOfDay || 0, dt.minutesOfHour || 0);
+    const date = new Date(ld.year, ld.monthOfYear - 1, ld.dayOfMonth);
     const dayName = format(date, 'EEEE', { locale: he });
-    const dateFormatted = `${String(dt.dayOfMonth).padStart(2, '0')}/${String(dt.monthOfYear).padStart(2, '0')}/${String(dt.year).slice(-2)}`;
-    const timeFormatted = `${String(dt.hourOfDay || 0).padStart(2, '0')}:${String(dt.minutesOfHour || 0).padStart(2, '0')}`;
-    const duration = getSlotDuration(selectedSlot);
+    const dateFormatted = `${String(ld.dayOfMonth).padStart(2, '0')}/${String(ld.monthOfYear).padStart(2, '0')}/${String(ld.year).slice(-2)}`;
+    const timeRange = getSlotTimeRange(selectedSlot);
 
-    return { dateFormatted, dayName, timeFormatted, duration };
+    return { dateFormatted, dayName, timeRange };
   }, [selectedSlot]);
 
-  const timePickerSlots = timePickerDate ? (slotsMap.get(timePickerDate) || []).sort((a, b) => {
-    const timeA = a.start?.localDateTime?.hourOfDay || 0;
-    const timeB = b.start?.localDateTime?.hourOfDay || 0;
-    return timeA - timeB;
-  }) : [];
+  const timePickerSlots = timePickerDate
+    ? (slotsMap.get(timePickerDate) || []).sort(sortSlotsByStartTime)
+    : [];
 
   return (
     <div className="py-2" dir="rtl">
@@ -474,10 +402,7 @@ export default function TimeSlotsSection({
               </div>
               <div className="flex flex-wrap gap-2">
                 {timePickerSlots.map((slot, idx) => {
-                  const duration = getSlotDuration(slot);
-                  const isThisSlotSelected = selectedSlot && 
-                    getSlotTime(slot) === getSlotTime(selectedSlot) &&
-                    slot.sessionId === selectedSlot.sessionId;
+                  const isThisSlotSelected = selectedSlot?.sessionId === slot.sessionId;
                   return (
                     <button
                       key={idx}
@@ -490,10 +415,7 @@ export default function TimeSlotsSection({
                           : "border-[#5E2F88]/30 bg-white text-[#581E83] hover:bg-[#5E2F88] hover:text-white hover:border-[#5E2F88]"
                       )}
                     >
-                      <div className="flex flex-col items-center">
-                        <span className="text-[18px]">{getSlotTime(slot)}</span>
-                        <span className={cn("text-[16px]", isThisSlotSelected ? "opacity-80" : "opacity-70")}>{duration}</span>
-                      </div>
+                      <span className="text-[18px]">{getSlotTimeRange(slot)}</span>
                     </button>
                   );
                 })}
@@ -525,18 +447,8 @@ export default function TimeSlotsSection({
             </div>
             <div className="flex items-center gap-1.5">
               <Timer className="w-4 h-4 text-[#581E83]" />
-              <span className="text-xs font-medium text-[#581E83]">{selectedInfo.timeFormatted}</span>
+              <span className="text-xs font-medium text-[#581E83]">{selectedInfo.timeRange}</span>
             </div>
-            {selectedInfo.duration && (
-              <div className="flex items-center gap-1.5">
-                <img 
-                  src="https://static.wixstatic.com/shapes/6b73e9_394fc0a900b54752a96ef85903f2a8ad.svg" 
-                  alt="" 
-                  className="w-4 h-4" 
-                />
-                <span className="text-xs font-medium text-[#581E83]">{selectedInfo.duration}</span>
-              </div>
-            )}
           </div>
         </div>
       )}

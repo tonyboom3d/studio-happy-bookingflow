@@ -5,6 +5,7 @@ import { Users, Ruler, Calendar, CreditCard, ChevronUp, ChevronDown, Baby } from
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
+import { getSlotLocalDate } from '@/lib/slotTime';
 
 /** חישוב שורות סיכום + סכום — משותף לחלונית הצפה ולתצוגה inline */
 export function computeOrderSummary({
@@ -30,10 +31,12 @@ export function computeOrderSummary({
 
   // פורמט תאריך
   let dateDisplay = null;
-  if (selectedSlot?.start?.localDateTime) {
-    const dt = selectedSlot.start.localDateTime;
-    const date = new Date(dt.year, dt.monthOfYear - 1, dt.dayOfMonth);
-    dateDisplay = format(date, 'd בMMMM', { locale: he });
+  if (selectedSlot?.start?.timestamp) {
+    const ld = getSlotLocalDate(selectedSlot);
+    if (ld) {
+      const date = new Date(ld.year, ld.monthOfYear - 1, ld.dayOfMonth);
+      dateDisplay = format(date, 'd בMMMM', { locale: he });
+    }
   }
 
   // ספירת גדלי שטיח

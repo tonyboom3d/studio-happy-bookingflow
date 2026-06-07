@@ -227,7 +227,7 @@ export default function ParticipantsSection({
             onClick={handleContinue}
             className="bg-[#5E2F88] hover:bg-[#7B3DB0] text-white px-8 py-2.5 rounded-lg text-base"
           >
-            המשך לבחירת גודל שטיח
+          המשך לשלב הבא
           </Button>
 
           <AnimatePresence>

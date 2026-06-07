@@ -3,6 +3,7 @@ import { Calendar, Clock, Users, Baby, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
+import { getSlotLocalDate, getSlotTimeRange } from '@/lib/slotTime';
 
 export default function OrderSummarySection({
   adults,
@@ -16,12 +17,13 @@ export default function OrderSummarySection({
   isProcessing
 }) {
   const dateTimeInfo = useMemo(() => {
-    if (!selectedSlot?.start?.localDateTime) return null;
-    const dt = selectedSlot.start.localDateTime;
-    const date = new Date(dt.year, dt.monthOfYear - 1, dt.dayOfMonth, dt.hourOfDay || 0, dt.minutesOfHour || 0);
+    if (!selectedSlot?.start?.timestamp) return null;
+    const ld = getSlotLocalDate(selectedSlot);
+    if (!ld) return null;
+    const date = new Date(ld.year, ld.monthOfYear - 1, ld.dayOfMonth);
     return {
       date: format(date, 'EEEE, d בMMMM', { locale: he }),
-      time: `${String(dt.hourOfDay || 0).padStart(2, '0')}:${String(dt.minutesOfHour || 0).padStart(2, '0')}`
+      time: getSlotTimeRange(selectedSlot),
     };
   }, [selectedSlot]);
 
