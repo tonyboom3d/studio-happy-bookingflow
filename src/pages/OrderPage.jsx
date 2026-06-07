@@ -7,6 +7,8 @@ import {
   requestOrderContext,
   verifyParticipantAccess,
   getWixData,
+  notifyIframeReady,
+  isInWix,
 } from '@/api/wixBridge';
 
 export default function OrderPage() {
@@ -21,6 +23,12 @@ export default function OrderPage() {
   useEffect(() => {
     const cached = getWixData();
     if (cached.products) setCatalog(cached.products);
+    if (cached.orderContext) {
+      setOrderContext(cached.orderContext);
+      setRole(cached.orderRole || 'organizer');
+      if (cached.ecomSummary) setEcomSummary(cached.ecomSummary);
+      setIsLoading(false);
+    }
 
     const unsubscribe = subscribeToWix((data) => {
       if (data.products) setCatalog(data.products);
@@ -57,6 +65,10 @@ export default function OrderPage() {
       if (sessionOrderId) {
         requestOrderContext({ orderId: sessionOrderId });
       }
+    }
+
+    if (isInWix()) {
+      notifyIframeReady();
     }
 
     const timeout = setTimeout(() => {

@@ -18,7 +18,11 @@ let wixData = {
     products: null,
     slots: null,
     servicePricing: null,
-    initialized: false
+    orderContext: null,
+    ecomSummary: null,
+    orderRole: null,
+    initialized: false,
+    orderContextReady: false,
 };
 
 // Pending response callbacks for request-reply pattern
@@ -81,8 +85,14 @@ function isAllowedOrigin(origin) {
 export function initWixBridge() {
     window.addEventListener('message', handleWixMessage);
 
-    // Request initial data from Wix
     requestDataFromWix();
+
+    if (isInWix()) {
+        const hash = typeof window !== 'undefined' ? (window.location.hash || '') : '';
+        if (hash.includes('/order') || hash.includes('/select')) {
+            setTimeout(() => notifyIframeReady(), 50);
+        }
+    }
 }
 
 /**
@@ -146,10 +156,14 @@ function handleWixMessage(event) {
             break;
 
         case 'ORDER_CONTEXT':
+            wixData.orderContext = data.orderContext || null;
+            wixData.ecomSummary = data.ecomSummary || null;
+            wixData.orderRole = data.role || 'organizer';
+            wixData.orderContextReady = !!data.orderContext;
             notifyListeners({
-                orderContext: data.orderContext,
-                role: data.role || 'organizer',
-                ecomSummary: data.ecomSummary || null,
+                orderContext: wixData.orderContext,
+                role: wixData.orderRole,
+                ecomSummary: wixData.ecomSummary,
             });
             break;
 
@@ -192,12 +206,13 @@ function handleWixMessage(event) {
 export function subscribeToWix(callback) {
     listeners.add(callback);
 
-    // Immediately notify with current data if available
-    if (wixData.initialized) {
-        callback(wixData);
+    if (wixData.initialized || wixData.orderContextReady) {
+        callback({
+            ...wixData,
+            role: wixData.orderRole,
+        });
     }
 
-    // Return unsubscribe function
     return () => listeners.delete(callback);
 }
 
@@ -317,6 +332,22 @@ export function sendWithCallback(type, data, callback) {
  */
 export function requestOrderContext(params = {}) {
     sendToWix('LOAD_ORDER_CONTEXT', params);
+}
+
+/**
+ * Notify Wix parent that iframe React app is mounted and listening.
+ * Parent should (re)send ORDER_CONTEXT after this.
+ */
+export function notifyIframeReady(extra = {}) {
+    let orderId = null;
+    try {
+        orderId = sessionStorage.getItem('workshop_order_id');
+    } catch (_) {}
+    sendToWix('IFRAME_READY', {
+        route: typeof window !== 'undefined' ? (window.location.hash || window.location.pathname) : '',
+        orderId,
+        ...extra,
+    });
 }
 
 /**
