@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { MessageCircle, ChevronDown, ChevronLeft, ChevronRight, Clock, Timer, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -119,6 +119,25 @@ function getSlotTime(slot) {
   return `${String(dt.hourOfDay || 0).padStart(2, '0')}:${String(dt.minutesOfHour || 0).padStart(2, '0')}`;
 }
 
+function logSlotTimeDebug(label, slot) {
+  if (!slot?.start) return;
+  const dt = slot.start.localDateTime;
+  const ts = slot.start.timestamp;
+  const parsed = ts ? new Date(ts) : null;
+  console.log(`[TIME DEBUG calendar] ${label}`, {
+    sessionId: slot.sessionId,
+    timestamp: ts,
+    timestampISO: parsed?.toISOString?.() ?? null,
+    timestampLocal: parsed?.toString?.() ?? null,
+    timestampIsrael: parsed
+      ? parsed.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })
+      : null,
+    localDateTime: dt ?? null,
+    displayedTime: getSlotTime(slot),
+    browserTZ: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
+}
+
 function getSlotDurationMinutes(slot) {
   if (!slot?.start?.timestamp || !slot?.end?.timestamp) return 0;
   const startMs = new Date(slot.start.timestamp).getTime();
@@ -228,6 +247,18 @@ export default function TimeSlotsSection({
     [availableSlots]
   );
 
+  useEffect(() => {
+    const slots = Array.isArray(availableSlots) ? availableSlots : [];
+    console.log('[TIME DEBUG calendar] slots loaded', {
+      count: slots.length,
+      browserTZ: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
+    slots.slice(0, 5).forEach((slot, i) => logSlotTimeDebug(`slot[${i}]`, slot));
+    if (slots.length > 5) {
+      console.log('[TIME DEBUG calendar] ... and', slots.length - 5, 'more slots');
+    }
+  }, [availableSlots]);
+
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
@@ -242,6 +273,7 @@ export default function TimeSlotsSection({
 
     const daySlots = slotsMap.get(dateStr) || [];
     if (daySlots.length === 1) {
+      logSlotTimeDebug('dateClick auto-select', daySlots[0]);
       setSelectedSlot(daySlots[0]);
       setTimePickerDate(null);
     } else if (daySlots.length > 1) {
@@ -250,6 +282,7 @@ export default function TimeSlotsSection({
   };
 
   const handleTimeSelect = (slot) => {
+    logSlotTimeDebug('timePicker select', slot);
     setSelectedSlot(slot);
     // לא סוגרים את חלונית השעות - המשתמש יכול לשנות בקלות
   };
