@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Check, LayoutGrid, Loader2, RefreshCw, ChevronDown, Clock, CreditCard, AlertCircle } from 'lucide-react';
+import { Check, LayoutGrid, Loader2, Pencil, ChevronDown, Clock, CreditCard, AlertCircle, Image, Ruler, UserPen, MessageCircle, ExternalLink, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from './ConfirmationModal';
@@ -11,6 +11,8 @@ export default function SketchSelectionView({
   workshopStart,
   deadlineAt,
   totalRugCount,
+  buyerName,
+  orderNumber,
   onSelectSketch,
   onRequestUpgrade,
   onFetchCatalog,
@@ -26,6 +28,10 @@ export default function SketchSelectionView({
   const [pendingUpgrades, setPendingUpgrades] = useState({});
   const [participantNames, setParticipantNames] = useState({});
   const [deadlineError, setDeadlineError] = useState(false);
+  const [editSlot, setEditSlot] = useState(null);
+  const [editNameSlot, setEditNameSlot] = useState(null);
+  const [editNameValue, setEditNameValue] = useState('');
+  const [incompleteWarning, setIncompleteWarning] = useState(null);
 
   const requireName = (totalRugCount || rugSlots.length) > 2;
   const isExpired = deadlineAt && new Date(deadlineAt) < new Date();
@@ -78,19 +84,76 @@ export default function SketchSelectionView({
     if (size === '90x90') {
       setPendingUpgrades(prev => ({ ...prev, [pendingProduct.rugIndex]: selection }));
     } else {
+      // If reverting from 90x90 to 60x60, clear any pending upgrade for this slot
+      if (pendingUpgrades[pendingProduct.rugIndex]) {
+        setPendingUpgrades(prev => {
+          const next = { ...prev };
+          delete next[pendingProduct.rugIndex];
+          return next;
+        });
+      }
       onSelectSketch(selection);
     }
 
     setShowModal(false);
     setPendingProduct(null);
-  }, [pendingProduct, isExpired, onSelectSketch]);
+  }, [pendingProduct, isExpired, onSelectSketch, pendingUpgrades]);
+
+  const doPayAndSave = useCallback(() => {
+    if (isExpired) { setDeadlineError(true); return; }
+    const upgrades = Object.values(pendingUpgrades);
+    onRequestUpgrade(upgrades);
+    setPendingUpgrades({});
+    setIncompleteWarning(null);
+  }, [pendingUpgrades, isExpired, onRequestUpgrade]);
 
   const handlePayAndSave = useCallback(() => {
     if (isExpired) { setDeadlineError(true); return; }
-    const upgrades = Object.values(pendingUpgrades);
-    upgrades.forEach(sel => onSelectSketch(sel));
-    setPendingUpgrades({});
-  }, [pendingUpgrades, isExpired, onSelectSketch]);
+    const totalSlots = rugSlots.length;
+    const selectedCount = Object.keys(selectionsMap).length + Object.keys(pendingUpgrades).length;
+    const unselected = totalSlots - selectedCount;
+    if (unselected > 0) {
+      setIncompleteWarning(unselected);
+    } else {
+      doPayAndSave();
+    }
+  }, [rugSlots, selectionsMap, pendingUpgrades, isExpired, doPayAndSave]);
+
+  const handleEditAction = useCallback((action, slotIndex) => {
+    setEditSlot(null);
+    if (action === 'sketch') {
+      openCatalogForSlot(slotIndex);
+    } else if (action === 'size') {
+      const sel = selectionsMap[slotIndex];
+      const pending = pendingUpgrades[slotIndex];
+      const current = sel || pending;
+      if (!current) return;
+      setPendingProduct({ ...current.productSnapshot, _id: current.productId, title: current.productSnapshot?.title, image: current.productSnapshot?.image, rugIndex: slotIndex });
+      setShowModal(true);
+    } else if (action === 'name') {
+      setEditNameValue(participantNames[slotIndex] || '');
+      setEditNameSlot(slotIndex);
+    }
+  }, [openCatalogForSlot, selectionsMap, pendingUpgrades, participantNames]);
+
+  const handleSaveEditName = useCallback(() => {
+    if (editNameSlot == null || editNameValue.trim().length < 2) return;
+    setParticipantNames(prev => ({ ...prev, [editNameSlot]: editNameValue.trim() }));
+    const sel = selectionsMap[editNameSlot];
+    if (sel) {
+      onSelectSketch({ ...sel, participantName: editNameValue.trim() });
+    }
+    const pending = pendingUpgrades[editNameSlot];
+    if (pending) {
+      setPendingUpgrades(prev => ({ ...prev, [editNameSlot]: { ...pending, participantName: editNameValue.trim() } }));
+    }
+    setEditNameSlot(null);
+  }, [editNameSlot, editNameValue, selectionsMap, pendingUpgrades, onSelectSketch]);
+
+  const sizeChangeWhatsAppUrl = useMemo(() => {
+    const text = encodeURIComponent(`היי ביצעתי הזמנה על שם ${buyerName || ''}, מספר הזמנה ${orderNumber || ''} ואני מעוניין לעדכן את הסקיצה שלי`);
+    return `https://api.whatsapp.com/send?phone=972522272270&text=${text}`;
+  }, [buyerName, orderNumber]);
 
   const visibleSlots = expanded ? rugSlots : rugSlots.slice(0, 4);
   const hasHiddenSlots = rugSlots.length > 4 && !expanded;
@@ -184,19 +247,20 @@ export default function SketchSelectionView({
                     <p className="text-sm font-semibold text-[#581E83] truncate">
                       {display.productSnapshot?.title || display.title || 'סקיצה'}
                     </p>
-                    <p className="text-xs text-[#464646]/60 mt-0.5">
-                      גודל: {display.canvasSize}
-                      {(display.canvasSize === '90x90' && pending) && <span className="text-orange-600 font-medium"> · ₪90 תוספת</span>}
+                    <p className="text-xs text-[#464646]/60 mt-0.5" dir="rtl">
+                      {display.canvasSize === '90x90'
+                        ? <span>{'גודל: 90*90 ס"מ'}{pending && <span className="text-orange-600 font-medium">{' | תוספת: 90 ש"ח'}</span>}</span>
+                        : <span>{'גודל: 60*60 ס"מ'}</span>}
                     </p>
                   </div>
                   {!isLocked && !isReadOnly && !isExpired && (
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); openCatalogForSlot(slot.rugIndex); }}
+                      onClick={(e) => { e.stopPropagation(); setEditSlot(slot.rugIndex); }}
                       className="flex items-center gap-1 text-xs text-[#5E2F88] hover:text-[#7B3DB0] font-medium bg-white border border-[#5E2F88]/20 rounded-lg px-2.5 py-1.5 transition-colors shrink-0"
                     >
-                      <RefreshCw className="w-3 h-3" />
-                      החלפה
+                      <Pencil className="w-3 h-3" />
+                      עריכה
                     </button>
                   )}
                 </div>
@@ -249,7 +313,7 @@ export default function SketchSelectionView({
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-3.5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-orange-800">
-              {pendingUpgradeCount} {pendingUpgradeCount === 1 ? 'שטיח' : 'שטיחים'} בגודל 90×90 ממתינים לתשלום
+              {pendingUpgradeCount} {pendingUpgradeCount === 1 ? 'שטיח' : 'שטיחים'} בגודל 90*90 ס"מ ממתינים לתשלום
             </span>
             <span className="text-sm font-bold text-orange-800">₪{pendingUpgradeCount * 90}</span>
           </div>
@@ -280,6 +344,176 @@ export default function SketchSelectionView({
         existingName={participantNames[pendingProduct?.rugIndex] || ''}
         daysUntilWorkshop={daysUntilWorkshop}
       />
+
+      {/* Edit action modal */}
+      <AnimatePresence>
+        {editSlot != null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setEditSlot(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-5 space-y-3 relative"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button type="button" onClick={() => setEditSlot(null)} className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646]">
+                <X className="w-5 h-5" />
+              </button>
+              <h3 className="text-[17px] font-bold text-[#581E83] text-center">עריכת שטיח {editSlot + 1}</h3>
+
+              <button
+                type="button"
+                onClick={() => handleEditAction('sketch', editSlot)}
+                className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-[#e8e8e8] hover:border-[#5E2F88] hover:bg-[#f5f0fa] transition-all text-right"
+              >
+                <div className="w-9 h-9 rounded-lg bg-[#f5f0fa] flex items-center justify-center shrink-0">
+                  <Image className="w-4 h-4 text-[#5E2F88]" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[14px] font-semibold text-[#581E83]">החלפת סקיצה</p>
+                  <p className="text-[12px] text-[#464646]/60">בחירת עיצוב אחר מהקטלוג</p>
+                </div>
+              </button>
+
+              {(() => {
+                const sel = selectionsMap[editSlot];
+                const sizePaid = sel?.upgradePaymentStatus === 'paid';
+                return (
+                  <div>
+                    <button
+                      type="button"
+                      disabled={sizePaid}
+                      onClick={() => !sizePaid && handleEditAction('size', editSlot)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-right ${
+                        sizePaid ? 'border-[#e8e8e8] bg-gray-50 opacity-60 cursor-not-allowed' : 'border-[#e8e8e8] hover:border-[#5E2F88] hover:bg-[#f5f0fa]'
+                      }`}
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-[#f5f0fa] flex items-center justify-center shrink-0">
+                        <Ruler className="w-4 h-4 text-[#5E2F88]" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[14px] font-semibold text-[#581E83]">שינוי גודל</p>
+                        <p className="text-[12px] text-[#464646]/60">60*60 או 90*90 ס"מ</p>
+                      </div>
+                    </button>
+                    {sizePaid && (
+                      <div className="mt-2 bg-orange-50 border border-orange-200 rounded-xl p-2.5 space-y-2">
+                        <p className="text-[12px] text-orange-800">לשינוי גודל סקיצה יש לפנות לשירות הלקוחות שלנו</p>
+                        <a
+                          href={sizeChangeWhatsAppUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white text-[13px] font-medium py-2 rounded-lg transition-colors"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          פנייה בוואטסאפ
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {requireName && (
+                <button
+                  type="button"
+                  onClick={() => handleEditAction('name', editSlot)}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-[#e8e8e8] hover:border-[#5E2F88] hover:bg-[#f5f0fa] transition-all text-right"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-[#f5f0fa] flex items-center justify-center shrink-0">
+                    <UserPen className="w-4 h-4 text-[#5E2F88]" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[14px] font-semibold text-[#581E83]">שינוי שם משתתף</p>
+                    <p className="text-[12px] text-[#464646]/60">{participantNames[editSlot] || 'לא הוגדר'}</p>
+                  </div>
+                </button>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit name modal */}
+      <AnimatePresence>
+        {editNameSlot != null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setEditNameSlot(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-5 space-y-4 relative"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-[17px] font-bold text-[#581E83] text-center">שינוי שם משתתף</h3>
+              <input
+                type="text"
+                value={editNameValue}
+                onChange={(e) => setEditNameValue(e.target.value)}
+                placeholder="שם (לפחות 2 תווים)"
+                className="w-full border-2 border-[#e8e8e8] focus:border-[#5E2F88] rounded-xl px-4 py-3 text-sm text-[#464646] outline-none transition-colors"
+                autoFocus
+              />
+              <div className="flex gap-3 w-full">
+                <Button variant="outline" onClick={() => setEditNameSlot(null)} className="flex-1 border-[#e8e8e8]">ביטול</Button>
+                <Button onClick={handleSaveEditName} disabled={editNameValue.trim().length < 2} className="flex-1 bg-[#5E2F88] hover:bg-[#7B3DB0] text-white">שמירה</Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Incomplete selection warning */}
+      <AnimatePresence>
+        {incompleteWarning != null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setIncompleteWarning(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 relative"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <AlertCircle className="w-10 h-10 text-orange-500 mx-auto mb-2" />
+                <h3 className="text-[17px] font-bold text-[#581E83]">שימו לב</h3>
+                <p className="text-sm text-[#464646]/70 mt-2">
+                  {incompleteWarning} {incompleteWarning === 1 ? 'סקיצה עדיין לא נבחרה' : 'סקיצות עדיין לא נבחרו'}
+                </p>
+              </div>
+              <div className="flex gap-3 w-full">
+                <Button variant="outline" onClick={() => setIncompleteWarning(null)} className="flex-1 border-[#e8e8e8]">ביטול</Button>
+                <Button onClick={doPayAndSave} className="flex-1 bg-orange-600 hover:bg-orange-700 text-white">אישור ומעבר לתשלום</Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

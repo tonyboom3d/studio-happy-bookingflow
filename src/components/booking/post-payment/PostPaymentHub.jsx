@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import OrganizerOrderHub from './OrganizerOrderHub';
 import PhoneVerification from './PhoneVerification';
@@ -26,7 +26,9 @@ export default function PostPaymentHub({
   const [verifiedParticipant, setVerifiedParticipant] = useState(participantContext?.participant || null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [catalog, setCatalog] = useState(initialCatalog || null);
+  const [paymentStatus, setPaymentStatus] = useState(null);
   const catalogFetchedRef = React.useRef(false);
+  const paymentListenerRef = useRef(false);
 
   useEffect(() => {
     if (orderContext?.order) setLocalOrder(orderContext.order);
@@ -126,22 +128,46 @@ export default function PostPaymentHub({
     }
   };
 
-  const handleRequestUpgrade = async (selection) => {
+  useEffect(() => {
+    if (paymentListenerRef.current) return;
+    paymentListenerRef.current = true;
+
+    const handler = (event) => {
+      const msg = event.data;
+      if (!msg?.type) return;
+
+      if (msg.type === 'UPGRADE_PAYMENT_STATUS') {
+        setPaymentStatus(msg.status);
+      }
+      if (msg.type === 'UPGRADE_PAYMENT_RESULT') {
+        if (msg.success) {
+          if (msg.selections) setLocalSelections(msg.selections);
+          setPaymentStatus('success');
+          setTimeout(() => setPaymentStatus(null), 2500);
+        } else if (msg.pending) {
+          setPaymentStatus('pending');
+          setTimeout(() => setPaymentStatus(null), 4000);
+        } else {
+          setPaymentStatus('failed');
+          setTimeout(() => setPaymentStatus(null), 3000);
+        }
+        setIsSaving(false);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  const handleRequestUpgrade = useCallback((upgradeSelections) => {
     setIsSaving(true);
-    try {
-      await sendAndWait('SAVE_SKETCH_SELECTION', {
-        orderId: localOrder._id,
-        participantId: verifiedParticipant?._id || null,
-        ...selection,
-      });
-      onSendMessage('REQUEST_UPGRADE_PAYMENT', {
-        orderId: localOrder._id,
-        selectionData: selection,
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    setPaymentStatus('creating');
+    onSendMessage('REQUEST_UPGRADE_PAYMENT', {
+      orderId: localOrder._id,
+      selections: Array.isArray(upgradeSelections) ? upgradeSelections : [upgradeSelections],
+      orderNumber: ecomSummary?.orderNumber,
+      buyerName: ecomSummary?.buyerName,
+    });
+  }, [localOrder?._id, ecomSummary, onSendMessage]);
 
   const handleUpdateSettings = async (settings) => {
     try {
@@ -181,10 +207,79 @@ export default function PostPaymentHub({
     return <InvalidLinkMessage />;
   }
 
+  const paymentOverlay = (
+    <AnimatePresence>
+      {paymentStatus && paymentStatus !== 'success' && paymentStatus !== 'failed' && paymentStatus !== 'pending' && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/95"
+          dir="rtl"
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
+          >
+            <Loader2 className="w-12 h-12 text-[#5E2F88]" />
+          </motion.div>
+          <p className="mt-4 text-lg font-bold text-[#581E83]">
+            {paymentStatus === 'creating' ? 'מכין תשלום...' : 'מעבד תשלום...'}
+          </p>
+          <p className="mt-2 text-sm text-[#464646]/70">אנא אל תסגרו את החלון</p>
+        </motion.div>
+      )}
+      {paymentStatus === 'success' && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/95"
+          dir="rtl"
+        >
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+          </div>
+          <p className="text-lg font-bold text-green-700">התשלום בוצע בהצלחה!</p>
+          <p className="mt-1 text-sm text-[#464646]/70">הבחירות נשמרו</p>
+        </motion.div>
+      )}
+      {paymentStatus === 'pending' && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/95"
+          dir="rtl"
+        >
+          <Loader2 className="w-12 h-12 text-orange-500 animate-spin" />
+          <p className="mt-4 text-lg font-bold text-orange-700">ממתין לאישור תשלום...</p>
+          <p className="mt-1 text-sm text-[#464646]/70">הבחירות יישמרו עם אישור התשלום</p>
+        </motion.div>
+      )}
+      {paymentStatus === 'failed' && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/95"
+          dir="rtl"
+        >
+          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </div>
+          <p className="text-lg font-bold text-red-700">התשלום לא הושלם</p>
+          <p className="mt-1 text-sm text-[#464646]/70">ניתן לנסות שוב</p>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   // Organizer view
   if (role === 'organizer') {
     return (
       <div className="max-w-2xl mx-auto p-4 md:p-6">
+        {paymentOverlay}
         <OrganizerOrderHub
           order={localOrder}
           ecomSummary={ecomSummary}
@@ -227,6 +322,7 @@ export default function PostPaymentHub({
 
     return (
       <div className="max-w-2xl mx-auto p-4 md:p-6" dir="rtl">
+        {paymentOverlay}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -252,6 +348,8 @@ export default function PostPaymentHub({
           workshopStart={localOrder.workshopStart}
           deadlineAt={localOrder.deadlineAt}
           totalRugCount={localOrder.rugCount}
+          buyerName={ecomSummary?.buyerName}
+          orderNumber={ecomSummary?.orderNumber}
           onSelectSketch={handleSelectSketch}
           onRequestUpgrade={handleRequestUpgrade}
           onFetchCatalog={handleFetchCatalog}

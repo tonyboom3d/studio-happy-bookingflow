@@ -157,8 +157,8 @@ export default function ConfirmationModal({
               <h3 className="text-lg font-bold text-[#581E83] mb-2">אישור בחירת סקיצה</h3>
               <div className="bg-[#fafafa] rounded-xl p-3 w-full mb-3">
                 <p className="text-sm font-medium text-[#581E83]">{sketchTitle}</p>
-                <p className="text-xs text-[#464646]/60 mt-1">
-                  גודל: {selectedSize}{selectedSize === '90x90' && ' · תוספת ₪90'}
+                <p className="text-xs text-[#464646]/60 mt-1" dir="rtl">
+                  {selectedSize === '90x90' ? 'גודל: 90*90 ס"מ | תוספת: 90 ש"ח' : 'גודל: 60*60 ס"מ'}
                 </p>
                 {requireName && participantName && (
                   <p className="text-xs text-[#464646]/60 mt-0.5">משתתף: {participantName}</p>

@@ -33,9 +33,11 @@ export default function OrganizerOrderHub({
   const [contactOpen, setContactOpen] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [modeChosen, setModeChosen] = useState(false);
+  const [orderDetailsCollapsed, setOrderDetailsCollapsed] = useState(false);
 
   const handleModeClick = useCallback((mode) => {
     setModeChosen(true);
+    setOrderDetailsCollapsed(true);
     onChooseMode(mode);
   }, [onChooseMode]);
 
@@ -129,122 +131,154 @@ export default function OrganizerOrderHub({
         </div>
       </motion.div>
 
-      {/* Workshop & customer details — merged card */}
-      <div className="bg-white rounded-2xl border border-[#e8e8e8] p-3.5 shadow-sm space-y-2.5">
-        <div className="sm:grid sm:grid-cols-2 sm:gap-4">
-          {/* Column 1: Workshop details */}
-          <div className="space-y-2">
-            {ecomSummary?.workshopName && (
-              <h3 className="text-lg font-bold text-[#581E83] leading-snug">{ecomSummary.workshopName}</h3>
-            )}
-            {workshopDate && (
-              <div className="flex items-start gap-1.5 text-[15px] text-[#464646]">
-                <Calendar className="w-4 h-4 text-[#5E2F88] shrink-0 mt-0.5" />
-                <span>
-                  {workshopDate}
-                  {workshopStartTime && (
-                    <span className="text-[#5E2F88] font-medium mr-1.5">
-                      בשעה {workshopStartTime}{workshopEndTime && ` - ${workshopEndTime}`}
-                    </span>
-                  )}
-                </span>
-              </div>
-            )}
-            <div className="flex items-start gap-1.5 text-[15px] text-[#464646]">
-              <MapPin className="w-4 h-4 text-[#5E2F88] shrink-0 mt-0.5" />
-              <span>{displayAddress}</span>
-            </div>
-            <div className="flex items-center justify-between gap-2 text-[15px] text-[#464646]">
-              <span className="flex items-center gap-1.5 min-w-0">
-                <UserCheck className="w-4 h-4 text-[#5E2F88] shrink-0" />
-                <span className="truncate">
-                  {order.adults} {order.adults === 1 ? 'מבוגר' : 'מבוגרים'}
-                  {order.children > 0 && ` + ${order.children} ${order.children === 1 ? 'ילד' : 'ילדים'}`}
-                  {' · '}{order.rugCount} {order.rugCount === 1 ? 'שטיח' : 'שטיחים'}
-                </span>
-              </span>
-              <span className={`shrink-0 font-medium ${selectionProgress === totalRugs ? 'text-green-600' : 'text-orange-600'}`}>
-                {selectionProgress}/{totalRugs} נבחרו
-              </span>
-            </div>
-          </div>
-
-          {/* Column 2: Customer details — collapsible on mobile */}
-          {ecomSummary && (
-            <div className="sm:border-r sm:border-[#e8e8e8] sm:pr-4">
-              <button
-                type="button"
-                onClick={() => setDetailsExpanded(!detailsExpanded)}
-                className="sm:hidden flex items-center gap-1.5 mt-2.5 text-[15px] font-semibold text-[#581E83] w-full"
-              >
-                <ChevronDown className={`w-4 h-4 transition-transform ${detailsExpanded ? 'rotate-180' : ''}`} />
-                פרטי המזמין
-              </button>
-              <h4 className="hidden sm:block text-[15px] font-semibold text-[#581E83] mb-2">פרטי המזמין</h4>
-              <div className={`space-y-1.5 overflow-hidden transition-all sm:!max-h-none sm:!opacity-100 sm:!mt-0 ${detailsExpanded ? 'max-h-40 opacity-100 mt-2' : 'max-h-0 opacity-0 sm:max-h-none sm:opacity-100'}`}>
-                {ecomSummary.buyerName && (
-                  <div className="flex items-center gap-2 text-[15px] text-[#464646]">
-                    <User className="w-4 h-4 text-[#5E2F88] shrink-0" />
-                    <span className="font-medium">{ecomSummary.buyerName}</span>
-                  </div>
-                )}
-                {ecomSummary.buyerEmail && (
-                  <div className="flex items-center gap-2 text-[15px] text-[#464646]">
-                    <Mail className="w-4 h-4 text-[#5E2F88] shrink-0" />
-                    <span dir="ltr" className="text-left truncate">{ecomSummary.buyerEmail}</span>
-                  </div>
-                )}
-                {ecomSummary.buyerPhone && (
-                  <div className="flex items-center gap-2 text-[15px] text-[#464646]">
-                    <Phone className="w-4 h-4 text-[#5E2F88] shrink-0" />
-                    <span dir="ltr" className="font-medium">{formatPhone(ecomSummary.buyerPhone)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Price — total only, with discount inline */}
-        {ecomSummary && (
-          <div className="border-t border-[#e8e8e8] pt-2 mt-1 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[15px] text-[#464646]">
-              <CreditCard className="w-4 h-4 text-[#5E2F88]" />
-              סה״כ שולם
-              {(hasCoupon || hasDiscount) && (
-                <span className="text-green-700 flex items-center gap-0.5">
-                  <Tag className="w-3.5 h-3.5" />
-                  {hasCoupon ? ecomSummary.coupon.code : 'הנחה'} -₪{ecomSummary.discount}
-                </span>
-              )}
-            </span>
-            <span className="text-xl font-bold text-[#581E83] tabular-nums">₪{ecomSummary.total}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Calendar + Contact buttons side by side */}
-      <div className="grid grid-cols-2 gap-2">
-        {calendarUrl && (
-          <a
-            href={calendarUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 bg-[#5E2F88] hover:bg-[#7B3DB0] text-white font-medium py-2.5 rounded-xl text-[14px] transition-colors"
+      {/* Expand toggle — visible only when collapsed */}
+      <AnimatePresence>
+        {orderDetailsCollapsed && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            type="button"
+            onClick={() => setOrderDetailsCollapsed(false)}
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 text-[13px] font-medium text-[#464646]/60 hover:text-[#5E2F88] transition-colors"
           >
-            <CalendarPlus className="w-4 h-4" />
-            הוספה ליומן
-          </a>
+            <ChevronDown className="w-4 h-4" />
+            הצג פרטי הזמנה
+          </motion.button>
         )}
-        <button
-          type="button"
-          onClick={() => setContactOpen(true)}
-          className="flex items-center justify-center gap-2 border-2 border-[#5E2F88] text-[#5E2F88] hover:bg-[#f5f0fa] font-medium py-2.5 rounded-xl text-[14px] transition-colors"
-        >
-          <HelpCircle className="w-4 h-4" />
-          יש שאלה? צרו קשר
-        </button>
-      </div>
+      </AnimatePresence>
+
+      {/* Collapsible order details block */}
+      <AnimatePresence initial={false}>
+        {!orderDetailsCollapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-3">
+              {/* Workshop & customer details — merged card */}
+              <div className="bg-white rounded-2xl border border-[#e8e8e8] p-3.5 shadow-sm space-y-2.5">
+                <div className="sm:grid sm:grid-cols-2 sm:gap-4">
+                  {/* Column 1: Workshop details */}
+                  <div className="space-y-2">
+                    {ecomSummary?.workshopName && (
+                      <h3 className="text-lg font-bold text-[#581E83] leading-snug">{ecomSummary.workshopName}</h3>
+                    )}
+                    {workshopDate && (
+                      <div className="flex items-start gap-1.5 text-[15px] text-[#464646]">
+                        <Calendar className="w-4 h-4 text-[#5E2F88] shrink-0 mt-0.5" />
+                        <span>
+                          {workshopDate}
+                          {workshopStartTime && (
+                            <span className="text-[#5E2F88] font-medium mr-1.5">
+                              בשעה {workshopStartTime}{workshopEndTime && ` - ${workshopEndTime}`}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-start gap-1.5 text-[15px] text-[#464646]">
+                      <MapPin className="w-4 h-4 text-[#5E2F88] shrink-0 mt-0.5" />
+                      <span>{displayAddress}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 text-[15px] text-[#464646]">
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <UserCheck className="w-4 h-4 text-[#5E2F88] shrink-0" />
+                        <span className="truncate">
+                          {order.adults} {order.adults === 1 ? 'מבוגר' : 'מבוגרים'}
+                          {order.children > 0 && ` + ${order.children} ${order.children === 1 ? 'ילד' : 'ילדים'}`}
+                          {' · '}{order.rugCount} {order.rugCount === 1 ? 'שטיח' : 'שטיחים'}
+                        </span>
+                      </span>
+                      <span className={`shrink-0 font-medium ${selectionProgress === totalRugs ? 'text-green-600' : 'text-orange-600'}`}>
+                        {selectionProgress}/{totalRugs} נבחרו
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Column 2: Customer details — collapsible on mobile */}
+                  {ecomSummary && (
+                    <div className="sm:border-r sm:border-[#e8e8e8] sm:pr-4">
+                      <button
+                        type="button"
+                        onClick={() => setDetailsExpanded(!detailsExpanded)}
+                        className="sm:hidden flex items-center gap-1.5 mt-2.5 text-[15px] font-semibold text-[#581E83] w-full"
+                      >
+                        <ChevronDown className={`w-4 h-4 transition-transform ${detailsExpanded ? 'rotate-180' : ''}`} />
+                        פרטי המזמין
+                      </button>
+                      <h4 className="hidden sm:block text-[15px] font-semibold text-[#581E83] mb-2">פרטי המזמין</h4>
+                      <div className={`space-y-1.5 overflow-hidden transition-all sm:!max-h-none sm:!opacity-100 sm:!mt-0 ${detailsExpanded ? 'max-h-40 opacity-100 mt-2' : 'max-h-0 opacity-0 sm:max-h-none sm:opacity-100'}`}>
+                        {ecomSummary.buyerName && (
+                          <div className="flex items-center gap-2 text-[15px] text-[#464646]">
+                            <User className="w-4 h-4 text-[#5E2F88] shrink-0" />
+                            <span className="font-medium">{ecomSummary.buyerName}</span>
+                          </div>
+                        )}
+                        {ecomSummary.buyerEmail && (
+                          <div className="flex items-center gap-2 text-[15px] text-[#464646]">
+                            <Mail className="w-4 h-4 text-[#5E2F88] shrink-0" />
+                            <span dir="ltr" className="text-left truncate">{ecomSummary.buyerEmail}</span>
+                          </div>
+                        )}
+                        {ecomSummary.buyerPhone && (
+                          <div className="flex items-center gap-2 text-[15px] text-[#464646]">
+                            <Phone className="w-4 h-4 text-[#5E2F88] shrink-0" />
+                            <span dir="ltr" className="font-medium">{formatPhone(ecomSummary.buyerPhone)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Price — total only, with discount inline */}
+                {ecomSummary && (
+                  <div className="border-t border-[#e8e8e8] pt-2 mt-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-[15px] text-[#464646]">
+                      <CreditCard className="w-4 h-4 text-[#5E2F88]" />
+                      סה״כ שולם
+                      {(hasCoupon || hasDiscount) && (
+                        <span className="text-green-700 flex items-center gap-0.5">
+                          <Tag className="w-3.5 h-3.5" />
+                          {hasCoupon ? ecomSummary.coupon.code : 'הנחה'} -₪{ecomSummary.discount}
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-xl font-bold text-[#581E83] tabular-nums">₪{ecomSummary.total}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Calendar + Contact buttons side by side */}
+              <div className="grid grid-cols-2 gap-2">
+                {calendarUrl && (
+                  <a
+                    href={calendarUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 bg-[#5E2F88] hover:bg-[#7B3DB0] text-white font-medium py-2.5 rounded-xl text-[14px] transition-colors"
+                  >
+                    <CalendarPlus className="w-4 h-4" />
+                    הוספה ליומן
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setContactOpen(true)}
+                  className="flex items-center justify-center gap-2 border-2 border-[#5E2F88] text-[#5E2F88] hover:bg-[#f5f0fa] font-medium py-2.5 rounded-xl text-[14px] transition-colors"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                  יש שאלה? צרו קשר
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <DeadlineCountdown
         deadlineAt={order.deadlineAt}
@@ -320,6 +354,8 @@ export default function OrganizerOrderHub({
           workshopStart={order.workshopStart}
           deadlineAt={order.deadlineAt}
           totalRugCount={order.rugCount}
+          buyerName={ecomSummary?.buyerName}
+          orderNumber={ecomSummary?.orderNumber}
           onSelectSketch={onSelectSketch}
           onRequestUpgrade={onRequestUpgrade}
           onFetchCatalog={onFetchCatalog}
