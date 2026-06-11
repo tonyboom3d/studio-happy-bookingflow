@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build && npx gh-pages -d dist"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^17.0.0",

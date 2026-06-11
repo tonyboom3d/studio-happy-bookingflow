@@ -8,11 +8,11 @@ function TimeBox({ value, label }) {
   return (
     <div className="flex flex-col items-center gap-1">
       <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-white border-2 border-[#5E2F88]/20 flex items-center justify-center shadow-sm">
-        <span className="text-xl sm:text-2xl font-bold text-[#581E83] tabular-nums">
+        <span className="text-2xl sm:text-[28px] font-bold text-[#581E83] tabular-nums">
           {pad(value)}
         </span>
       </div>
-      <span className="text-[10px] sm:text-xs text-[#464646]/60 font-medium">{label}</span>
+      <span className="text-[14px] sm:text-[15px] text-[#464646]/60 font-medium">{label}</span>
     </div>
   );
 }
@@ -52,7 +52,7 @@ export default function DeadlineCountdown({ deadlineAt, rugCount = 1, participan
   if (remaining.expired) {
     return (
       <div className="text-center py-3">
-        <p className="text-red-600 text-sm font-medium bg-red-50 rounded-xl px-4 py-3">
+        <p className="text-red-600 text-[17px] font-medium bg-red-50 rounded-xl px-4 py-3">
           המועד האחרון {sketchLabel} חלף
         </p>
       </div>
@@ -68,18 +68,18 @@ export default function DeadlineCountdown({ deadlineAt, rugCount = 1, participan
       }`}
       dir="rtl"
     >
-      <p className={`text-sm font-medium mb-3 ${isUrgent ? 'text-orange-800' : 'text-[#581E83]'}`}>
+      <p className={`text-[17px] font-medium mb-3 ${isUrgent ? 'text-orange-800' : 'text-[#581E83]'}`}>
         נשארו {pronoun} עוד
       </p>
 
-      <div className="flex items-center justify-center gap-2 sm:gap-3">
+      <div className="flex items-center justify-center gap-2 sm:gap-3" dir="ltr">
         {remaining.days > 0 && <TimeBox value={remaining.days} label="ימים" />}
         <TimeBox value={remaining.hours} label="שעות" />
         <TimeBox value={remaining.minutes} label="דקות" />
         <TimeBox value={remaining.seconds} label="שניות" />
       </div>
 
-      <p className={`text-sm font-medium mt-3 ${isUrgent ? 'text-orange-700' : 'text-[#581E83]/80'}`}>
+      <p className={`text-[17px] font-medium mt-3 ${isUrgent ? 'text-orange-700' : 'text-[#581E83]/80'}`}>
         {sketchLabel}
       </p>
     </div>
