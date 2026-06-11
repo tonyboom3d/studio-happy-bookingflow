@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Check, Sparkles, LayoutGrid } from 'lucide-react';
+import { Check, Sparkles, LayoutGrid, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ConfirmationModal from './ConfirmationModal';
 import SketchCatalogSheet from './SketchCatalogSheet';
@@ -10,6 +10,7 @@ export default function SketchSelectionView({
   workshopStart,
   onSelectSketch,
   onRequestUpgrade,
+  onFetchCatalog,
   existingSelections = [],
   isReadOnly = false,
 }) {
@@ -17,6 +18,7 @@ export default function SketchSelectionView({
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [pendingSelection, setPendingSelection] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [catalogLoading, setCatalogLoading] = useState(false);
 
   const daysUntilWorkshop = useMemo(() => {
     if (!workshopStart) return 999;
@@ -135,11 +137,22 @@ export default function SketchSelectionView({
 
       <Button
         type="button"
-        onClick={() => setCatalogOpen(true)}
+        disabled={catalogLoading}
+        onClick={async () => {
+          if (!catalog?.length && onFetchCatalog) {
+            setCatalogLoading(true);
+            try { await onFetchCatalog(); } finally { setCatalogLoading(false); }
+          }
+          setCatalogOpen(true);
+        }}
         className="w-full bg-[#5E2F88] hover:bg-[#7B3DB0] text-white py-3 text-base font-medium mb-4"
       >
-        <LayoutGrid className="w-4 h-4 ml-2" />
-        {isSlotLocked || isReadOnly ? 'צפייה בקטלוג העיצובים' : currentSelection ? 'שינוי עיצוב מהקטלוג' : 'פתיחת קטלוג העיצובים'}
+        {catalogLoading ? (
+          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+        ) : (
+          <LayoutGrid className="w-4 h-4 ml-2" />
+        )}
+        {catalogLoading ? 'טוען קטלוג...' : isSlotLocked || isReadOnly ? 'צפייה בקטלוג העיצובים' : currentSelection ? 'שינוי עיצוב מהקטלוג' : 'פתיחת קטלוג העיצובים'}
       </Button>
 
       <SketchCatalogSheet

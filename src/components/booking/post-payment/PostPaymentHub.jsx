@@ -13,7 +13,7 @@ export default function PostPaymentHub({
   ecomSummary,
   participantContext,
   role,
-  catalog,
+  catalog: initialCatalog,
   onSendMessage,
   isLoading,
   orderError,
@@ -25,6 +25,8 @@ export default function PostPaymentHub({
   const [isSaving, setIsSaving] = useState(false);
   const [verifiedParticipant, setVerifiedParticipant] = useState(participantContext?.participant || null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [catalog, setCatalog] = useState(initialCatalog || null);
+  const catalogFetchedRef = React.useRef(false);
 
   useEffect(() => {
     if (orderContext?.order) setLocalOrder(orderContext.order);
@@ -37,6 +39,10 @@ export default function PostPaymentHub({
     if (participantContext?.selections) setLocalSelections(participantContext.selections);
   }, [participantContext]);
 
+  useEffect(() => {
+    if (initialCatalog?.length && !catalog?.length) setCatalog(initialCatalog);
+  }, [initialCatalog]);
+
   const sendAndWait = useCallback((type, data) => {
     return new Promise((resolve) => {
       const handler = (response) => {
@@ -45,6 +51,22 @@ export default function PostPaymentHub({
       onSendMessage(type, data, handler);
     });
   }, [onSendMessage]);
+
+  const handleFetchCatalog = useCallback(async () => {
+    if (catalog?.length || catalogFetchedRef.current) return catalog;
+    catalogFetchedRef.current = true;
+    try {
+      const result = await sendAndWait('FETCH_CATALOG', {});
+      if (result?.products?.length) {
+        setCatalog(result.products);
+        return result.products;
+      }
+    } catch (e) {
+      console.error('Failed to fetch catalog:', e);
+      catalogFetchedRef.current = false;
+    }
+    return catalog;
+  }, [catalog, sendAndWait]);
 
   const handleChooseMode = async (mode) => {
     setIsSaving(true);
@@ -179,6 +201,7 @@ export default function PostPaymentHub({
           onSelectSketch={handleSelectSketch}
           onRequestUpgrade={handleRequestUpgrade}
           onUpdateSettings={handleUpdateSettings}
+          onFetchCatalog={handleFetchCatalog}
           isSaving={isSaving}
         />
       </div>
@@ -232,6 +255,7 @@ export default function PostPaymentHub({
           workshopStart={localOrder.workshopStart}
           onSelectSketch={handleSelectSketch}
           onRequestUpgrade={handleRequestUpgrade}
+          onFetchCatalog={handleFetchCatalog}
           existingSelections={localSelections}
         />
       </div>
