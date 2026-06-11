@@ -126,33 +126,34 @@ export default function SketchSelectionView({
     }
   }, [rugSlots, selectionsMap, pendingUpgrades, isExpired, doPayAndSave]);
 
-  const getStatusLabel = (status) => {
-    if (status === 'preparing') return 'בהכנה';
-    if (status === 'ready') return 'סקיצה מוכנה';
+  const getSketchStatusLabel = (sketchStatus) => {
+    if (sketchStatus === 'Ready') return 'מוכנה';
+    if (sketchStatus === 'In preparation') return 'בהכנה';
     return 'ניתן לשינוי';
   };
 
-  const isStatusChangeable = (slotIndex) => {
-    const sel = selectionsMap[slotIndex];
-    if (!sel) return true;
-    return sel.selectionStatus !== 'preparing' && sel.selectionStatus !== 'ready';
-  };
+  const [sizePaymentAlert, setSizePaymentAlert] = useState(false);
 
   const handleEditAction = useCallback((action, slotIndex) => {
+    const sel = selectionsMap[slotIndex];
     if (action === 'sketch' || action === 'size') {
-      const sel = selectionsMap[slotIndex];
-      if (sel && (sel.selectionStatus === 'preparing' || sel.selectionStatus === 'ready')) {
+      const status = sel?.sketchStatus || 'Changeable';
+      if (status !== 'Changeable') {
         setEditSlot(null);
-        setStatusError({ slot: slotIndex, status: sel.selectionStatus });
+        setStatusError({ slot: slotIndex, status });
         return;
       }
+    }
+    if (action === 'size' && sel?.upgradePaymentStatus === 'paid') {
+      setEditSlot(null);
+      setSizePaymentAlert(true);
+      return;
     }
     setEditSlot(null);
     if (action === 'sketch') {
       setEditOnlyMode('sketch');
       openCatalogForSlot(slotIndex);
     } else if (action === 'size') {
-      const sel = selectionsMap[slotIndex];
       const pending = pendingUpgrades[slotIndex];
       const current = sel || pending;
       if (!current) return;
@@ -221,9 +222,11 @@ export default function SketchSelectionView({
           const pending = pendingUpgrades[slot.rugIndex];
           const display = sel || pending;
           const name = participantNames[slot.rugIndex] || slot.participantName;
+          const sketchStatus = sel?.sketchStatus || 'Changeable';
+          const sizePaidLock = sel?.upgradePaymentStatus === 'paid';
           const isLocked = sel && (
-            sel.selectionStatus === 'preparing' || sel.selectionStatus === 'ready' ||
-            (daysUntilWorkshop <= 6 && sel.confirmedAt) || sel.upgradePaymentStatus === 'paid'
+            sketchStatus !== 'Changeable' ||
+            (daysUntilWorkshop <= 6 && sel.confirmedAt)
           );
 
           return (
@@ -252,12 +255,11 @@ export default function SketchSelectionView({
                 )}
                 {sel && !isLocked && (
                   <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
-                    sel.selectionStatus === 'preparing' ? 'bg-blue-100 text-blue-700' :
-                    sel.selectionStatus === 'ready' ? 'bg-green-100 text-green-700' :
+                    sketchStatus === 'In preparation' ? 'bg-blue-100 text-blue-700' :
+                    sketchStatus === 'Ready' ? 'bg-green-100 text-green-700' :
                     'bg-[#f5f0fa] text-[#5E2F88]'
                   }`}>
-                    {sel.selectionStatus === 'preparing' ? 'בהכנה' :
-                     sel.selectionStatus === 'ready' ? 'סקיצה מוכנה' : 'ניתן לשינוי'}
+                    {getSketchStatusLabel(sketchStatus)}
                   </span>
                 )}
                 {pending && (
@@ -282,7 +284,7 @@ export default function SketchSelectionView({
                         : <span>{'גודל: 60*60 ס"מ'}</span>}
                     </p>
                   </div>
-                  {!isLocked && !isReadOnly && !isExpired && (
+                  {(!isLocked || sizePaidLock) && !isReadOnly && !isExpired && (
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setEditSlot(slot.rugIndex); }}
@@ -571,7 +573,7 @@ export default function SketchSelectionView({
                 <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-2" />
                 <h3 className="text-[17px] font-bold text-[#581E83]">לא ניתן לערוך</h3>
                 <p className="text-sm text-[#464646]/70 mt-2">
-                  הסקיצה בסטטוס "{getStatusLabel(statusError.status)}" ולא ניתנת לשינוי.
+                  הסקיצה בסטטוס "{getSketchStatusLabel(statusError.status)}" ולא ניתנת לשינוי.
                 </p>
                 <p className="text-xs text-[#464646]/50 mt-1">לעזרה נוספת ניתן לפנות לשירות הלקוחות שלנו</p>
               </div>
@@ -586,6 +588,52 @@ export default function SketchSelectionView({
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
               <Button variant="outline" onClick={() => setStatusError(null)} className="w-full border-[#e8e8e8]">סגירה</Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Size locked after payment alert */}
+      <AnimatePresence>
+        {sizePaymentAlert && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setSizePaymentAlert(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 relative"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button type="button" onClick={() => setSizePaymentAlert(false)} className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646]">
+                <X className="w-5 h-5" />
+              </button>
+              <div className="text-center">
+                <AlertCircle className="w-10 h-10 text-orange-500 mx-auto mb-2" />
+                <h3 className="text-[17px] font-bold text-[#581E83]">לא ניתן לשנות גודל</h3>
+                <p className="text-sm text-[#464646]/70 mt-2">
+                  לא ניתן לשנות את הגודל לאחר השלמת התשלום.
+                </p>
+                <p className="text-xs text-[#464646]/50 mt-1">לעזרה נוספת ניתן לפנות לשירות הלקוחות שלנו</p>
+              </div>
+              <a
+                href={sizeChangeWhatsAppUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-medium py-2.5 rounded-xl text-[14px] transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" />
+                פנייה בוואטסאפ
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+              <Button variant="outline" onClick={() => setSizePaymentAlert(false)} className="w-full border-[#e8e8e8]">סגירה</Button>
             </motion.div>
           </motion.div>
         )}

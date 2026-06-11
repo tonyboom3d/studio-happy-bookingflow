@@ -70,12 +70,42 @@ export default function PostPaymentHub({
     return catalog;
   }, [catalog, sendAndWait]);
 
-  const handleChooseMode = useCallback((mode) => {
+  const handleChooseMode = useCallback(async (mode) => {
     setLocalOrder(prev => ({ ...prev, selectionMode: mode }));
-    sendAndWait('SET_SELECTION_MODE', { orderId: localOrder._id, mode }).catch(() => {
+    try {
+      await sendAndWait('SET_SELECTION_MODE', { orderId: localOrder._id, mode });
+    } catch {
       setLocalOrder(prev => ({ ...prev, selectionMode: null }));
-    });
-  }, [localOrder?._id, sendAndWait]);
+      return;
+    }
+
+    if (mode === 'participants' && !localParticipants?.length) {
+      const rugCount = localOrder.rugCount || 1;
+      const childrenCount = localOrder.children || 0;
+      const autoParticipants = [];
+      for (let i = 0; i < rugCount; i++) {
+        autoParticipants.push({
+          name: `משתתף ${i + 1}`,
+          phone: '',
+          rugAllowance: 1,
+          hasChildren: i < childrenCount,
+          childrenCount: i < childrenCount ? 1 : 0,
+        });
+      }
+      setIsSaving(true);
+      try {
+        const result = await sendAndWait('SAVE_PARTICIPANTS', {
+          orderId: localOrder._id,
+          participants: autoParticipants,
+        });
+        if (result?.participants) {
+          setLocalParticipants(result.participants);
+        }
+      } finally {
+        setIsSaving(false);
+      }
+    }
+  }, [localOrder?._id, localOrder?.rugCount, localOrder?.children, localParticipants, sendAndWait]);
 
   const handleSaveParticipants = async (participants) => {
     setIsSaving(true);

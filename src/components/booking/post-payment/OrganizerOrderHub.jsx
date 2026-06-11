@@ -364,14 +364,12 @@ export default function OrganizerOrderHub({
         />
       )}
 
-      {/* Participants mode: setup form or links */}
+      {/* Participants mode: loading while auto-generating */}
       {modeChosen && order.selectionMode === 'participants' && !participants?.length && (
-        <ParticipantSetupForm
-          rugCount={order.rugCount}
-          childrenCount={order.children || 0}
-          onSave={onSaveParticipants}
-          isSaving={isSaving}
-        />
+        <div className="flex items-center justify-center gap-2 py-6 text-sm text-[#5E2F88]">
+          <div className="w-4 h-4 border-2 border-[#5E2F88] border-t-transparent rounded-full animate-spin" />
+          מכין את רשימת המשתתפים...
+        </div>
       )}
 
       {modeChosen && order.selectionMode === 'participants' && participants?.length > 0 && (() => {
@@ -468,35 +466,41 @@ export default function OrganizerOrderHub({
                       </div>
                     </div>
 
-                    {/* Show organizer's pre-selection mapped by index */}
-                    {matchedByIndex && !pSelections.length && (
+                    {/* Show organizer's pre-selection mapped by index (only fully saved) */}
+                    {matchedByIndex && matchedByIndex.selectionStatus === 'selected' && !pSelections.length && (
                       <div className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2 mt-1.5">
                         {matchedByIndex.productSnapshot?.image && (
                           <img src={matchedByIndex.productSnapshot.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-[#581E83] truncate">{matchedByIndex.productSnapshot?.title || 'סקיצה'}</p>
-                          <p className="text-[11px] text-[#464646]/50">נבחר ע"י המארגן</p>
+                          <p className="text-[11px] text-[#464646]/50">
+                            {matchedByIndex.canvasSize === '90x90' ? '90*90 ס"מ · ₪299' : '60*60 ס"מ'}
+                            {' · '}נבחר ע"י המארגן
+                          </p>
                         </div>
                         <ImageIcon className="w-3.5 h-3.5 text-[#5E2F88]/40 shrink-0" />
                       </div>
                     )}
 
                     {/* Show participant's own selections */}
-                    {pSelections.length > 0 && pSelections.map((sel, si) => (
-                      <div key={sel._id || si} className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2 mt-1.5">
-                        {sel.productSnapshot?.image && (
-                          <img src={sel.productSnapshot.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-[#581E83] truncate">{sel.productSnapshot?.title || 'סקיצה'}</p>
-                          <p className="text-[11px] text-[#464646]/50">
-                            {sel.canvasSize === '90x90' ? '90*90 ס"מ' : '60*60 ס"מ'}
-                            {' · '}{sel.selectionStatus === 'preparing' ? 'בהכנה' : sel.selectionStatus === 'ready' ? 'מוכנה' : 'ניתן לשינוי'}
-                          </p>
+                    {pSelections.length > 0 && pSelections.map((sel, si) => {
+                      const sStatus = sel.sketchStatus || 'Changeable';
+                      return (
+                        <div key={sel._id || si} className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2 mt-1.5">
+                          {sel.productSnapshot?.image && (
+                            <img src={sel.productSnapshot.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-[#581E83] truncate">{sel.productSnapshot?.title || 'סקיצה'}</p>
+                            <p className="text-[11px] text-[#464646]/50">
+                              {sel.canvasSize === '90x90' ? '90*90 ס"מ · ₪299' : '60*60 ס"מ'}
+                              {' · '}{sStatus === 'In preparation' ? 'בהכנה' : sStatus === 'Ready' ? 'מוכנה' : 'ניתן לשינוי'}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                     {completed && (
                       <p className="text-[11px] text-green-600 font-medium mt-1.5 flex items-center gap-1">
