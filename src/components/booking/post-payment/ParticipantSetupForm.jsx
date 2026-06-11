@@ -41,24 +41,28 @@ export default function ParticipantSetupForm({
   onSave,
   isSaving,
 }) {
-  const [participants, setParticipants] = useState([
-    { name: '', phone: '', rugAllowance: 1, hasChildren: false },
-  ]);
+  const [participants, setParticipants] = useState(() => {
+    const initial = [{ name: '', phone: '', rugAllowance: 1, childrenCount: 0 }];
+    if (childrenCount > 0) {
+      initial[0].childrenCount = Math.min(childrenCount, childrenCount);
+    }
+    return initial;
+  });
   const [errors, setErrors] = useState({});
   const [duplicateWarnings, setDuplicateWarnings] = useState([]);
   const [duplicatesApproved, setDuplicatesApproved] = useState(false);
 
   const totalRugs = participants.reduce((sum, p) => sum + (p.rugAllowance || 1), 0);
   const rugsRemaining = rugCount - totalRugs;
-  const childrenAssigned = participants.filter(p => p.hasChildren).length;
-  const childrenRemaining = childrenCount - childrenAssigned;
+  const totalChildrenAssigned = participants.reduce((sum, p) => sum + (p.childrenCount || 0), 0);
+  const childrenRemaining = childrenCount - totalChildrenAssigned;
   const showChildren = childrenCount > 0;
 
   const addParticipant = () => {
     if (totalRugs >= rugCount) return;
     setParticipants(prev => [
       ...prev,
-      { name: '', phone: '', rugAllowance: 1, hasChildren: false },
+      { name: '', phone: '', rugAllowance: 1, childrenCount: 0 },
     ]);
   };
 
@@ -88,9 +92,12 @@ export default function ParticipantSetupForm({
     setParticipants(prev => prev.map((p, i) => (i === index ? { ...p, rugAllowance: next } : p)));
   };
 
-  const toggleChildren = (index, checked) => {
-    if (checked && childrenRemaining <= 0) return;
-    updateField(index, 'hasChildren', checked);
+  const setChildrenCount = (index, newCount) => {
+    if (newCount < 0) return;
+    const current = participants[index].childrenCount || 0;
+    const diff = newCount - current;
+    if (diff > 0 && childrenRemaining < diff) return;
+    setParticipants(prev => prev.map((p, i) => (i === index ? { ...p, childrenCount: newCount } : p)));
   };
 
   const duplicatePhones = useMemo(() => {
@@ -132,7 +139,10 @@ export default function ParticipantSetupForm({
 
   const handleSubmit = () => {
     if (validate()) {
-      onSave(participants);
+      onSave(participants.map(p => ({
+        ...p,
+        hasChildren: (p.childrenCount || 0) > 0,
+      })));
     }
   };
 
@@ -219,21 +229,27 @@ export default function ParticipantSetupForm({
                 </div>
 
                 {showChildren && (
-                  <label
-                    className={`flex items-center gap-1.5 text-xs cursor-pointer ${
-                      !p.hasChildren && childrenRemaining <= 0 ? 'opacity-40 cursor-not-allowed' : 'text-[#464646]/70'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={p.hasChildren}
-                      onChange={(e) => toggleChildren(index, e.target.checked)}
-                      disabled={!p.hasChildren && childrenRemaining <= 0}
-                      className="w-4 h-4 accent-[#5E2F88]"
-                    />
-                    <Baby className="w-3.5 h-3.5" />
-                    עם ילדים
-                  </label>
+                  <div className="flex items-center gap-1.5 text-xs text-[#464646]/70">
+                    <Baby className="w-3.5 h-3.5 text-[#5E2F88]" />
+                    <span>ילדים:</span>
+                    <button
+                      type="button"
+                      onClick={() => setChildrenCount(index, (p.childrenCount || 0) - 1)}
+                      disabled={!(p.childrenCount > 0)}
+                      className="w-6 h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center text-[#581E83] hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <span className="min-w-[18px] text-center text-xs font-bold text-[#581E83] tabular-nums">{p.childrenCount || 0}</span>
+                    <button
+                      type="button"
+                      onClick={() => setChildrenCount(index, (p.childrenCount || 0) + 1)}
+                      disabled={childrenRemaining <= 0}
+                      className="w-6 h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center text-[#581E83] hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
                 )}
               </div>
 

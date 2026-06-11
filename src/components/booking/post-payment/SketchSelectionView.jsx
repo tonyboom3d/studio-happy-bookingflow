@@ -32,6 +32,8 @@ export default function SketchSelectionView({
   const [editNameSlot, setEditNameSlot] = useState(null);
   const [editNameValue, setEditNameValue] = useState('');
   const [incompleteWarning, setIncompleteWarning] = useState(null);
+  const [statusError, setStatusError] = useState(null);
+  const [editOnlyMode, setEditOnlyMode] = useState(null);
 
   const requireName = (totalRugCount || rugSlots.length) > 2;
   const isExpired = deadlineAt && new Date(deadlineAt) < new Date();
@@ -97,6 +99,7 @@ export default function SketchSelectionView({
 
     setShowModal(false);
     setPendingProduct(null);
+    setEditOnlyMode(null);
   }, [pendingProduct, isExpired, onSelectSketch, pendingUpgrades]);
 
   const doPayAndSave = useCallback(() => {
@@ -119,15 +122,37 @@ export default function SketchSelectionView({
     }
   }, [rugSlots, selectionsMap, pendingUpgrades, isExpired, doPayAndSave]);
 
+  const getStatusLabel = (status) => {
+    if (status === 'preparing') return 'בהכנה';
+    if (status === 'ready') return 'סקיצה מוכנה';
+    return 'ניתן לשינוי';
+  };
+
+  const isStatusChangeable = (slotIndex) => {
+    const sel = selectionsMap[slotIndex];
+    if (!sel) return true;
+    return sel.selectionStatus !== 'preparing' && sel.selectionStatus !== 'ready';
+  };
+
   const handleEditAction = useCallback((action, slotIndex) => {
+    if (action === 'sketch' || action === 'size') {
+      const sel = selectionsMap[slotIndex];
+      if (sel && (sel.selectionStatus === 'preparing' || sel.selectionStatus === 'ready')) {
+        setEditSlot(null);
+        setStatusError({ slot: slotIndex, status: sel.selectionStatus });
+        return;
+      }
+    }
     setEditSlot(null);
     if (action === 'sketch') {
+      setEditOnlyMode('sketch');
       openCatalogForSlot(slotIndex);
     } else if (action === 'size') {
       const sel = selectionsMap[slotIndex];
       const pending = pendingUpgrades[slotIndex];
       const current = sel || pending;
       if (!current) return;
+      setEditOnlyMode('size');
       setPendingProduct({ ...current.productSnapshot, _id: current.productId, title: current.productSnapshot?.title, image: current.productSnapshot?.image, rugIndex: slotIndex });
       setShowModal(true);
     } else if (action === 'name') {
@@ -336,13 +361,14 @@ export default function SketchSelectionView({
 
       <ConfirmationModal
         open={showModal}
-        onClose={() => { setShowModal(false); setPendingProduct(null); }}
+        onClose={() => { setShowModal(false); setPendingProduct(null); setEditOnlyMode(null); }}
         onConfirm={handleModalConfirm}
         sketchTitle={pendingProduct?.title || ''}
         deadlineAt={deadlineAt}
         requireName={requireName}
         existingName={participantNames[pendingProduct?.rugIndex] || ''}
         daysUntilWorkshop={daysUntilWorkshop}
+        skipNameStep={!!editOnlyMode}
       />
 
       {/* Edit action modal */}
@@ -510,6 +536,52 @@ export default function SketchSelectionView({
                 <Button variant="outline" onClick={() => setIncompleteWarning(null)} className="flex-1 border-[#e8e8e8]">ביטול</Button>
                 <Button onClick={doPayAndSave} className="flex-1 bg-orange-600 hover:bg-orange-700 text-white">אישור ומעבר לתשלום</Button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Status error popup — sketch not changeable */}
+      <AnimatePresence>
+        {statusError && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setStatusError(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 relative"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button type="button" onClick={() => setStatusError(null)} className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646]">
+                <X className="w-5 h-5" />
+              </button>
+              <div className="text-center">
+                <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-2" />
+                <h3 className="text-[17px] font-bold text-[#581E83]">לא ניתן לערוך</h3>
+                <p className="text-sm text-[#464646]/70 mt-2">
+                  הסקיצה בסטטוס "{getStatusLabel(statusError.status)}" ולא ניתנת לשינוי.
+                </p>
+                <p className="text-xs text-[#464646]/50 mt-1">לעזרה נוספת ניתן לפנות לשירות הלקוחות שלנו</p>
+              </div>
+              <a
+                href={sizeChangeWhatsAppUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-medium py-2.5 rounded-xl text-[14px] transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" />
+                פנייה בוואטסאפ
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+              <Button variant="outline" onClick={() => setStatusError(null)} className="w-full border-[#e8e8e8]">סגירה</Button>
             </motion.div>
           </motion.div>
         )}

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import {
   Check, UserCheck, Send, Copy, Settings, ChevronDown, ChevronUp,
   Calendar, MapPin, Tag, CreditCard, CalendarPlus, MessageCircle,
-  HelpCircle, X, ExternalLink, User, Mail, Phone, MoveLeft,
+  HelpCircle, X, ExternalLink, User, Mail, Phone, MoveLeft, Baby, Plus, Minus, Image as ImageIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
@@ -34,6 +34,7 @@ export default function OrganizerOrderHub({
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [modeChosen, setModeChosen] = useState(false);
   const [orderDetailsCollapsed, setOrderDetailsCollapsed] = useState(false);
+  const [participantsExpanded, setParticipantsExpanded] = useState(false);
 
   const handleModeClick = useCallback((mode) => {
     setModeChosen(true);
@@ -373,110 +374,213 @@ export default function OrganizerOrderHub({
         />
       )}
 
-      {modeChosen && order.selectionMode === 'participants' && participants?.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-xl font-bold text-[#581E83]">משתתפים וקישורים</h3>
+      {modeChosen && order.selectionMode === 'participants' && participants?.length > 0 && (() => {
+        const visibleParticipants = participantsExpanded ? participants : participants.slice(0, 4);
+        const hasHidden = participants.length > 4 && !participantsExpanded;
+        const childrenInOrder = order.children || 0;
 
-          {!participantLinks?.length && (
-            <Button
-              onClick={onGenerateLinks}
-              disabled={isSaving}
-              className="w-full bg-[#5E2F88] hover:bg-[#7B3DB0] text-white"
-            >
-              <Send className="w-4 h-4 ml-2" />
-              יצירת קישורים ושליחה
-            </Button>
-          )}
+        return (
+          <div className="space-y-3">
+            <h3 className="text-xl font-bold text-[#581E83]">משתתפים וקישורים</h3>
 
-          {participants.map((p, i) => {
-            const link = participantLinks?.find(l => l.participantId === p._id);
-            const pSelections = selections?.filter(s => s.participantId === p._id) || [];
-            const completed = pSelections.length >= (p.rugAllowance || 1);
-
-            return (
-              <div
-                key={p._id || i}
-                className="border border-[#e8e8e8] rounded-xl p-3 flex items-center gap-3 bg-white"
+            {!participantLinks?.length && (
+              <Button
+                onClick={onGenerateLinks}
+                disabled={isSaving}
+                className="w-full bg-[#5E2F88] hover:bg-[#7B3DB0] text-white"
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                  completed ? 'bg-green-100 text-green-700' : 'bg-[#f5f0fa] text-[#5E2F88]'
-                }`}>
-                  {completed ? <Check className="w-4 h-4" /> : i + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[17px] font-medium text-[#581E83] truncate">{p.name}</p>
-                  <p className="text-[15px] text-[#464646]/50">
-                    {p.rugAllowance} {p.rugAllowance === 1 ? 'שטיח' : 'שטיחים'}
-                    {p.hasChildren && ' • עם ילדים'}
-                    {completed && ' • הושלם'}
-                  </p>
-                </div>
-                {link && (
+                <Send className="w-4 h-4 ml-2" />
+                יצירת קישורים ושליחה
+              </Button>
+            )}
+
+            <div className="space-y-2.5 relative">
+              {visibleParticipants.map((p, i) => {
+                const link = participantLinks?.find(l => l.participantId === p._id);
+                const pSelections = selections?.filter(s => s.participantId === p._id) || [];
+                const matchedByIndex = selections?.find(s => s.rugIndex === i && !s.participantId);
+                const completed = pSelections.length >= (p.rugAllowance || 1);
+                const childCount = p.childrenCount || (p.hasChildren ? 1 : 0);
+
+                return (
+                  <div
+                    key={p._id || i}
+                    className={`bg-white rounded-xl border-2 p-3.5 transition-all ${
+                      completed ? 'border-green-200' : 'border-[#e8e8e8]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                          completed ? 'bg-green-100 text-green-700' : 'bg-[#f5f0fa] text-[#5E2F88]'
+                        }`}>
+                          {completed ? <Check className="w-3.5 h-3.5" /> : i + 1}
+                        </div>
+                        <div>
+                          <span className="text-[15px] font-semibold text-[#581E83]">{p.name}</span>
+                          <span className="text-[13px] text-[#464646]/60 mr-1.5">
+                            · {p.rugAllowance || 1} {(p.rugAllowance || 1) === 1 ? 'שטיח' : 'שטיחים'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {childrenInOrder > 0 && (
+                          <div className="flex items-center gap-1">
+                            <Baby className="w-3.5 h-3.5 text-[#5E2F88]" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const current = p.childrenCount || 0;
+                                if (current > 0) onUpdateSettings({ _updateParticipantChildren: { participantId: p._id, childrenCount: current - 1 } });
+                              }}
+                              disabled={!childCount}
+                              className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="text-xs font-bold text-[#581E83] tabular-nums w-4 text-center">{childCount}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const current = p.childrenCount || 0;
+                                onUpdateSettings({ _updateParticipantChildren: { participantId: p._id, childrenCount: current + 1 } });
+                              }}
+                              className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa]"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+                        {link && (
+                          <button
+                            type="button"
+                            onClick={() => copyLink(link.link, p._id)}
+                            className="text-[#5E2F88] hover:text-[#7B3DB0] transition-colors"
+                            title="העתק קישור"
+                          >
+                            {copiedLink === p._id ? (
+                              <Check className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Show organizer's pre-selection mapped by index */}
+                    {matchedByIndex && !pSelections.length && (
+                      <div className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2 mt-1.5">
+                        {matchedByIndex.productSnapshot?.image && (
+                          <img src={matchedByIndex.productSnapshot.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-[#581E83] truncate">{matchedByIndex.productSnapshot?.title || 'סקיצה'}</p>
+                          <p className="text-[11px] text-[#464646]/50">נבחר ע"י המארגן</p>
+                        </div>
+                        <ImageIcon className="w-3.5 h-3.5 text-[#5E2F88]/40 shrink-0" />
+                      </div>
+                    )}
+
+                    {/* Show participant's own selections */}
+                    {pSelections.length > 0 && pSelections.map((sel, si) => (
+                      <div key={sel._id || si} className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2 mt-1.5">
+                        {sel.productSnapshot?.image && (
+                          <img src={sel.productSnapshot.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-[#581E83] truncate">{sel.productSnapshot?.title || 'סקיצה'}</p>
+                          <p className="text-[11px] text-[#464646]/50">
+                            {sel.canvasSize === '90x90' ? '90*90 ס"מ' : '60*60 ס"מ'}
+                            {' · '}{sel.selectionStatus === 'preparing' ? 'בהכנה' : sel.selectionStatus === 'ready' ? 'מוכנה' : 'ניתן לשינוי'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+
+                    {completed && (
+                      <p className="text-[11px] text-green-600 font-medium mt-1.5 flex items-center gap-1">
+                        <Check className="w-3 h-3" /> הושלם
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+
+              {hasHidden && (
+                <div className="relative">
+                  <div className="absolute inset-x-0 -top-16 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none" />
                   <button
                     type="button"
-                    onClick={() => copyLink(link.link, p._id)}
-                    className="text-[#5E2F88] hover:text-[#7B3DB0] transition-colors"
-                    title="העתק קישור"
+                    onClick={() => setParticipantsExpanded(true)}
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-[#5E2F88] hover:text-[#7B3DB0] transition-colors"
                   >
-                    {copiedLink === p._id ? (
-                      <Check className="w-4 h-4 text-green-600" />
-                    ) : (
-                      <Copy className="w-4 h-4" />
-                    )}
+                    <ChevronDown className="w-4 h-4" />
+                    הצג עוד {participants.length - 4} משתתפים
                   </button>
-                )}
-              </div>
-            );
-          })}
+                </div>
+              )}
+              {participantsExpanded && participants.length > 4 && (
+                <button
+                  type="button"
+                  onClick={() => setParticipantsExpanded(false)}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-[#464646]/60 hover:text-[#5E2F88] transition-colors"
+                >
+                  <ChevronDown className="w-4 h-4 rotate-180" />
+                  הצג פחות
+                </button>
+              )}
+            </div>
 
-          {/* Settings — only in participants mode, below participant cards */}
-          <div className="border border-[#e8e8e8] rounded-xl overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(!settingsOpen)}
-              className="w-full flex items-center justify-between p-3 text-[17px] font-medium text-[#581E83] hover:bg-[#fafafa] transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                <span>הגדרות</span>
-              </div>
-              {settingsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
+            {/* Settings — only in participants mode, below participant cards */}
+            <div className="border border-[#e8e8e8] rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(!settingsOpen)}
+                className="w-full flex items-center justify-between p-3 text-[17px] font-medium text-[#581E83] hover:bg-[#fafafa] transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Settings className="w-4 h-4" />
+                  <span>הגדרות</span>
+                </div>
+                {settingsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
 
-            {settingsOpen && (
-              <div className="p-3 pt-0 space-y-3 border-t border-[#e8e8e8]">
-                <label className="flex items-center justify-between">
-                  <span className="text-[17px] text-[#464646]">הצגת עלות הסדנה למשתתפים</span>
-                  <input
-                    type="checkbox"
-                    checked={order.showPriceToParticipants || false}
-                    onChange={(e) => onUpdateSettings({ showPriceToParticipants: e.target.checked })}
-                    className="w-4 h-4 accent-[#5E2F88]"
-                  />
-                </label>
-                <label className="flex items-center justify-between">
-                  <span className="text-[17px] text-[#464646]">הצגת סקיצות שבחרו אחרים</span>
-                  <input
-                    type="checkbox"
-                    checked={order.showOtherSelections !== false}
-                    onChange={(e) => onUpdateSettings({ showOtherSelections: e.target.checked })}
-                    className="w-4 h-4 accent-[#5E2F88]"
-                  />
-                </label>
-                <label className="flex items-center justify-between">
-                  <span className="text-[17px] text-[#464646]">התראה כשמשתתף משלים בחירה</span>
-                  <input
-                    type="checkbox"
-                    checked={order.notifyOnSelection !== false}
-                    onChange={(e) => onUpdateSettings({ notifyOnSelection: e.target.checked })}
-                    className="w-4 h-4 accent-[#5E2F88]"
-                  />
-                </label>
-              </div>
-            )}
+              {settingsOpen && (
+                <div className="p-3 pt-0 space-y-3 border-t border-[#e8e8e8]">
+                  <label className="flex items-center justify-between">
+                    <span className="text-[17px] text-[#464646]">הצגת עלות הסדנה למשתתפים</span>
+                    <input
+                      type="checkbox"
+                      checked={order.showPriceToParticipants || false}
+                      onChange={(e) => onUpdateSettings({ showPriceToParticipants: e.target.checked })}
+                      className="w-4 h-4 accent-[#5E2F88]"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between">
+                    <span className="text-[17px] text-[#464646]">הצגת סקיצות שבחרו אחרים</span>
+                    <input
+                      type="checkbox"
+                      checked={order.showOtherSelections !== false}
+                      onChange={(e) => onUpdateSettings({ showOtherSelections: e.target.checked })}
+                      className="w-4 h-4 accent-[#5E2F88]"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between">
+                    <span className="text-[17px] text-[#464646]">התראה כשמשתתף משלים בחירה</span>
+                    <input
+                      type="checkbox"
+                      checked={order.notifyOnSelection !== false}
+                      onChange={(e) => onUpdateSettings({ notifyOnSelection: e.target.checked })}
+                      className="w-4 h-4 accent-[#5E2F88]"
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Contact popup */}
       <AnimatePresence>

@@ -166,6 +166,8 @@ export default function PostPaymentHub({
       selections: Array.isArray(upgradeSelections) ? upgradeSelections : [upgradeSelections],
       orderNumber: ecomSummary?.orderNumber,
       buyerName: ecomSummary?.buyerName,
+      buyerPhone: ecomSummary?.buyerPhone,
+      buyerEmail: ecomSummary?.buyerEmail,
     });
   }, [localOrder?._id, ecomSummary, onSendMessage]);
 

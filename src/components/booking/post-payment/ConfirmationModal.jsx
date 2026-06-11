@@ -14,8 +14,10 @@ export default function ConfirmationModal({
   requireName,
   existingName,
   daysUntilWorkshop,
+  skipNameStep = false,
+  initialStep = 'size',
 }) {
-  const [step, setStep] = useState('size');
+  const [step, setStep] = useState(initialStep);
   const [selectedSize, setSelectedSize] = useState(null);
   const [participantName, setParticipantName] = useState(existingName || '');
   const [countdown, setCountdown] = useState(0);
@@ -29,7 +31,7 @@ export default function ConfirmationModal({
 
   useEffect(() => {
     if (!open) {
-      setStep('size');
+      setStep(initialStep);
       setSelectedSize(null);
       setParticipantName(existingName || '');
       setCountdown(0);
@@ -55,7 +57,7 @@ export default function ConfirmationModal({
 
   const handleSizeSelect = (size) => {
     setSelectedSize(size);
-    setStep(requireName ? 'name' : 'confirm');
+    setStep((requireName && !skipNameStep) ? 'name' : 'confirm');
   };
 
   const handleNameNext = () => {
@@ -69,7 +71,7 @@ export default function ConfirmationModal({
       hasDelayedRef.current = true;
       try { sessionStorage.setItem(DELAY_KEY, '1'); } catch (_) {}
     }
-    onConfirm(selectedSize, requireName ? participantName.trim() : null);
+    onConfirm(selectedSize, (requireName && !skipNameStep) ? participantName.trim() : null);
   };
 
   return (
@@ -174,7 +176,7 @@ export default function ConfirmationModal({
               <div className="flex gap-3 w-full">
                 <Button variant="outline" onClick={onClose} className="flex-1 border-[#e8e8e8]">ביטול</Button>
                 <Button onClick={handleConfirm} disabled={countdown > 0} className="flex-1 bg-[#5E2F88] hover:bg-[#7B3DB0] text-white">
-                  {countdown > 0 ? `אישור (${countdown})` : 'אישור סופי'}
+                  {countdown > 0 ? `אישור (${countdown})` : 'אישור'}
                 </Button>
               </div>
             </>
