@@ -101,13 +101,6 @@ export default function OrderPage() {
 
   return (
     <div className="min-h-screen bg-transparent" dir="rtl">
-      <header
-        className="py-2 px-4 text-center border-b border-[#e8e8e8] bg-transparent"
-      >
-        <h1 className="text-lg font-bold text-[#581E83]">סטודיו האפי</h1>
-        <p className="text-xs text-[#464646]/60">ניהול הזמנה ובחירת סקיצות</p>
-      </header>
-
       <PostPaymentHub
         orderContext={orderContext}
         ecomSummary={ecomSummary}

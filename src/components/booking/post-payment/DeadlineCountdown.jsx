@@ -7,12 +7,12 @@ function pad(n) {
 function TimeBox({ value, label }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-white border border-[#5E2F88]/20 flex items-center justify-center shadow-sm">
-        <span className="text-lg sm:text-xl font-bold text-[#581E83] tabular-nums">
+      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-md bg-white border border-[#5E2F88]/15 flex items-center justify-center">
+        <span className="text-base sm:text-lg font-bold text-[#581E83] tabular-nums">
           {pad(value)}
         </span>
       </div>
-      <span className="text-[11px] sm:text-xs text-[#464646]/60 font-medium">{label}</span>
+      <span className="text-[10px] text-[#464646]/60 font-medium">{label}</span>
     </div>
   );
 }
@@ -52,7 +52,7 @@ export default function DeadlineCountdown({ deadlineAt, rugCount = 1, participan
   if (remaining.expired) {
     return (
       <div className="text-center py-3">
-        <p className="text-red-600 text-sm font-medium bg-red-50 rounded-xl px-3 py-2.5">
+        <p className="text-red-600 text-xs font-medium bg-red-50 rounded-lg px-2.5 py-2">
           המועד האחרון {sketchLabel} חלף
         </p>
       </div>
@@ -63,23 +63,23 @@ export default function DeadlineCountdown({ deadlineAt, rugCount = 1, participan
 
   return (
     <div
-      className={`rounded-2xl px-3 py-3.5 text-center ${
+      className={`rounded-xl px-2.5 py-2.5 text-center ${
         isUrgent ? 'bg-orange-50 border border-orange-200' : 'bg-[#f5f0fa] border border-[#5E2F88]/10'
       }`}
       dir="rtl"
     >
-      <p className={`text-sm font-medium mb-2 ${isUrgent ? 'text-orange-800' : 'text-[#581E83]'}`}>
+      <p className={`text-xs font-medium mb-1.5 ${isUrgent ? 'text-orange-800' : 'text-[#581E83]'}`}>
         נשארו {pronoun} עוד
       </p>
 
-      <div className="flex items-center justify-center gap-1.5 sm:gap-2" dir="ltr">
+      <div className="flex items-center justify-center gap-1 sm:gap-1.5" dir="ltr">
         {remaining.days > 0 && <TimeBox value={remaining.days} label="ימים" />}
         <TimeBox value={remaining.hours} label="שעות" />
         <TimeBox value={remaining.minutes} label="דקות" />
         <TimeBox value={remaining.seconds} label="שניות" />
       </div>
 
-      <p className={`text-sm font-medium mt-2 ${isUrgent ? 'text-orange-700' : 'text-[#581E83]/80'}`}>
+      <p className={`text-xs font-medium mt-1.5 ${isUrgent ? 'text-orange-700' : 'text-[#581E83]/80'}`}>
         {sketchLabel}
       </p>
     </div>

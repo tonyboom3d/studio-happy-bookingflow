@@ -104,6 +104,26 @@ export default function SketchSelectionView({
         </div>
       )}
 
+      <Button
+        type="button"
+        disabled={catalogLoading}
+        onClick={async () => {
+          if (!catalog?.length && onFetchCatalog) {
+            setCatalogLoading(true);
+            try { await onFetchCatalog(); } finally { setCatalogLoading(false); }
+          }
+          setCatalogOpen(true);
+        }}
+        className="w-full bg-[#5E2F88] hover:bg-[#7B3DB0] text-white py-3 text-base font-medium mb-3"
+      >
+        {catalogLoading ? (
+          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+        ) : (
+          <LayoutGrid className="w-4 h-4 ml-2" />
+        )}
+        {catalogLoading ? 'טוען קטלוג...' : isSlotLocked || isReadOnly ? 'צפייה בקטלוג העיצובים' : currentSelection ? 'שינוי עיצוב מהקטלוג' : 'פתיחת קטלוג העיצובים'}
+      </Button>
+
       {currentSelection ? (
         <div className="bg-[#f5f0fa] rounded-xl p-4 mb-4 flex items-center gap-3">
           {currentSelection.productSnapshot?.image && (
@@ -134,26 +154,6 @@ export default function SketchSelectionView({
           <p className="text-sm text-[#464646]/70">עדיין לא נבחר עיצוב {rugSlots.length > 1 ? `לשטיח ${currentSlot.rugIndex + 1}` : ''}</p>
         </div>
       )}
-
-      <Button
-        type="button"
-        disabled={catalogLoading}
-        onClick={async () => {
-          if (!catalog?.length && onFetchCatalog) {
-            setCatalogLoading(true);
-            try { await onFetchCatalog(); } finally { setCatalogLoading(false); }
-          }
-          setCatalogOpen(true);
-        }}
-        className="w-full bg-[#5E2F88] hover:bg-[#7B3DB0] text-white py-3 text-base font-medium mb-4"
-      >
-        {catalogLoading ? (
-          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-        ) : (
-          <LayoutGrid className="w-4 h-4 ml-2" />
-        )}
-        {catalogLoading ? 'טוען קטלוג...' : isSlotLocked || isReadOnly ? 'צפייה בקטלוג העיצובים' : currentSelection ? 'שינוי עיצוב מהקטלוג' : 'פתיחת קטלוג העיצובים'}
-      </Button>
 
       <SketchCatalogSheet
         isOpen={catalogOpen}

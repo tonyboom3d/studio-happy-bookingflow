@@ -68,15 +68,12 @@ export default function PostPaymentHub({
     return catalog;
   }, [catalog, sendAndWait]);
 
-  const handleChooseMode = async (mode) => {
-    setIsSaving(true);
-    try {
-      const result = await sendAndWait('SET_SELECTION_MODE', { orderId: localOrder._id, mode });
-      setLocalOrder(prev => ({ ...prev, selectionMode: mode }));
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const handleChooseMode = useCallback((mode) => {
+    setLocalOrder(prev => ({ ...prev, selectionMode: mode }));
+    sendAndWait('SET_SELECTION_MODE', { orderId: localOrder._id, mode }).catch(() => {
+      setLocalOrder(prev => ({ ...prev, selectionMode: null }));
+    });
+  }, [localOrder?._id, sendAndWait]);
 
   const handleSaveParticipants = async (participants) => {
     setIsSaving(true);

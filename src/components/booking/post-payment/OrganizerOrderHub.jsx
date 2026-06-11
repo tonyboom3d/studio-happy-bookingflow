@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Check, UserCheck, Send, Copy, Settings, ChevronDown, ChevronUp,
   Calendar, MapPin, Tag, CreditCard, CalendarPlus, MessageCircle,
-  HelpCircle, X, ExternalLink, User, Mail, Phone,
+  HelpCircle, X, ExternalLink, User, Mail, Phone, MoveLeft,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
@@ -32,6 +32,12 @@ export default function OrganizerOrderHub({
   const [copiedLink, setCopiedLink] = useState(null);
   const [contactOpen, setContactOpen] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [modeChosen, setModeChosen] = useState(false);
+
+  const handleModeClick = useCallback((mode) => {
+    setModeChosen(true);
+    onChooseMode(mode);
+  }, [onChooseMode]);
 
   const workshopDate = order.workshopStart
     ? format(new Date(order.workshopStart), 'EEEE, d בMMMM yyyy', { locale: he })
@@ -246,26 +252,37 @@ export default function OrganizerOrderHub({
         participantCount={participantCount}
       />
 
-      {/* Selection mode — always switchable */}
+      {/* Selection mode */}
       <div className="space-y-2">
-        <h3 className="text-[17px] font-bold text-[#581E83] text-center">
+        <h3 className="text-[17px] font-bold text-[#581E83] text-center flex items-center justify-center gap-2">
           מי בוחר את הסקיצות?
+          <AnimatePresence>
+            {!modeChosen && (
+              <motion.span
+                initial={{ opacity: 1, x: 0 }}
+                animate={{ x: [0, -6, 0] }}
+                exit={{ opacity: 0, scale: 0.5 }}
+                transition={{ x: { repeat: Infinity, duration: 1.2, ease: 'easeInOut' }, exit: { duration: 0.2 } }}
+              >
+                <MoveLeft className="w-5 h-5 text-[#5E2F88]" />
+              </motion.span>
+            )}
+          </AnimatePresence>
         </h3>
-        <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={() => onChooseMode('organizer')}
-            disabled={isSaving}
+            onClick={() => handleModeClick('organizer')}
             className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all text-right ${
-              order.selectionMode === 'organizer'
+              modeChosen && order.selectionMode === 'organizer'
                 ? 'border-[#5E2F88] bg-[#f5f0fa] shadow-md'
                 : 'border-[#e8e8e8] bg-white hover:border-[#5E2F88]/50'
             }`}
           >
             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-              order.selectionMode === 'organizer' ? 'bg-[#5E2F88]' : 'bg-[#f5f0fa]'
+              modeChosen && order.selectionMode === 'organizer' ? 'bg-[#5E2F88]' : 'bg-[#f5f0fa]'
             }`}>
-              <UserCheck className={`w-4 h-4 ${order.selectionMode === 'organizer' ? 'text-white' : 'text-[#5E2F88]'}`} />
+              <UserCheck className={`w-4 h-4 ${modeChosen && order.selectionMode === 'organizer' ? 'text-white' : 'text-[#5E2F88]'}`} />
             </div>
             <div className="min-w-0">
               <h4 className="text-[15px] font-semibold text-[#581E83]">אבחר בעצמי</h4>
@@ -275,18 +292,17 @@ export default function OrganizerOrderHub({
 
           <button
             type="button"
-            onClick={() => onChooseMode('participants')}
-            disabled={isSaving}
+            onClick={() => handleModeClick('participants')}
             className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all text-right ${
-              order.selectionMode === 'participants'
+              modeChosen && order.selectionMode === 'participants'
                 ? 'border-[#5E2F88] bg-[#f5f0fa] shadow-md'
                 : 'border-[#e8e8e8] bg-white hover:border-[#5E2F88]/50'
             }`}
           >
             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-              order.selectionMode === 'participants' ? 'bg-[#5E2F88]' : 'bg-[#f5f0fa]'
+              modeChosen && order.selectionMode === 'participants' ? 'bg-[#5E2F88]' : 'bg-[#f5f0fa]'
             }`}>
-              <Send className={`w-4 h-4 ${order.selectionMode === 'participants' ? 'text-white' : 'text-[#5E2F88]'}`} />
+              <Send className={`w-4 h-4 ${modeChosen && order.selectionMode === 'participants' ? 'text-white' : 'text-[#5E2F88]'}`} />
             </div>
             <div className="min-w-0">
               <h4 className="text-[15px] font-semibold text-[#581E83]">שליחה לקבוצה</h4>
@@ -297,7 +313,7 @@ export default function OrganizerOrderHub({
       </div>
 
       {/* Organizer picks all sketches */}
-      {order.selectionMode === 'organizer' && (
+      {modeChosen && order.selectionMode === 'organizer' && (
         <SketchSelectionView
           rugSlots={allRugSlots}
           catalog={catalog}
@@ -310,7 +326,7 @@ export default function OrganizerOrderHub({
       )}
 
       {/* Participants mode: setup form or links */}
-      {order.selectionMode === 'participants' && !participants?.length && (
+      {modeChosen && order.selectionMode === 'participants' && !participants?.length && (
         <ParticipantSetupForm
           rugCount={order.rugCount}
           childrenCount={order.children || 0}
@@ -319,7 +335,7 @@ export default function OrganizerOrderHub({
         />
       )}
 
-      {order.selectionMode === 'participants' && participants?.length > 0 && (
+      {modeChosen && order.selectionMode === 'participants' && participants?.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-xl font-bold text-[#581E83]">משתתפים וקישורים</h3>
 
