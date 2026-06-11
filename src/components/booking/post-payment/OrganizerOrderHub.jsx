@@ -318,6 +318,8 @@ export default function OrganizerOrderHub({
           rugSlots={allRugSlots}
           catalog={catalog}
           workshopStart={order.workshopStart}
+          deadlineAt={order.deadlineAt}
+          totalRugCount={order.rugCount}
           onSelectSketch={onSelectSketch}
           onRequestUpgrade={onRequestUpgrade}
           onFetchCatalog={onFetchCatalog}
@@ -390,55 +392,55 @@ export default function OrganizerOrderHub({
               </div>
             );
           })}
+
+          {/* Settings — only in participants mode, below participant cards */}
+          <div className="border border-[#e8e8e8] rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(!settingsOpen)}
+              className="w-full flex items-center justify-between p-3 text-[17px] font-medium text-[#581E83] hover:bg-[#fafafa] transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                <span>הגדרות</span>
+              </div>
+              {settingsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            {settingsOpen && (
+              <div className="p-3 pt-0 space-y-3 border-t border-[#e8e8e8]">
+                <label className="flex items-center justify-between">
+                  <span className="text-[17px] text-[#464646]">הצגת עלות הסדנה למשתתפים</span>
+                  <input
+                    type="checkbox"
+                    checked={order.showPriceToParticipants || false}
+                    onChange={(e) => onUpdateSettings({ showPriceToParticipants: e.target.checked })}
+                    className="w-4 h-4 accent-[#5E2F88]"
+                  />
+                </label>
+                <label className="flex items-center justify-between">
+                  <span className="text-[17px] text-[#464646]">הצגת סקיצות שבחרו אחרים</span>
+                  <input
+                    type="checkbox"
+                    checked={order.showOtherSelections !== false}
+                    onChange={(e) => onUpdateSettings({ showOtherSelections: e.target.checked })}
+                    className="w-4 h-4 accent-[#5E2F88]"
+                  />
+                </label>
+                <label className="flex items-center justify-between">
+                  <span className="text-[17px] text-[#464646]">התראה כשמשתתף משלים בחירה</span>
+                  <input
+                    type="checkbox"
+                    checked={order.notifyOnSelection !== false}
+                    onChange={(e) => onUpdateSettings({ notifyOnSelection: e.target.checked })}
+                    className="w-4 h-4 accent-[#5E2F88]"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
         </div>
       )}
-
-      {/* Settings */}
-      <div className="border border-[#e8e8e8] rounded-xl overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(!settingsOpen)}
-          className="w-full flex items-center justify-between p-3 text-[17px] font-medium text-[#581E83] hover:bg-[#fafafa] transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            <span>הגדרות</span>
-          </div>
-          {settingsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
-
-        {settingsOpen && (
-          <div className="p-3 pt-0 space-y-3 border-t border-[#e8e8e8]">
-            <label className="flex items-center justify-between">
-              <span className="text-[17px] text-[#464646]">הצגת עלות הסדנה למשתתפים</span>
-              <input
-                type="checkbox"
-                checked={order.showPriceToParticipants || false}
-                onChange={(e) => onUpdateSettings({ showPriceToParticipants: e.target.checked })}
-                className="w-4 h-4 accent-[#5E2F88]"
-              />
-            </label>
-            <label className="flex items-center justify-between">
-              <span className="text-[17px] text-[#464646]">הצגת סקיצות שבחרו אחרים</span>
-              <input
-                type="checkbox"
-                checked={order.showOtherSelections !== false}
-                onChange={(e) => onUpdateSettings({ showOtherSelections: e.target.checked })}
-                className="w-4 h-4 accent-[#5E2F88]"
-              />
-            </label>
-            <label className="flex items-center justify-between">
-              <span className="text-[17px] text-[#464646]">התראה כשמשתתף משלים בחירה</span>
-              <input
-                type="checkbox"
-                checked={order.notifyOnSelection !== false}
-                onChange={(e) => onUpdateSettings({ notifyOnSelection: e.target.checked })}
-                className="w-4 h-4 accent-[#5E2F88]"
-              />
-            </label>
-          </div>
-        )}
-      </div>
 
       {/* Contact popup */}
       <AnimatePresence>

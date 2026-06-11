@@ -250,6 +250,8 @@ export default function PostPaymentHub({
           rugSlots={rugSlots}
           catalog={catalog}
           workshopStart={localOrder.workshopStart}
+          deadlineAt={localOrder.deadlineAt}
+          totalRugCount={localOrder.rugCount}
           onSelectSketch={handleSelectSketch}
           onRequestUpgrade={handleRequestUpgrade}
           onFetchCatalog={handleFetchCatalog}
