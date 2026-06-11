@@ -46,7 +46,11 @@ export default function SketchSelectionView({
 
   const daysUntilWorkshop = useMemo(() => {
     if (!workshopStart) return 999;
-    return (new Date(workshopStart).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const ws = new Date(workshopStart);
+    ws.setHours(0, 0, 0, 0);
+    return Math.floor((ws - today) / (1000 * 60 * 60 * 24));
   }, [workshopStart]);
 
   const openCatalogForSlot = useCallback(async (slotIndex) => {
@@ -219,7 +223,7 @@ export default function SketchSelectionView({
           const name = participantNames[slot.rugIndex] || slot.participantName;
           const isLocked = sel && (
             sel.selectionStatus === 'preparing' || sel.selectionStatus === 'ready' ||
-            (daysUntilWorkshop < 7 && sel.confirmedAt) || sel.upgradePaymentStatus === 'paid'
+            (daysUntilWorkshop <= 6 && sel.confirmedAt) || sel.upgradePaymentStatus === 'paid'
           );
 
           return (
@@ -274,7 +278,7 @@ export default function SketchSelectionView({
                     </p>
                     <p className="text-xs text-[#464646]/60 mt-0.5" dir="rtl">
                       {display.canvasSize === '90x90'
-                        ? <span>{'גודל: 90*90 ס"מ'}{pending && <span className="text-orange-600 font-medium">{' | תוספת: 90 ש"ח'}</span>}</span>
+                        ? <span>{'גודל: 90*90 ס"מ'}{pending && <span className="text-orange-600 font-medium">{' | תוספת: 299 ש"ח'}</span>}</span>
                         : <span>{'גודל: 60*60 ס"מ'}</span>}
                     </p>
                   </div>

@@ -52,7 +52,7 @@ export default function ConfirmationModal({
   }, [countdown]);
 
   const isExpired = deadlineAt && new Date(deadlineAt) < new Date();
-  const isFinal = daysUntilWorkshop < 7;
+  const isFinal = daysUntilWorkshop <= 6;
   const nameValid = !requireName || participantName.trim().length >= 2;
 
   const handleSizeSelect = (size) => {
@@ -125,7 +125,7 @@ export default function ConfirmationModal({
                   <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center shrink-0 text-sm font-bold text-orange-700">90</div>
                   <div className="flex-1">
                     <p className="text-[15px] font-semibold text-[#581E83]">90×90 ס״מ</p>
-                    <p className="text-xs text-orange-600 font-medium">תוספת ₪90</p>
+                    <p className="text-xs text-orange-600 font-medium">תוספת ₪299</p>
                   </div>
                 </button>
               </div>
@@ -160,17 +160,17 @@ export default function ConfirmationModal({
               <div className="bg-[#fafafa] rounded-xl p-3 w-full mb-3">
                 <p className="text-sm font-medium text-[#581E83]">{sketchTitle}</p>
                 <p className="text-xs text-[#464646]/60 mt-1" dir="rtl">
-                  {selectedSize === '90x90' ? 'גודל: 90*90 ס"מ | תוספת: 90 ש"ח' : 'גודל: 60*60 ס"מ'}
+                  {selectedSize === '90x90' ? 'גודל: 90*90 ס"מ | תוספת: 299 ש"ח' : 'גודל: 60*60 ס"מ'}
                 </p>
                 {requireName && participantName && (
                   <p className="text-xs text-[#464646]/60 mt-0.5">משתתף: {participantName}</p>
                 )}
               </div>
               {isFinal ? (
-                <p className="text-sm text-orange-700 mb-4">הסדנה בעוד פחות משבוע. לאחר האישור הבחירה תהיה <strong>סופית ולא ניתנת לשינוי</strong>.</p>
+                <p className="text-sm text-orange-700 mb-4">הסדנה בעוד 6 ימים או פחות. לאחר האישור הבחירה תהיה <strong>סופית ולא ניתנת לשינוי</strong>.</p>
               ) : (
                 <p className="text-sm text-[#464646]/70 mb-4">
-                  {selectedSize === '90x90' ? 'הבחירה תישמר רק לאחר השלמת תשלום התוספת.' : 'ניתן לשנות את בחירתכם עד שבוע לפני מועד הסדנה.'}
+                  {selectedSize === '90x90' ? 'הבחירה תישמר רק לאחר השלמת תשלום התוספת.' : 'ניתן לשנות את בחירתכם עד 6 ימים לפני מועד הסדנה.'}
                 </p>
               )}
               <div className="flex gap-3 w-full">

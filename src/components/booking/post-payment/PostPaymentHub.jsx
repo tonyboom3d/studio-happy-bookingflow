@@ -159,11 +159,13 @@ export default function PostPaymentHub({
   }, []);
 
   const handleRequestUpgrade = useCallback((upgradeSelections) => {
+    const sels = Array.isArray(upgradeSelections) ? upgradeSelections : [upgradeSelections];
+    if (!sels.length) return;
     setIsSaving(true);
     setPaymentStatus('creating');
     onSendMessage('REQUEST_UPGRADE_PAYMENT', {
       orderId: localOrder._id,
-      selections: Array.isArray(upgradeSelections) ? upgradeSelections : [upgradeSelections],
+      selections: sels,
       orderNumber: ecomSummary?.orderNumber,
       buyerName: ecomSummary?.buyerName,
       buyerPhone: ecomSummary?.buyerPhone,
