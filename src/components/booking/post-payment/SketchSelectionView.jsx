@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Check, LayoutGrid, Loader2, Pencil, ChevronDown, Clock, CreditCard, AlertCircle, Image, Ruler, UserPen, MessageCircle, ExternalLink, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -42,6 +42,17 @@ export default function SketchSelectionView({
     const map = {};
     existingSelections.forEach((s) => { map[s.rugIndex] = s; });
     return map;
+  }, [existingSelections]);
+
+  // Seed participant names from saved selections so they persist across refreshes.
+  useEffect(() => {
+    const seeded = {};
+    existingSelections.forEach((s) => {
+      if (s.participantName) seeded[s.rugIndex] = s.participantName;
+    });
+    if (Object.keys(seeded).length) {
+      setParticipantNames((prev) => ({ ...seeded, ...prev }));
+    }
   }, [existingSelections]);
 
   const daysUntilWorkshop = useMemo(() => {
@@ -221,9 +232,10 @@ export default function SketchSelectionView({
           const sel = selectionsMap[slot.rugIndex];
           const pending = pendingUpgrades[slot.rugIndex];
           const display = sel || pending;
-          const name = participantNames[slot.rugIndex] || slot.participantName;
+          const name = participantNames[slot.rugIndex] || sel?.participantName || slot.participantName;
           const sketchStatus = sel?.sketchStatus || 'Changeable';
           const sizePaidLock = sel?.upgradePaymentStatus === 'paid';
+          const awaitingApproval = sel?.upgradePaymentStatus === 'pending-payment-approval';
           const isLocked = sel && (
             sketchStatus !== 'Changeable' ||
             (daysUntilWorkshop <= 6 && sel.confirmedAt)
@@ -253,7 +265,12 @@ export default function SketchSelectionView({
                 {isLocked && (
                   <span className="text-[11px] font-bold bg-[#5E2F88] text-white px-2.5 py-1 rounded-full">נעול</span>
                 )}
-                {sel && !isLocked && (
+                {sel && !isLocked && awaitingApproval && (
+                  <span className="text-[11px] font-bold bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full flex items-center gap-1">
+                    <Clock className="w-3 h-3" />ממתין לאישור תשלום
+                  </span>
+                )}
+                {sel && !isLocked && !awaitingApproval && (
                   <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
                     sketchStatus === 'In preparation' ? 'bg-blue-100 text-blue-700' :
                     sketchStatus === 'Ready' ? 'bg-green-100 text-green-700' :
@@ -280,7 +297,7 @@ export default function SketchSelectionView({
                     </p>
                     <p className="text-xs text-[#464646]/60 mt-0.5" dir="rtl">
                       {display.canvasSize === '90x90'
-                        ? <span>{'גודל: 90*90 ס"מ'}{pending && <span className="text-orange-600 font-medium">{' | תוספת: 299 ש"ח'}</span>}</span>
+                        ? <span>{'גודל: 90*90 ס"מ'}{(pending || awaitingApproval) && <span className="text-orange-600 font-medium">{' | תוספת: 299 ש"ח'}</span>}</span>
                         : <span>{'גודל: 60*60 ס"מ'}</span>}
                     </p>
                   </div>

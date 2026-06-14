@@ -139,17 +139,19 @@ export default function PostPaymentHub({
   const handleSelectSketch = async (selection) => {
     setIsSaving(true);
     try {
+      const phoneNumber = selection.phoneNumber
+        || verifiedParticipant?.phone
+        || verifiedParticipant?.rawPhone
+        || ecomSummary?.buyerPhone
+        || null;
       const result = await sendAndWait('SAVE_SKETCH_SELECTION', {
         orderId: localOrder._id,
-        participantId: verifiedParticipant?._id || null,
         ...selection,
+        phoneNumber,
       });
       if (result?.selection) {
         setLocalSelections(prev => {
-          const filtered = prev.filter(s =>
-            !(s.rugIndex === selection.rugIndex &&
-              (s.participantId || null) === (verifiedParticipant?._id || null))
-          );
+          const filtered = prev.filter(s => s.rugIndex !== selection.rugIndex);
           return [...filtered, result.selection];
         });
       }
@@ -191,17 +193,19 @@ export default function PostPaymentHub({
   const handleRequestUpgrade = useCallback((upgradeSelections) => {
     const sels = Array.isArray(upgradeSelections) ? upgradeSelections : [upgradeSelections];
     if (!sels.length) return;
+    const phoneNumber = verifiedParticipant?.phone || verifiedParticipant?.rawPhone || ecomSummary?.buyerPhone || null;
+    const enriched = sels.map(s => ({ ...s, phoneNumber: s.phoneNumber || phoneNumber }));
     setIsSaving(true);
     setPaymentStatus('creating');
     onSendMessage('REQUEST_UPGRADE_PAYMENT', {
       orderId: localOrder._id,
-      selections: sels,
+      selections: enriched,
       orderNumber: ecomSummary?.orderNumber,
       buyerName: ecomSummary?.buyerName,
       buyerPhone: ecomSummary?.buyerPhone,
       buyerEmail: ecomSummary?.buyerEmail,
     });
-  }, [localOrder?._id, ecomSummary, onSendMessage]);
+  }, [localOrder?._id, ecomSummary, verifiedParticipant, onSendMessage]);
 
   const handleUpdateSettings = async (settings) => {
     try {

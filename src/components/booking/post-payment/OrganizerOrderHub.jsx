@@ -66,11 +66,43 @@ export default function OrganizerOrderHub({
     participantName: null,
   }));
 
-  const copyLink = (link, id) => {
-    navigator.clipboard.writeText(link).then(() => {
+  const USER_SELECTIONS_BASE = 'https://www.studiohappy.art/user-selections';
+
+  // Build the dedicated group selection link routing to the /user-selections page.
+  const buildGroupShareUrl = useCallback((token) => {
+    const params = new URLSearchParams();
+    if (order?._id) params.set('orderId', order._id);
+    if (token) params.set('token', token);
+    return `${USER_SELECTIONS_BASE}?${params.toString()}`;
+  }, [order?._id]);
+
+  const buildShareMessage = useCallback((token) => {
+    const wsName = ecomSummary?.workshopName || 'סדנת טאפטינג - סטודיו האפי';
+    const datePart = workshopDate || '';
+    const timePart = workshopStartTime || '';
+    const url = buildGroupShareUrl(token);
+    return (
+      `היי, הזמנתי לנו ${wsName}` +
+      (datePart ? ` בתאריך ${datePart}` : '') +
+      (timePart ? ` בשעה ${timePart}` : '') +
+      ` - כל מה שנשאר לך זה לבחור סקיצה שתרצה/י לתפוף בקישור הבא:\n` +
+      `${url}\n\n` +
+      `לתשומת לבך, ניתן לבחור סקיצה עד 48 שעות לפני מועד הסדנה!`
+    );
+  }, [ecomSummary, workshopDate, workshopStartTime, buildGroupShareUrl]);
+
+  const copyLink = (token, id) => {
+    const url = buildGroupShareUrl(token);
+    navigator.clipboard.writeText(url).then(() => {
       setCopiedLink(id);
       setTimeout(() => setCopiedLink(null), 2000);
     });
+  };
+
+  const shareViaWhatsApp = (token) => {
+    const text = encodeURIComponent(buildShareMessage(token));
+    const waUrl = `https://api.whatsapp.com/send?text=${text}`;
+    try { window.open(waUrl, '_blank', 'noopener,noreferrer'); } catch (_) {}
   };
 
   const selectionProgress = selections?.length || 0;
@@ -341,7 +373,7 @@ export default function OrganizerOrderHub({
             </div>
             <div className="min-w-0">
               <h4 className="text-[15px] font-semibold text-[#581E83]">שליחה לקבוצה</h4>
-              <p className="text-[14px] text-[#464646]/60 leading-tight">כל אחד יבחר</p>
+              <p className="text-[14px] text-[#464646]/60 leading-tight">כל אחד יבחר לעצמו</p>
             </div>
           </button>
         </div>
@@ -395,9 +427,11 @@ export default function OrganizerOrderHub({
             <div className="space-y-2.5 relative">
               {visibleParticipants.map((p, i) => {
                 const link = participantLinks?.find(l => l.participantId === p._id);
-                const pSelections = selections?.filter(s => s.participantId === p._id) || [];
-                const matchedByIndex = selections?.find(s => s.rugIndex === i && !s.participantId);
-                const completed = pSelections.length >= (p.rugAllowance || 1);
+                // Selections are keyed by rugIndex only — map card i -> rugIndex i.
+                const mapped = selections?.find(s => s.rugIndex === i);
+                const isSavedSelection = mapped && mapped.selectionStatus === 'selected'
+                  && (mapped.canvasSize !== '90x90' || mapped.upgradePaymentStatus === 'paid');
+                const completed = !!isSavedSelection;
                 const childCount = p.childrenCount || (p.hasChildren ? 1 : 0);
 
                 return (
@@ -450,57 +484,51 @@ export default function OrganizerOrderHub({
                           </div>
                         )}
                         {link && (
-                          <button
-                            type="button"
-                            onClick={() => copyLink(link.link, p._id)}
-                            className="text-[#5E2F88] hover:text-[#7B3DB0] transition-colors"
-                            title="העתק קישור"
-                          >
-                            {copiedLink === p._id ? (
-                              <Check className="w-4 h-4 text-green-600" />
-                            ) : (
-                              <Copy className="w-4 h-4" />
-                            )}
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => copyLink(link.token, p._id)}
+                              className="text-[#5E2F88] hover:text-[#7B3DB0] transition-colors"
+                              title="העתק קישור קבוצתי"
+                            >
+                              {copiedLink === p._id ? (
+                                <Check className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => shareViaWhatsApp(link.token)}
+                              className="text-green-600 hover:text-green-700 transition-colors"
+                              title="שיתוף בוואטסאפ"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
 
-                    {/* Show organizer's pre-selection mapped by index (only fully saved) */}
-                    {matchedByIndex && matchedByIndex.selectionStatus === 'selected' && !pSelections.length && (
-                      <div className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2 mt-1.5">
-                        {matchedByIndex.productSnapshot?.image && (
-                          <img src={matchedByIndex.productSnapshot.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-[#581E83] truncate">{matchedByIndex.productSnapshot?.title || 'סקיצה'}</p>
-                          <p className="text-[11px] text-[#464646]/50">
-                            {matchedByIndex.canvasSize === '90x90' ? '90*90 ס"מ · ₪299' : '60*60 ס"מ'}
-                            {' · '}נבחר ע"י המארגן
-                          </p>
-                        </div>
-                        <ImageIcon className="w-3.5 h-3.5 text-[#5E2F88]/40 shrink-0" />
-                      </div>
-                    )}
-
-                    {/* Show participant's own selections */}
-                    {pSelections.length > 0 && pSelections.map((sel, si) => {
-                      const sStatus = sel.sketchStatus || 'Changeable';
+                    {/* Show the mapped sketch for this card (only fully saved selections) */}
+                    {isSavedSelection && (() => {
+                      const sStatus = mapped.sketchStatus || 'Changeable';
                       return (
-                        <div key={sel._id || si} className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2 mt-1.5">
-                          {sel.productSnapshot?.image && (
-                            <img src={sel.productSnapshot.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                        <div className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2 mt-1.5">
+                          {mapped.productSnapshot?.image && (
+                            <img src={mapped.productSnapshot.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-[#581E83] truncate">{sel.productSnapshot?.title || 'סקיצה'}</p>
+                            <p className="text-xs font-medium text-[#581E83] truncate">{mapped.productSnapshot?.title || 'סקיצה'}</p>
                             <p className="text-[11px] text-[#464646]/50">
-                              {sel.canvasSize === '90x90' ? '90*90 ס"מ · ₪299' : '60*60 ס"מ'}
+                              {mapped.canvasSize === '90x90' ? '90*90 ס"מ · ₪299' : '60*60 ס"מ'}
                               {' · '}{sStatus === 'In preparation' ? 'בהכנה' : sStatus === 'Ready' ? 'מוכנה' : 'ניתן לשינוי'}
                             </p>
                           </div>
+                          <ImageIcon className="w-3.5 h-3.5 text-[#5E2F88]/40 shrink-0" />
                         </div>
                       );
-                    })}
+                    })()}
 
                     {completed && (
                       <p className="text-[11px] text-green-600 font-medium mt-1.5 flex items-center gap-1">
