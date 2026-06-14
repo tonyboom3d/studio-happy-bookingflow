@@ -340,19 +340,19 @@ export default function OrganizerOrderHub({
       {/* Selection mode */}
       <div className="space-y-2">
         <h3 className="text-[17px] font-bold text-[#581E83] text-center flex items-center justify-center gap-2">
-          מי בוחר את הסקיצות?
           <AnimatePresence>
             {!modeChosen && (
               <motion.span
                 initial={{ opacity: 1, x: 0 }}
-                animate={{ x: [0, -6, 0] }}
+                animate={{ x: [0, 6, 0] }}
                 exit={{ opacity: 0, scale: 0.5 }}
                 transition={{ x: { repeat: Infinity, duration: 1.2, ease: 'easeInOut' }, exit: { duration: 0.2 } }}
               >
-                <MoveLeft className="w-5 h-5 text-[#5E2F88]" />
+                <MoveLeft className="lucide lucide-move-left w-5 h-5 text-[#5E2F88]" />
               </motion.span>
             )}
           </AnimatePresence>
+          מי בוחר את הסקיצות?
         </h3>
         <div className="grid grid-cols-2 gap-2">
           <button
@@ -429,6 +429,11 @@ export default function OrganizerOrderHub({
         const totalGroups = participants.length;
         const totalRugsAllocated = participants.reduce((sum, p) => sum + (p.rugAllowance || 0), 0);
         const totalChildrenAllocated = participants.reduce((sum, p) => sum + (p.childrenCount || 0), 0);
+        const maxRugs = order.rugCount || 0;
+        const maxSeats = order.adults || 1;
+        const maxChildren = order.children || 0;
+        const remainingRugs = Math.max(0, maxRugs - totalRugsAllocated);
+        const remainingChildren = Math.max(0, maxChildren - totalChildrenAllocated);
 
         const startEditName = (p) => {
           setEditingNameId(p._id);
@@ -451,18 +456,22 @@ export default function OrganizerOrderHub({
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-[#f5f0fa] rounded-xl p-2.5 text-center">
                 <LayoutGrid className="w-4 h-4 text-[#5E2F88] mx-auto mb-1" />
-                <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{totalRugsAllocated}</p>
-                <p className="text-[11px] text-[#464646]/60 mt-0.5">שטיחים</p>
+                <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{totalRugsAllocated}/{maxRugs}</p>
+                <p className="text-[11px] text-[#464646]/60 mt-0.5">שטיחים מוקצים</p>
+                {remainingRugs > 0 && <p className="text-[10px] text-orange-600 font-semibold mt-0.5">נותרו {remainingRugs}</p>}
+                {remainingRugs === 0 && totalRugsAllocated > 0 && <p className="text-[10px] text-green-600 font-semibold mt-0.5">הכל מוקצה</p>}
               </div>
               <div className="bg-[#f5f0fa] rounded-xl p-2.5 text-center">
                 <Users className="w-4 h-4 text-[#5E2F88] mx-auto mb-1" />
-                <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{totalGroups}</p>
-                <p className="text-[11px] text-[#464646]/60 mt-0.5">קבוצות</p>
+                <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{totalGroups}/{maxSeats}</p>
+                <p className="text-[11px] text-[#464646]/60 mt-0.5">קבוצות / מקומות</p>
               </div>
               <div className="bg-[#f5f0fa] rounded-xl p-2.5 text-center">
                 <Baby className="w-4 h-4 text-[#5E2F88] mx-auto mb-1" />
-                <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{totalChildrenAllocated}</p>
-                <p className="text-[11px] text-[#464646]/60 mt-0.5">ילדים</p>
+                <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{totalChildrenAllocated}/{maxChildren}</p>
+                <p className="text-[11px] text-[#464646]/60 mt-0.5">ילדים מוקצים</p>
+                {remainingChildren > 0 && <p className="text-[10px] text-orange-600 font-semibold mt-0.5">נותרו {remainingChildren}</p>}
+                {remainingChildren === 0 && maxChildren > 0 && <p className="text-[10px] text-green-600 font-semibold mt-0.5">הכל מוקצה</p>}
               </div>
             </div>
 
@@ -516,19 +525,31 @@ export default function OrganizerOrderHub({
             <div className="space-y-2.5 relative">
               {visibleParticipants.map((p, i) => {
                 const link = participantLinks?.find(l => l.participantId === p._id);
-                // Selections are keyed by rugIndex only — map card i -> rugIndex i.
-                const mapped = selections?.find(s => s.rugIndex === i);
-                const isSavedSelection = mapped && mapped.selectionStatus === 'selected'
-                  && (mapped.canvasSize !== '90x90' || mapped.upgradePaymentStatus === 'paid');
-                const completed = !!isSavedSelection;
                 const childCount = p.childrenCount || 0;
                 const rugCount = p.rugAllowance || 0;
+                const hasName = !!(p.name && p.name.trim());
+
+                const groupSelections = (selections || []).filter(
+                  s => s.participantId === p._id && s.selectionStatus === 'selected'
+                    && (s.canvasSize !== '90x90' || s.upgradePaymentStatus === 'paid')
+                );
+                const rugNeeded = rugCount;
+                const completed = rugNeeded > 0 && groupSelections.length >= rugNeeded;
+
+                let badgeInfo = null;
+                if (hasName && rugNeeded > 0) {
+                  if (groupSelections.length === 0) badgeInfo = { label: 'לא הושלם', bg: 'bg-red-100', text: 'text-red-700', dot: 'bg-red-500' };
+                  else if (groupSelections.length < rugNeeded) badgeInfo = { label: 'הושלם חלקית', bg: 'bg-orange-100', text: 'text-orange-700', dot: 'bg-orange-500' };
+                  else badgeInfo = { label: 'הושלם', bg: 'bg-green-100', text: 'text-green-700', dot: 'bg-green-500' };
+                }
+
+                const canShare = hasName && !!link;
 
                 return (
                   <div
                     key={p._id || i}
                     className={`bg-white rounded-xl border-2 p-3.5 transition-all ${
-                      completed ? 'border-green-200' : 'border-[#e8e8e8]'
+                      completed ? 'border-green-200' : !hasName ? 'border-orange-200' : 'border-[#e8e8e8]'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1.5 gap-2">
@@ -545,6 +566,7 @@ export default function OrganizerOrderHub({
                             onChange={(e) => setEditingNameValue(e.target.value)}
                             onBlur={() => commitName(p)}
                             onKeyDown={(e) => { if (e.key === 'Enter') commitName(p); if (e.key === 'Escape') { setEditingNameId(null); setEditingNameValue(''); } }}
+                            placeholder="שם הקבוצה (חובה)"
                             className="text-[15px] font-semibold text-[#581E83] border-b border-[#5E2F88] outline-none bg-transparent w-32"
                           />
                         ) : (
@@ -554,23 +576,41 @@ export default function OrganizerOrderHub({
                             className="flex items-center gap-1 min-w-0 group"
                             title="עריכת שם הקבוצה"
                           >
-                            <span className="text-[15px] font-semibold text-[#581E83] truncate">{p.name}</span>
+                            <span className={`text-[15px] font-semibold truncate ${hasName ? 'text-[#581E83]' : 'text-orange-400 italic'}`}>
+                              {hasName ? p.name : 'הזינו שם קבוצה'}
+                            </span>
                             <Pencil className="w-3 h-3 text-[#5E2F88]/50 group-hover:text-[#5E2F88] shrink-0" />
                           </button>
+                        )}
+                        {badgeInfo && (
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${badgeInfo.bg} ${badgeInfo.text}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${badgeInfo.dot}`} />
+                            {badgeInfo.label}
+                          </span>
                         )}
                       </div>
 
                       {link && (
                         <button
                           type="button"
-                          onClick={() => setShareFor(p)}
-                          className="flex items-center gap-1 bg-[#5E2F88] hover:bg-[#7B3DB0] text-white text-[13px] font-medium px-3 py-1.5 rounded-lg transition-colors shrink-0"
+                          onClick={() => { if (canShare) setShareFor(p); }}
+                          disabled={!canShare}
+                          title={!hasName ? 'יש להזין שם קבוצה לפני שליחה' : ''}
+                          className={`flex items-center gap-1 text-[13px] font-medium px-3 py-1.5 rounded-lg transition-colors shrink-0 ${
+                            canShare
+                              ? 'bg-[#5E2F88] hover:bg-[#7B3DB0] text-white'
+                              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          }`}
                         >
                           <Send className="w-3.5 h-3.5" />
                           שליחה
                         </button>
                       )}
                     </div>
+
+                    {!hasName && (
+                      <p className="text-[11px] text-orange-500 font-medium mb-1.5">⚠ חובה להזין שם קבוצה כדי לשלוח או להעתיק קישור</p>
+                    )}
 
                     {/* Editable allocation: rugs + children */}
                     <div className="flex items-center gap-4 mt-2 mb-0.5">
@@ -587,8 +627,9 @@ export default function OrganizerOrderHub({
                         <span className="text-xs font-bold text-[#581E83] tabular-nums w-4 text-center">{rugCount}</span>
                         <button
                           type="button"
-                          onClick={() => onUpdateParticipant(p._id, { rugAllowance: rugCount + 1 })}
-                          className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa]"
+                          onClick={() => { if (remainingRugs > 0) onUpdateParticipant(p._id, { rugAllowance: rugCount + 1 }); }}
+                          disabled={remainingRugs <= 0}
+                          className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
@@ -608,8 +649,9 @@ export default function OrganizerOrderHub({
                         <span className="text-xs font-bold text-[#581E83] tabular-nums w-4 text-center">{childCount}</span>
                         <button
                           type="button"
-                          onClick={() => onUpdateParticipant(p._id, { childrenCount: childCount + 1 })}
-                          className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa]"
+                          onClick={() => { if (remainingChildren > 0) onUpdateParticipant(p._id, { childrenCount: childCount + 1 }); }}
+                          disabled={remainingChildren <= 0}
+                          className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
@@ -617,25 +659,29 @@ export default function OrganizerOrderHub({
                       </div>
                     </div>
 
-                    {/* Show the mapped sketch for this card (only fully saved selections) */}
-                    {isSavedSelection && (() => {
-                      const sStatus = mapped.sketchStatus || 'Changeable';
-                      return (
-                        <div className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2 mt-1.5">
-                          {mapped.productSnapshot?.image && (
-                            <img src={mapped.productSnapshot.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-[#581E83] truncate">{mapped.productSnapshot?.title || 'סקיצה'}</p>
-                            <p className="text-[11px] text-[#464646]/50">
-                              {mapped.canvasSize === '90x90' ? '90*90 ס"מ · ₪299' : '60*60 ס"מ'}
-                              {' · '}{sStatus === 'In preparation' ? 'בהכנה' : sStatus === 'Ready' ? 'מוכנה' : 'ניתן לשינוי'}
-                            </p>
-                          </div>
-                          <ImageIcon className="w-3.5 h-3.5 text-[#5E2F88]/40 shrink-0" />
-                        </div>
-                      );
-                    })()}
+                    {/* Show sketches selected by the participant via their link (not organizer-chosen) */}
+                    {groupSelections.length > 0 && (
+                      <div className="space-y-1.5 mt-1.5">
+                        {groupSelections.map((sel, si) => {
+                          const sStatus = sel.sketchStatus || 'Changeable';
+                          return (
+                            <div key={sel._id || si} className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2">
+                              {sel.productSnapshot?.image && (
+                                <img src={sel.productSnapshot.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-[#581E83] truncate">{sel.productSnapshot?.title || 'סקיצה'}</p>
+                                <p className="text-[11px] text-[#464646]/50">
+                                  {sel.canvasSize === '90x90' ? '90*90 ס"מ · ₪299' : '60*60 ס"מ'}
+                                  {' · '}{sStatus === 'In preparation' ? 'בהכנה' : sStatus === 'Ready' ? 'מוכנה' : 'ניתן לשינוי'}
+                                </p>
+                              </div>
+                              <ImageIcon className="w-3.5 h-3.5 text-[#5E2F88]/40 shrink-0" />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     {completed && (
                       <p className="text-[11px] text-green-600 font-medium mt-1.5 flex items-center gap-1">
@@ -676,7 +722,7 @@ export default function OrganizerOrderHub({
 
       {/* Group share popup */}
       <AnimatePresence>
-        {shareFor && (() => {
+        {shareFor && shareFor.name && shareFor.name.trim() && (() => {
           const link = participantLinks?.find(l => l.participantId === shareFor._id);
           const token = link?.token;
           return (
