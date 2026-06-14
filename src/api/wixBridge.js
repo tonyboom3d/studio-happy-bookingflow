@@ -200,7 +200,7 @@ function handleWixMessage(event) {
             break;
 
         case 'TOKEN_ACCESS':
-            notifyListeners({ tokenAccess: data.token });
+            notifyListeners({ tokenAccess: data.token, groupInfo: data.groupInfo || null });
             break;
 
         default:

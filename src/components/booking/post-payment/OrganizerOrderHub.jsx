@@ -4,6 +4,7 @@ import {
   Check, UserCheck, Send, Copy, Settings, ChevronDown, ChevronUp,
   Calendar, MapPin, Tag, CreditCard, CalendarPlus, MessageCircle,
   HelpCircle, X, ExternalLink, User, Mail, Phone, MoveLeft, Baby, Plus, Minus, Image as ImageIcon,
+  Pencil, Link2, LayoutGrid, Users,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
@@ -25,6 +26,7 @@ export default function OrganizerOrderHub({
   onSelectSketch,
   onRequestUpgrade,
   onUpdateSettings,
+  onUpdateParticipant,
   onFetchCatalog,
   isSaving,
 }) {
@@ -35,6 +37,9 @@ export default function OrganizerOrderHub({
   const [modeChosen, setModeChosen] = useState(false);
   const [orderDetailsCollapsed, setOrderDetailsCollapsed] = useState(false);
   const [participantsExpanded, setParticipantsExpanded] = useState(false);
+  const [shareFor, setShareFor] = useState(null); // participant currently being shared
+  const [editingNameId, setEditingNameId] = useState(null);
+  const [editingNameValue, setEditingNameValue] = useState('');
 
   const handleModeClick = useCallback((mode) => {
     setModeChosen(true);
@@ -69,18 +74,24 @@ export default function OrganizerOrderHub({
   const USER_SELECTIONS_BASE = 'https://www.studiohappy.art/user-selections';
 
   // Build the dedicated group selection link routing to the /user-selections page.
-  const buildGroupShareUrl = useCallback((token) => {
+  // The group allocation (name, rugs, children) is embedded so the recipient page
+  // can display the exact intended state.
+  const buildGroupShareUrl = useCallback((token, participant) => {
     const params = new URLSearchParams();
     if (order?._id) params.set('orderId', order._id);
     if (token) params.set('token', token);
+    if (participant?.name) params.set('group', participant.name);
+    if (participant?.rugAllowance) params.set('rugs', String(participant.rugAllowance));
+    const c = participant?.childrenCount || 0;
+    if (c) params.set('children', String(c));
     return `${USER_SELECTIONS_BASE}?${params.toString()}`;
   }, [order?._id]);
 
-  const buildShareMessage = useCallback((token) => {
+  const buildShareMessage = useCallback((token, participant) => {
     const wsName = ecomSummary?.workshopName || 'סדנת טאפטינג - סטודיו האפי';
     const datePart = workshopDate || '';
     const timePart = workshopStartTime || '';
-    const url = buildGroupShareUrl(token);
+    const url = buildGroupShareUrl(token, participant);
     return (
       `היי, הזמנתי לנו ${wsName}` +
       (datePart ? ` בתאריך ${datePart}` : '') +
@@ -91,18 +102,25 @@ export default function OrganizerOrderHub({
     );
   }, [ecomSummary, workshopDate, workshopStartTime, buildGroupShareUrl]);
 
-  const copyLink = (token, id) => {
-    const url = buildGroupShareUrl(token);
+  const copyLink = (token, id, participant) => {
+    const url = buildGroupShareUrl(token, participant);
     navigator.clipboard.writeText(url).then(() => {
       setCopiedLink(id);
       setTimeout(() => setCopiedLink(null), 2000);
     });
   };
 
-  const shareViaWhatsApp = (token) => {
-    const text = encodeURIComponent(buildShareMessage(token));
+  const shareViaWhatsApp = (token, participant) => {
+    const text = encodeURIComponent(buildShareMessage(token, participant));
     const waUrl = `https://api.whatsapp.com/send?text=${text}`;
     try { window.open(waUrl, '_blank', 'noopener,noreferrer'); } catch (_) {}
+  };
+
+  const shareViaEmail = (token, participant) => {
+    const wsName = ecomSummary?.workshopName || 'סדנת טאפטינג - סטודיו האפי';
+    const subject = encodeURIComponent(`בחירת סקיצה - ${wsName}`);
+    const body = encodeURIComponent(buildShareMessage(token, participant));
+    try { window.open(`mailto:?subject=${subject}&body=${body}`, '_blank'); } catch (_) {}
   };
 
   const selectionProgress = selections?.length || 0;
@@ -407,22 +425,93 @@ export default function OrganizerOrderHub({
       {modeChosen && order.selectionMode === 'participants' && participants?.length > 0 && (() => {
         const visibleParticipants = participantsExpanded ? participants : participants.slice(0, 4);
         const hasHidden = participants.length > 4 && !participantsExpanded;
-        const childrenInOrder = order.children || 0;
+
+        const totalGroups = participants.length;
+        const totalRugsAllocated = participants.reduce((sum, p) => sum + (p.rugAllowance || 0), 0);
+        const totalChildrenAllocated = participants.reduce((sum, p) => sum + (p.childrenCount || 0), 0);
+
+        const startEditName = (p) => {
+          setEditingNameId(p._id);
+          setEditingNameValue(p.name || '');
+        };
+        const commitName = (p) => {
+          const trimmed = (editingNameValue || '').trim();
+          if (trimmed && trimmed !== p.name) {
+            onUpdateParticipant(p._id, { name: trimmed });
+          }
+          setEditingNameId(null);
+          setEditingNameValue('');
+        };
 
         return (
           <div className="space-y-3">
             <h3 className="text-xl font-bold text-[#581E83]">משתתפים וקישורים</h3>
 
-            {!participantLinks?.length && (
-              <Button
-                onClick={onGenerateLinks}
-                disabled={isSaving}
-                className="w-full bg-[#5E2F88] hover:bg-[#7B3DB0] text-white"
+            {/* Allocation summary */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-[#f5f0fa] rounded-xl p-2.5 text-center">
+                <LayoutGrid className="w-4 h-4 text-[#5E2F88] mx-auto mb-1" />
+                <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{totalRugsAllocated}</p>
+                <p className="text-[11px] text-[#464646]/60 mt-0.5">שטיחים</p>
+              </div>
+              <div className="bg-[#f5f0fa] rounded-xl p-2.5 text-center">
+                <Users className="w-4 h-4 text-[#5E2F88] mx-auto mb-1" />
+                <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{totalGroups}</p>
+                <p className="text-[11px] text-[#464646]/60 mt-0.5">קבוצות</p>
+              </div>
+              <div className="bg-[#f5f0fa] rounded-xl p-2.5 text-center">
+                <Baby className="w-4 h-4 text-[#5E2F88] mx-auto mb-1" />
+                <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{totalChildrenAllocated}</p>
+                <p className="text-[11px] text-[#464646]/60 mt-0.5">ילדים</p>
+              </div>
+            </div>
+
+            {/* Settings — moved to top of the participant list */}
+            <div className="border border-[#e8e8e8] rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(!settingsOpen)}
+                className="w-full flex items-center justify-between p-3 text-[17px] font-medium text-[#581E83] hover:bg-[#fafafa] transition-colors"
               >
-                <Send className="w-4 h-4 ml-2" />
-                יצירת קישורים ושליחה
-              </Button>
-            )}
+                <div className="flex items-center gap-2">
+                  <Settings className="w-4 h-4" />
+                  <span>הגדרות</span>
+                </div>
+                {settingsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+
+              {settingsOpen && (
+                <div className="p-3 pt-0 space-y-3 border-t border-[#e8e8e8]">
+                  <label className="flex items-center justify-between">
+                    <span className="text-[17px] text-[#464646]">הצגת עלות הסדנה למשתתפים</span>
+                    <input
+                      type="checkbox"
+                      checked={order.showPriceToParticipants === true}
+                      onChange={(e) => onUpdateSettings({ showPriceToParticipants: e.target.checked })}
+                      className="w-4 h-4 accent-[#5E2F88]"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between">
+                    <span className="text-[17px] text-[#464646]">הצגת סקיצות שבחרו אחרים</span>
+                    <input
+                      type="checkbox"
+                      checked={order.showOtherSelections === true}
+                      onChange={(e) => onUpdateSettings({ showOtherSelections: e.target.checked })}
+                      className="w-4 h-4 accent-[#5E2F88]"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between">
+                    <span className="text-[17px] text-[#464646]">התראה כשמשתתף משלים בחירה</span>
+                    <input
+                      type="checkbox"
+                      checked={order.notifyOnSelection === true}
+                      onChange={(e) => onUpdateSettings({ notifyOnSelection: e.target.checked })}
+                      className="w-4 h-4 accent-[#5E2F88]"
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
 
             <div className="space-y-2.5 relative">
               {visibleParticipants.map((p, i) => {
@@ -432,7 +521,8 @@ export default function OrganizerOrderHub({
                 const isSavedSelection = mapped && mapped.selectionStatus === 'selected'
                   && (mapped.canvasSize !== '90x90' || mapped.upgradePaymentStatus === 'paid');
                 const completed = !!isSavedSelection;
-                const childCount = p.childrenCount || (p.hasChildren ? 1 : 0);
+                const childCount = p.childrenCount || 0;
+                const rugCount = p.rugAllowance || 0;
 
                 return (
                   <div
@@ -441,72 +531,89 @@ export default function OrganizerOrderHub({
                       completed ? 'border-green-200' : 'border-[#e8e8e8]'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                    <div className="flex items-center justify-between mb-1.5 gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                           completed ? 'bg-green-100 text-green-700' : 'bg-[#f5f0fa] text-[#5E2F88]'
                         }`}>
                           {completed ? <Check className="w-3.5 h-3.5" /> : i + 1}
                         </div>
-                        <div>
-                          <span className="text-[15px] font-semibold text-[#581E83]">{p.name}</span>
-                          <span className="text-[13px] text-[#464646]/60 mr-1.5">
-                            · {p.rugAllowance || 1} {(p.rugAllowance || 1) === 1 ? 'שטיח' : 'שטיחים'}
-                          </span>
-                        </div>
+                        {editingNameId === p._id ? (
+                          <input
+                            autoFocus
+                            value={editingNameValue}
+                            onChange={(e) => setEditingNameValue(e.target.value)}
+                            onBlur={() => commitName(p)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') commitName(p); if (e.key === 'Escape') { setEditingNameId(null); setEditingNameValue(''); } }}
+                            className="text-[15px] font-semibold text-[#581E83] border-b border-[#5E2F88] outline-none bg-transparent w-32"
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => startEditName(p)}
+                            className="flex items-center gap-1 min-w-0 group"
+                            title="עריכת שם הקבוצה"
+                          >
+                            <span className="text-[15px] font-semibold text-[#581E83] truncate">{p.name}</span>
+                            <Pencil className="w-3 h-3 text-[#5E2F88]/50 group-hover:text-[#5E2F88] shrink-0" />
+                          </button>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {childrenInOrder > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Baby className="w-3.5 h-3.5 text-[#5E2F88]" />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const current = p.childrenCount || 0;
-                                if (current > 0) onUpdateSettings({ _updateParticipantChildren: { participantId: p._id, childrenCount: current - 1 } });
-                              }}
-                              disabled={!childCount}
-                              className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="text-xs font-bold text-[#581E83] tabular-nums w-4 text-center">{childCount}</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const current = p.childrenCount || 0;
-                                onUpdateSettings({ _updateParticipantChildren: { participantId: p._id, childrenCount: current + 1 } });
-                              }}
-                              className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa]"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )}
-                        {link && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => copyLink(link.token, p._id)}
-                              className="text-[#5E2F88] hover:text-[#7B3DB0] transition-colors"
-                              title="העתק קישור קבוצתי"
-                            >
-                              {copiedLink === p._id ? (
-                                <Check className="w-4 h-4 text-green-600" />
-                              ) : (
-                                <Copy className="w-4 h-4" />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => shareViaWhatsApp(link.token)}
-                              className="text-green-600 hover:text-green-700 transition-colors"
-                              title="שיתוף בוואטסאפ"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
+
+                      {link && (
+                        <button
+                          type="button"
+                          onClick={() => setShareFor(p)}
+                          className="flex items-center gap-1 bg-[#5E2F88] hover:bg-[#7B3DB0] text-white text-[13px] font-medium px-3 py-1.5 rounded-lg transition-colors shrink-0"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          שליחה
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Editable allocation: rugs + children */}
+                    <div className="flex items-center gap-4 mt-2 mb-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <LayoutGrid className="w-3.5 h-3.5 text-[#5E2F88]" />
+                        <button
+                          type="button"
+                          onClick={() => { if (rugCount > 0) onUpdateParticipant(p._id, { rugAllowance: rugCount - 1 }); }}
+                          disabled={rugCount <= 0}
+                          className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="text-xs font-bold text-[#581E83] tabular-nums w-4 text-center">{rugCount}</span>
+                        <button
+                          type="button"
+                          onClick={() => onUpdateParticipant(p._id, { rugAllowance: rugCount + 1 })}
+                          className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa]"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                        <span className="text-[11px] text-[#464646]/50">שטיחים</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <Baby className="w-3.5 h-3.5 text-[#5E2F88]" />
+                        <button
+                          type="button"
+                          onClick={() => { if (childCount > 0) onUpdateParticipant(p._id, { childrenCount: childCount - 1 }); }}
+                          disabled={childCount <= 0}
+                          className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="text-xs font-bold text-[#581E83] tabular-nums w-4 text-center">{childCount}</span>
+                        <button
+                          type="button"
+                          onClick={() => onUpdateParticipant(p._id, { childrenCount: childCount + 1 })}
+                          className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa]"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                        <span className="text-[11px] text-[#464646]/50">ילדים</span>
                       </div>
                     </div>
 
@@ -563,56 +670,100 @@ export default function OrganizerOrderHub({
                 </button>
               )}
             </div>
-
-            {/* Settings — only in participants mode, below participant cards */}
-            <div className="border border-[#e8e8e8] rounded-xl overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(!settingsOpen)}
-                className="w-full flex items-center justify-between p-3 text-[17px] font-medium text-[#581E83] hover:bg-[#fafafa] transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <Settings className="w-4 h-4" />
-                  <span>הגדרות</span>
-                </div>
-                {settingsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
-
-              {settingsOpen && (
-                <div className="p-3 pt-0 space-y-3 border-t border-[#e8e8e8]">
-                  <label className="flex items-center justify-between">
-                    <span className="text-[17px] text-[#464646]">הצגת עלות הסדנה למשתתפים</span>
-                    <input
-                      type="checkbox"
-                      checked={order.showPriceToParticipants || false}
-                      onChange={(e) => onUpdateSettings({ showPriceToParticipants: e.target.checked })}
-                      className="w-4 h-4 accent-[#5E2F88]"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between">
-                    <span className="text-[17px] text-[#464646]">הצגת סקיצות שבחרו אחרים</span>
-                    <input
-                      type="checkbox"
-                      checked={order.showOtherSelections !== false}
-                      onChange={(e) => onUpdateSettings({ showOtherSelections: e.target.checked })}
-                      className="w-4 h-4 accent-[#5E2F88]"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between">
-                    <span className="text-[17px] text-[#464646]">התראה כשמשתתף משלים בחירה</span>
-                    <input
-                      type="checkbox"
-                      checked={order.notifyOnSelection !== false}
-                      onChange={(e) => onUpdateSettings({ notifyOnSelection: e.target.checked })}
-                      className="w-4 h-4 accent-[#5E2F88]"
-                    />
-                  </label>
-                </div>
-              )}
-            </div>
           </div>
         );
       })()}
+
+      {/* Group share popup */}
+      <AnimatePresence>
+        {shareFor && (() => {
+          const link = participantLinks?.find(l => l.participantId === shareFor._id);
+          const token = link?.token;
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+              onClick={() => setShareFor(null)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 relative"
+                dir="rtl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  onClick={() => setShareFor(null)}
+                  className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646] transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="text-center">
+                  <Send className="w-9 h-9 text-[#5E2F88] mx-auto mb-2" />
+                  <h3 className="text-[19px] font-bold text-[#581E83]">שליחת קישור ל{shareFor.name}</h3>
+                  <p className="text-[14px] text-[#464646]/70 mt-1">
+                    {(shareFor.rugAllowance || 0)} {(shareFor.rugAllowance || 0) === 1 ? 'שטיח' : 'שטיחים'}
+                    {(shareFor.childrenCount || 0) > 0 && ` · ${shareFor.childrenCount} ${shareFor.childrenCount === 1 ? 'ילד' : 'ילדים'}`}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => { shareViaWhatsApp(token, shareFor); setShareFor(null); }}
+                    className="flex items-center gap-3 w-full p-3.5 rounded-xl border-2 border-[#e8e8e8] bg-white hover:border-green-400 hover:bg-green-50 transition-colors text-right"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+                      <MessageCircle className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[16px] font-semibold text-[#464646]">שיתוף בוואטסאפ</span>
+                      <p className="text-[13px] text-[#464646]/60 mt-0.5">שלחו את הקישור בהודעה</p>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-[#464646]/40 shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { shareViaEmail(token, shareFor); setShareFor(null); }}
+                    className="flex items-center gap-3 w-full p-3.5 rounded-xl border-2 border-[#e8e8e8] bg-white hover:border-[#5E2F88] hover:bg-[#f5f0fa] transition-colors text-right"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-[#5E2F88] flex items-center justify-center shrink-0">
+                      <Mail className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[16px] font-semibold text-[#464646]">שליחה במייל</span>
+                      <p className="text-[13px] text-[#464646]/60 mt-0.5">פתחו אימייל עם הקישור</p>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-[#464646]/40 shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => copyLink(token, shareFor._id, shareFor)}
+                    className="flex items-center gap-3 w-full p-3.5 rounded-xl border-2 border-[#e8e8e8] bg-white hover:border-[#5E2F88] hover:bg-[#f5f0fa] transition-colors text-right"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-[#f5f0fa] flex items-center justify-center shrink-0">
+                      {copiedLink === shareFor._id ? <Check className="w-5 h-5 text-green-600" /> : <Link2 className="w-5 h-5 text-[#5E2F88]" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[16px] font-semibold text-[#464646]">{copiedLink === shareFor._id ? 'הקישור הועתק!' : 'העתקת קישור'}</span>
+                      <p className="text-[13px] text-[#464646]/60 mt-0.5">העתיקו ושתפו בכל מקום</p>
+                    </div>
+                    <Copy className="w-4 h-4 text-[#464646]/40 shrink-0" />
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* Contact popup */}
       <AnimatePresence>

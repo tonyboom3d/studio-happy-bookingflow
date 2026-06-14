@@ -17,6 +17,7 @@ export default function PostPaymentHub({
   onSendMessage,
   isLoading,
   orderError,
+  groupInfo,
 }) {
   const [localOrder, setLocalOrder] = useState(orderContext?.order || null);
   const [localParticipants, setLocalParticipants] = useState(orderContext?.participants || []);
@@ -100,12 +101,44 @@ export default function PostPaymentHub({
         });
         if (result?.participants) {
           setLocalParticipants(result.participants);
+          // Auto-generate share links so each group card has a ready link.
+          const linkResult = await sendAndWait('GENERATE_PARTICIPANT_LINKS', { orderId: localOrder._id });
+          if (linkResult?.links) setParticipantLinks(linkResult.links);
         }
       } finally {
         setIsSaving(false);
       }
     }
   }, [localOrder?._id, localOrder?.rugCount, localOrder?.children, localParticipants, sendAndWait]);
+
+  // Ensure share links exist whenever participants are present (e.g. on refresh).
+  useEffect(() => {
+    if (
+      role === 'organizer' &&
+      localOrder?.selectionMode === 'participants' &&
+      localParticipants?.length > 0 &&
+      !participantLinks?.length
+    ) {
+      (async () => {
+        const linkResult = await sendAndWait('GENERATE_PARTICIPANT_LINKS', { orderId: localOrder._id });
+        if (linkResult?.links) setParticipantLinks(linkResult.links);
+      })();
+    }
+  }, [role, localOrder?.selectionMode, localOrder?._id, localParticipants, participantLinks, sendAndWait]);
+
+  const handleUpdateParticipant = useCallback(async (participantId, updates) => {
+    setLocalParticipants(prev => prev.map(p => {
+      if (p._id !== participantId) return p;
+      const next = { ...p, ...updates };
+      if (updates.childrenCount !== undefined) next.hasChildren = updates.childrenCount > 0;
+      return next;
+    }));
+    try {
+      await sendAndWait('UPDATE_PARTICIPANT', { participantId, updates });
+    } catch (e) {
+      console.error('Failed to update participant:', e);
+    }
+  }, [sendAndWait]);
 
   const handleSaveParticipants = async (participants) => {
     setIsSaving(true);
@@ -331,6 +364,7 @@ export default function PostPaymentHub({
           onSelectSketch={handleSelectSketch}
           onRequestUpgrade={handleRequestUpgrade}
           onUpdateSettings={handleUpdateSettings}
+          onUpdateParticipant={handleUpdateParticipant}
           onFetchCatalog={handleFetchCatalog}
           isSaving={isSaving}
         />
@@ -350,8 +384,11 @@ export default function PostPaymentHub({
 
   // Participant with verified access
   if (role === 'participant' && verifiedParticipant) {
+    const groupName = verifiedParticipant.name || groupInfo?.name;
+    const rugQty = verifiedParticipant.rugAllowance || groupInfo?.rugs || 1;
+    const childrenQty = verifiedParticipant.childrenCount ?? groupInfo?.children ?? 0;
     const rugSlots = Array.from(
-      { length: verifiedParticipant.rugAllowance || 1 },
+      { length: rugQty },
       (_, i) => ({
         rugIndex: i,
         participantName: verifiedParticipant.name,
@@ -367,16 +404,20 @@ export default function PostPaymentHub({
           className="text-center mb-4"
         >
           <h2 className="text-xl font-bold text-[#581E83]">
-            היי {verifiedParticipant.name}!
+            היי {groupName}!
           </h2>
           <p className="text-sm text-[#464646]/70 mt-1">
             בחר/י את הסקיצה לשטיח שלך
+          </p>
+          <p className="text-[13px] text-[#5E2F88] font-medium mt-1.5">
+            {rugQty} {rugQty === 1 ? 'שטיח' : 'שטיחים'}
+            {childrenQty > 0 && ` · ${childrenQty} ${childrenQty === 1 ? 'ילד' : 'ילדים'}`}
           </p>
         </motion.div>
 
         <DeadlineCountdown
           deadlineAt={localOrder.deadlineAt}
-          rugCount={verifiedParticipant.rugAllowance || 1}
+          rugCount={rugQty}
           participantCount={1}
         />
 

@@ -20,6 +20,7 @@ export default function OrderPage() {
   const [catalog, setCatalog] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [orderError, setOrderError] = useState(false);
+  const [groupInfo, setGroupInfo] = useState(null);
 
   useEffect(() => {
     const cached = getWixData();
@@ -63,6 +64,7 @@ export default function OrderPage() {
 
       if (data.tokenAccess) {
         setRole('participant');
+        if (data.groupInfo) setGroupInfo(data.groupInfo);
       }
     });
 
@@ -110,6 +112,7 @@ export default function OrderPage() {
         onSendMessage={handleSendMessage}
         isLoading={isLoading}
         orderError={orderError}
+        groupInfo={groupInfo}
       />
     </div>
   );
