@@ -4,7 +4,7 @@ import {
   Check, UserCheck, Send, Copy, Settings, ChevronDown, ChevronUp,
   Calendar, MapPin, Tag, CreditCard, CalendarPlus, MessageCircle,
   HelpCircle, X, ExternalLink, User, Mail, Phone, MoveLeft, Baby, Plus, Minus, Image as ImageIcon,
-  Pencil, Link2, LayoutGrid, Users,
+  Pencil, Link2, LayoutGrid, Users, Trash2, AlertTriangle, UserPlus, Lock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
@@ -22,7 +22,8 @@ export default function OrganizerOrderHub({
   participantLinks,
   onChooseMode,
   onSaveParticipants,
-  onGenerateLinks,
+  onCreateGroup,
+  onDeleteGroup,
   onSelectSketch,
   onRequestUpgrade,
   onUpdateSettings,
@@ -40,6 +41,20 @@ export default function OrganizerOrderHub({
   const [shareFor, setShareFor] = useState(null); // participant currently being shared
   const [editingNameId, setEditingNameId] = useState(null);
   const [editingNameValue, setEditingNameValue] = useState('');
+
+  // Group creation modal
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupSeats, setNewGroupSeats] = useState(1);
+  const [newGroupChildren, setNewGroupChildren] = useState(0);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+
+  // Group deletion (double confirmation)
+  const [deleteFor, setDeleteFor] = useState(null);
+  const [deleteStep, setDeleteStep] = useState(1);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const handleModeClick = useCallback((mode) => {
     setModeChosen(true);
@@ -152,6 +167,77 @@ export default function OrganizerOrderHub({
   };
 
   const participantCount = order.adults || 1;
+
+  // Allocation accounting (1 rug == 1 adult/seat in this product).
+  const maxRugs = order.rugCount || 0;
+  const maxChildren = order.children || 0;
+  const usedRugs = (participants || []).reduce((s, p) => s + (p.rugAllowance || 0), 0);
+  const usedChildren = (participants || []).reduce((s, p) => s + (p.childrenCount || 0), 0);
+  const remainingRugs = Math.max(0, maxRugs - usedRugs);
+  const remainingChildren = Math.max(0, maxChildren - usedChildren);
+
+  // 48h-before-workshop lock (server enforces authoritatively; this is UX only).
+  const within48h = order.workshopStart
+    ? (new Date(order.workshopStart).getTime() - Date.now() <= 48 * 60 * 60 * 1000)
+    : false;
+
+  const openCreate = () => {
+    if (remainingRugs <= 0) return;
+    setNewGroupName('');
+    setNewGroupSeats(1);
+    setNewGroupChildren(0);
+    setCreateError('');
+    setCreateOpen(true);
+  };
+
+  const submitCreate = async () => {
+    const name = newGroupName.trim();
+    if (!name) { setCreateError('יש להזין שם קבוצה'); return; }
+    if (newGroupSeats < 1 || newGroupSeats > remainingRugs) { setCreateError('מספר המשתתפים חורג מהזמין'); return; }
+    if (newGroupChildren > remainingChildren) { setCreateError('מספר הילדים חורג מהזמין'); return; }
+    setCreating(true);
+    setCreateError('');
+    try {
+      const created = await onCreateGroup({ name, participants: newGroupSeats, children: newGroupChildren });
+      if (created) {
+        setCreateOpen(false);
+        setShareFor(created); // D: immediately open the sharing modal
+      } else {
+        setCreateError('יצירת הקבוצה נכשלה, נסו שוב');
+      }
+    } catch (e) {
+      const msg = String(e?.message || '');
+      if (msg.startsWith('RUG_LIMIT_EXCEEDED')) setCreateError('אין מספיק שטיחים פנויים');
+      else if (msg.startsWith('CHILDREN_LIMIT_EXCEEDED')) setCreateError('אין מספיק מקומות לילדים');
+      else setCreateError('יצירת הקבוצה נכשלה, נסו שוב');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const askDelete = (p) => {
+    if (within48h) return;
+    setDeleteError('');
+    setDeleteStep(1);
+    setDeleteFor(p);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteStep === 1) { setDeleteStep(2); return; }
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await onDeleteGroup(deleteFor._id);
+      setDeleteFor(null);
+      setDeleteStep(1);
+    } catch (e) {
+      const msg = String(e?.message || '');
+      if (msg.includes('DELETE_LOCKED_48H')) setDeleteError('לא ניתן למחוק קבוצה בתוך 48 שעות מהסדנה');
+      else setDeleteError('מחיקת הקבוצה נכשלה, נסו שוב');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="py-3 space-y-3" dir="rtl">
@@ -414,311 +500,483 @@ export default function OrganizerOrderHub({
         />
       )}
 
-      {/* Participants mode: loading while auto-generating */}
-      {modeChosen && order.selectionMode === 'participants' && !participants?.length && (
-        <div className="flex items-center justify-center gap-2 py-6 text-sm text-[#5E2F88]">
-          <div className="w-4 h-4 border-2 border-[#5E2F88] border-t-transparent rounded-full animate-spin" />
-          מכין את רשימת המשתתפים...
-        </div>
-      )}
+      {modeChosen && order.selectionMode === 'participants' && (
+        <div className="space-y-3">
+          <h3 className="text-xl font-bold text-[#581E83]">קבוצות וקישורים</h3>
 
-      {modeChosen && order.selectionMode === 'participants' && participants?.length > 0 && (() => {
-        const visibleParticipants = participantsExpanded ? participants : participants.slice(0, 4);
-        const hasHidden = participants.length > 4 && !participantsExpanded;
+          {/* B: short explanatory text */}
+          <div className="bg-[#f5f0fa] border border-[#5E2F88]/15 rounded-xl p-3 text-[14px] text-[#464646] leading-relaxed">
+            צרו קבוצה לכל אדם או קבוצת אנשים. לכל קבוצה ייווצר קישור ייעודי שתוכלו לשלוח, וכל אחד יבחר את הסקיצות שלו בעצמו. ניתן ליצור קבוצות עד שכל השטיחים מוקצים.
+          </div>
 
-        const totalGroups = participants.length;
-        const totalRugsAllocated = participants.reduce((sum, p) => sum + (p.rugAllowance || 0), 0);
-        const totalChildrenAllocated = participants.reduce((sum, p) => sum + (p.childrenCount || 0), 0);
-        const maxRugs = order.rugCount || 0;
-        const maxSeats = order.adults || 1;
-        const maxChildren = order.children || 0;
-        const remainingRugs = Math.max(0, maxRugs - totalRugsAllocated);
-        const remainingChildren = Math.max(0, maxChildren - totalChildrenAllocated);
-
-        const startEditName = (p) => {
-          setEditingNameId(p._id);
-          setEditingNameValue(p.name || '');
-        };
-        const commitName = (p) => {
-          const trimmed = (editingNameValue || '').trim();
-          if (trimmed && trimmed !== p.name) {
-            onUpdateParticipant(p._id, { name: trimmed });
-          }
-          setEditingNameId(null);
-          setEditingNameValue('');
-        };
-
-        return (
-          <div className="space-y-3">
-            <h3 className="text-xl font-bold text-[#581E83]">משתתפים וקישורים</h3>
-
-            {/* Allocation summary */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-[#f5f0fa] rounded-xl p-2.5 text-center">
-                <LayoutGrid className="w-4 h-4 text-[#5E2F88] mx-auto mb-1" />
-                <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{totalRugsAllocated}/{maxRugs}</p>
-                <p className="text-[11px] text-[#464646]/60 mt-0.5">שטיחים מוקצים</p>
-                {remainingRugs > 0 && <p className="text-[10px] text-orange-600 font-semibold mt-0.5">נותרו {remainingRugs}</p>}
-                {remainingRugs === 0 && totalRugsAllocated > 0 && <p className="text-[10px] text-green-600 font-semibold mt-0.5">הכל מוקצה</p>}
-              </div>
-              <div className="bg-[#f5f0fa] rounded-xl p-2.5 text-center">
-                <Users className="w-4 h-4 text-[#5E2F88] mx-auto mb-1" />
-                <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{totalGroups}/{maxSeats}</p>
-                <p className="text-[11px] text-[#464646]/60 mt-0.5">קבוצות / מקומות</p>
-              </div>
-              <div className="bg-[#f5f0fa] rounded-xl p-2.5 text-center">
-                <Baby className="w-4 h-4 text-[#5E2F88] mx-auto mb-1" />
-                <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{totalChildrenAllocated}/{maxChildren}</p>
-                <p className="text-[11px] text-[#464646]/60 mt-0.5">ילדים מוקצים</p>
-                {remainingChildren > 0 && <p className="text-[10px] text-orange-600 font-semibold mt-0.5">נותרו {remainingChildren}</p>}
-                {remainingChildren === 0 && maxChildren > 0 && <p className="text-[10px] text-green-600 font-semibold mt-0.5">הכל מוקצה</p>}
-              </div>
+          {/* Allocation summary — live remaining counters */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-[#f5f0fa] rounded-xl p-2.5 text-center">
+              <LayoutGrid className="w-4 h-4 text-[#5E2F88] mx-auto mb-1" />
+              <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{usedRugs}/{maxRugs}</p>
+              <p className="text-[14px] text-[#464646]/60 mt-0.5">שטיחים מוקצים</p>
+              {remainingRugs > 0 && <p className="text-[13px] text-orange-600 font-semibold mt-0.5">נותרו {remainingRugs}</p>}
+              {remainingRugs === 0 && usedRugs > 0 && <p className="text-[13px] text-green-600 font-semibold mt-0.5">הכל מוקצה</p>}
             </div>
-
-            {/* Settings — moved to top of the participant list */}
-            <div className="border border-[#e8e8e8] rounded-xl overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(!settingsOpen)}
-                className="w-full flex items-center justify-between p-3 text-[17px] font-medium text-[#581E83] hover:bg-[#fafafa] transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <Settings className="w-4 h-4" />
-                  <span>הגדרות</span>
-                </div>
-                {settingsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
-
-              {settingsOpen && (
-                <div className="p-3 pt-0 space-y-3 border-t border-[#e8e8e8]">
-                  <label className="flex items-center justify-between">
-                    <span className="text-[17px] text-[#464646]">הצגת עלות הסדנה למשתתפים</span>
-                    <input
-                      type="checkbox"
-                      checked={order.showPriceToParticipants === true}
-                      onChange={(e) => onUpdateSettings({ showPriceToParticipants: e.target.checked })}
-                      className="w-4 h-4 accent-[#5E2F88]"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between">
-                    <span className="text-[17px] text-[#464646]">הצגת סקיצות שבחרו אחרים</span>
-                    <input
-                      type="checkbox"
-                      checked={order.showOtherSelections === true}
-                      onChange={(e) => onUpdateSettings({ showOtherSelections: e.target.checked })}
-                      className="w-4 h-4 accent-[#5E2F88]"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between">
-                    <span className="text-[17px] text-[#464646]">התראה כשמשתתף משלים בחירה</span>
-                    <input
-                      type="checkbox"
-                      checked={order.notifyOnSelection === true}
-                      onChange={(e) => onUpdateSettings({ notifyOnSelection: e.target.checked })}
-                      className="w-4 h-4 accent-[#5E2F88]"
-                    />
-                  </label>
-                </div>
-              )}
+            <div className="bg-[#f5f0fa] rounded-xl p-2.5 text-center">
+              <Users className="w-4 h-4 text-[#5E2F88] mx-auto mb-1" />
+              <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{(participants || []).length}</p>
+              <p className="text-[14px] text-[#464646]/60 mt-0.5">קבוצות</p>
             </div>
+            <div className="bg-[#f5f0fa] rounded-xl p-2.5 text-center">
+              <Baby className="w-4 h-4 text-[#5E2F88] mx-auto mb-1" />
+              <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{usedChildren}/{maxChildren}</p>
+              <p className="text-[14px] text-[#464646]/60 mt-0.5">ילדים מוקצים</p>
+              {remainingChildren > 0 && <p className="text-[13px] text-orange-600 font-semibold mt-0.5">נותרו {remainingChildren}</p>}
+              {remainingChildren === 0 && maxChildren > 0 && <p className="text-[13px] text-green-600 font-semibold mt-0.5">הכל מוקצה</p>}
+            </div>
+          </div>
 
-            <div className="space-y-2.5 relative">
-              {visibleParticipants.map((p, i) => {
-                const link = participantLinks?.find(l => l.participantId === p._id);
-                const childCount = p.childrenCount || 0;
-                const rugCount = p.rugAllowance || 0;
-                const hasName = !!(p.name && p.name.trim());
+          {/* Settings — apply across all groups */}
+          <div className="border border-[#e8e8e8] rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(!settingsOpen)}
+              className="w-full flex items-center justify-between p-3 text-[17px] font-medium text-[#581E83] hover:bg-[#fafafa] transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                <span>הגדרות</span>
+              </div>
+              {settingsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
 
-                const groupSelections = (selections || []).filter(
-                  s => s.participantId === p._id && s.selectionStatus === 'selected'
-                    && (s.canvasSize !== '90x90' || s.upgradePaymentStatus === 'paid')
-                );
-                const rugNeeded = rugCount;
-                const completed = rugNeeded > 0 && groupSelections.length >= rugNeeded;
+            {settingsOpen && (
+              <div className="p-3 pt-0 space-y-3 border-t border-[#e8e8e8]">
+                <p className="text-[13px] text-[#464646]/60 pt-2">ההגדרות חלות על כל הקבוצות</p>
+                <label className="flex items-center justify-between">
+                  <span className="text-[17px] text-[#464646]">הצגת עלות הסדנה למשתתפים</span>
+                  <input
+                    type="checkbox"
+                    checked={order.showPriceToParticipants === true}
+                    onChange={(e) => onUpdateSettings({ showPriceToParticipants: e.target.checked })}
+                    className="w-4 h-4 accent-[#5E2F88]"
+                  />
+                </label>
+                <label className="flex items-center justify-between">
+                  <span className="text-[17px] text-[#464646]">הצגת סקיצות שבחרו אחרים</span>
+                  <input
+                    type="checkbox"
+                    checked={order.showOtherSelections === true}
+                    onChange={(e) => onUpdateSettings({ showOtherSelections: e.target.checked })}
+                    className="w-4 h-4 accent-[#5E2F88]"
+                  />
+                </label>
+                <label className="flex items-center justify-between">
+                  <span className="text-[17px] text-[#464646]">התראה כשמשתתף משלים בחירה</span>
+                  <input
+                    type="checkbox"
+                    checked={order.notifyOnSelection === true}
+                    onChange={(e) => onUpdateSettings({ notifyOnSelection: e.target.checked })}
+                    className="w-4 h-4 accent-[#5E2F88]"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
 
-                let badgeInfo = null;
-                if (hasName && rugNeeded > 0) {
+          {/* C: create-group CTA */}
+          <button
+            type="button"
+            onClick={openCreate}
+            disabled={remainingRugs <= 0}
+            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[15px] font-semibold transition-colors ${
+              remainingRugs > 0
+                ? 'bg-[#5E2F88] hover:bg-[#7B3DB0] text-white'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <UserPlus className="w-4 h-4" />
+            {remainingRugs > 0 ? `יצירת קבוצה · נותרו ${remainingRugs} שטיחים` : 'כל השטיחים הוקצו'}
+          </button>
+
+          {/* Group list */}
+          {(participants || []).length > 0 && (() => {
+            const visibleParticipants = participantsExpanded ? participants : participants.slice(0, 4);
+            const hasHidden = participants.length > 4 && !participantsExpanded;
+
+            const startEditName = (p) => {
+              setEditingNameId(p._id);
+              setEditingNameValue(p.name || '');
+            };
+            const commitName = (p) => {
+              const trimmed = (editingNameValue || '').trim();
+              if (trimmed && trimmed !== p.name) {
+                onUpdateParticipant(p._id, { name: trimmed });
+              }
+              setEditingNameId(null);
+              setEditingNameValue('');
+            };
+
+            return (
+              <div className="space-y-2.5 relative">
+                {visibleParticipants.map((p, i) => {
+                  const link = participantLinks?.find(l => l.participantId === p._id);
+                  const childCount = p.childrenCount || 0;
+                  const rugCount = p.rugAllowance || 0;
+                  const hasName = !!(p.name && p.name.trim());
+
+                  const groupSelections = (selections || []).filter(
+                    s => s.participantId === p._id && s.selectionStatus === 'selected'
+                      && (s.canvasSize !== '90x90' || s.upgradePaymentStatus === 'paid')
+                  );
+                  const rugNeeded = rugCount;
+                  const completed = rugNeeded > 0 && groupSelections.length >= rugNeeded;
+
+                  let badgeInfo;
                   if (groupSelections.length === 0) badgeInfo = { label: 'לא הושלם', bg: 'bg-red-100', text: 'text-red-700', dot: 'bg-red-500' };
                   else if (groupSelections.length < rugNeeded) badgeInfo = { label: 'הושלם חלקית', bg: 'bg-orange-100', text: 'text-orange-700', dot: 'bg-orange-500' };
                   else badgeInfo = { label: 'הושלם', bg: 'bg-green-100', text: 'text-green-700', dot: 'bg-green-500' };
-                }
 
-                const canShare = hasName && !!link;
+                  const canShare = hasName && !!link;
 
-                return (
-                  <div
-                    key={p._id || i}
-                    className={`bg-white rounded-xl border-2 p-3.5 transition-all ${
-                      completed ? 'border-green-200' : !hasName ? 'border-orange-200' : 'border-[#e8e8e8]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5 gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                          completed ? 'bg-green-100 text-green-700' : 'bg-[#f5f0fa] text-[#5E2F88]'
-                        }`}>
-                          {completed ? <Check className="w-3.5 h-3.5" /> : i + 1}
-                        </div>
-                        {editingNameId === p._id ? (
-                          <input
-                            autoFocus
-                            value={editingNameValue}
-                            onChange={(e) => setEditingNameValue(e.target.value)}
-                            onBlur={() => commitName(p)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') commitName(p); if (e.key === 'Escape') { setEditingNameId(null); setEditingNameValue(''); } }}
-                            placeholder="שם הקבוצה (חובה)"
-                            className="text-[15px] font-semibold text-[#581E83] border-b border-[#5E2F88] outline-none bg-transparent w-32"
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => startEditName(p)}
-                            className="flex items-center gap-1 min-w-0 group"
-                            title="עריכת שם הקבוצה"
-                          >
-                            <span className={`text-[15px] font-semibold truncate ${hasName ? 'text-[#581E83]' : 'text-orange-400 italic'}`}>
-                              {hasName ? p.name : 'הזינו שם קבוצה'}
-                            </span>
-                            <Pencil className="w-3 h-3 text-[#5E2F88]/50 group-hover:text-[#5E2F88] shrink-0" />
-                          </button>
-                        )}
-                        {badgeInfo && (
-                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${badgeInfo.bg} ${badgeInfo.text}`}>
+                  return (
+                    <div
+                      key={p._id || i}
+                      className={`bg-white rounded-xl border-2 p-3.5 transition-all ${
+                        completed ? 'border-green-200' : 'border-[#e8e8e8]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5 gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                            completed ? 'bg-green-100 text-green-700' : 'bg-[#f5f0fa] text-[#5E2F88]'
+                          }`}>
+                            {completed ? <Check className="w-3.5 h-3.5" /> : i + 1}
+                          </div>
+                          {editingNameId === p._id ? (
+                            <input
+                              autoFocus
+                              value={editingNameValue}
+                              onChange={(e) => setEditingNameValue(e.target.value)}
+                              onBlur={() => commitName(p)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') commitName(p); if (e.key === 'Escape') { setEditingNameId(null); setEditingNameValue(''); } }}
+                              placeholder="שם הקבוצה"
+                              className="text-[15px] font-semibold text-[#581E83] border-b border-[#5E2F88] outline-none bg-transparent w-32"
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => startEditName(p)}
+                              className="flex items-center gap-1 min-w-0 group"
+                              title="עריכת שם הקבוצה"
+                            >
+                              <span className="text-[15px] font-semibold text-[#581E83] truncate">{p.name}</span>
+                              <Pencil className="w-3 h-3 text-[#5E2F88]/50 group-hover:text-[#5E2F88] shrink-0" />
+                            </button>
+                          )}
+                          <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${badgeInfo.bg} ${badgeInfo.text}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${badgeInfo.dot}`} />
                             {badgeInfo.label}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {link && (
+                            <button
+                              type="button"
+                              onClick={() => { if (canShare) setShareFor(p); }}
+                              disabled={!canShare}
+                              className={`flex items-center gap-1 text-[13px] font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                                canShare
+                                  ? 'bg-[#5E2F88] hover:bg-[#7B3DB0] text-white'
+                                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              }`}
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                              שליחה
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => askDelete(p)}
+                            disabled={within48h}
+                            title={within48h ? 'לא ניתן למחוק בתוך 48 שעות מהסדנה' : 'מחיקת קבוצה'}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                              within48h
+                                ? 'text-gray-300 cursor-not-allowed'
+                                : 'text-red-400 hover:text-red-600 hover:bg-red-50'
+                            }`}
+                          >
+                            {within48h ? <Lock className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Read-only allocation */}
+                      <div className="flex items-center gap-4 mt-2 mb-0.5">
+                        <span className="flex items-center gap-1.5 text-[14px] text-[#464646]/50">
+                          <LayoutGrid className="w-3.5 h-3.5 text-[#5E2F88]" />
+                          {rugCount} {rugCount === 1 ? 'שטיח' : 'שטיחים'}
+                        </span>
+                        {childCount > 0 && (
+                          <span className="flex items-center gap-1.5 text-[14px] text-[#464646]/50">
+                            <Baby className="w-3.5 h-3.5 text-[#5E2F88]" />
+                            {childCount} {childCount === 1 ? 'ילד' : 'ילדים'}
                           </span>
                         )}
                       </div>
 
-                      {link && (
-                        <button
-                          type="button"
-                          onClick={() => { if (canShare) setShareFor(p); }}
-                          disabled={!canShare}
-                          title={!hasName ? 'יש להזין שם קבוצה לפני שליחה' : ''}
-                          className={`flex items-center gap-1 text-[13px] font-medium px-3 py-1.5 rounded-lg transition-colors shrink-0 ${
-                            canShare
-                              ? 'bg-[#5E2F88] hover:bg-[#7B3DB0] text-white'
-                              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                          }`}
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                          שליחה
-                        </button>
+                      {/* Sketches the participant selected via their own link */}
+                      {groupSelections.length > 0 && (
+                        <div className="space-y-1.5 mt-1.5">
+                          {groupSelections.map((sel, si) => {
+                            const sStatus = sel.sketchStatus || 'Changeable';
+                            return (
+                              <div key={sel._id || si} className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2">
+                                {sel.productSnapshot?.image && (
+                                  <img src={sel.productSnapshot.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium text-[#581E83] truncate">{sel.productSnapshot?.title || 'סקיצה'}</p>
+                                  <p className="text-[14px] text-[#464646]/50">
+                                    {sel.canvasSize === '90x90' ? '90*90 ס"מ · ₪299' : '60*60 ס"מ'}
+                                    {' · '}{sStatus === 'In preparation' ? 'בהכנה' : sStatus === 'Ready' ? 'מוכנה' : 'ניתן לשינוי'}
+                                  </p>
+                                </div>
+                                <ImageIcon className="w-3.5 h-3.5 text-[#5E2F88]/40 shrink-0" />
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
+                  );
+                })}
 
-                    {!hasName && (
-                      <p className="text-[11px] text-orange-500 font-medium mb-1.5">⚠ חובה להזין שם קבוצה כדי לשלוח או להעתיק קישור</p>
-                    )}
-
-                    {/* Editable allocation: rugs + children */}
-                    <div className="flex items-center gap-4 mt-2 mb-0.5">
-                      <div className="flex items-center gap-1.5">
-                        <LayoutGrid className="w-3.5 h-3.5 text-[#5E2F88]" />
-                        <button
-                          type="button"
-                          onClick={() => { if (rugCount > 0) onUpdateParticipant(p._id, { rugAllowance: rugCount - 1 }); }}
-                          disabled={rugCount <= 0}
-                          className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="text-xs font-bold text-[#581E83] tabular-nums w-4 text-center">{rugCount}</span>
-                        <button
-                          type="button"
-                          onClick={() => { if (remainingRugs > 0) onUpdateParticipant(p._id, { rugAllowance: rugCount + 1 }); }}
-                          disabled={remainingRugs <= 0}
-                          className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                        <span className="text-[11px] text-[#464646]/50">שטיחים</span>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <Baby className="w-3.5 h-3.5 text-[#5E2F88]" />
-                        <button
-                          type="button"
-                          onClick={() => { if (childCount > 0) onUpdateParticipant(p._id, { childrenCount: childCount - 1 }); }}
-                          disabled={childCount <= 0}
-                          className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="text-xs font-bold text-[#581E83] tabular-nums w-4 text-center">{childCount}</span>
-                        <button
-                          type="button"
-                          onClick={() => { if (remainingChildren > 0) onUpdateParticipant(p._id, { childrenCount: childCount + 1 }); }}
-                          disabled={remainingChildren <= 0}
-                          className="w-5 h-5 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                        <span className="text-[11px] text-[#464646]/50">ילדים</span>
-                      </div>
-                    </div>
-
-                    {/* Show sketches selected by the participant via their link (not organizer-chosen) */}
-                    {groupSelections.length > 0 && (
-                      <div className="space-y-1.5 mt-1.5">
-                        {groupSelections.map((sel, si) => {
-                          const sStatus = sel.sketchStatus || 'Changeable';
-                          return (
-                            <div key={sel._id || si} className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2">
-                              {sel.productSnapshot?.image && (
-                                <img src={sel.productSnapshot.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium text-[#581E83] truncate">{sel.productSnapshot?.title || 'סקיצה'}</p>
-                                <p className="text-[11px] text-[#464646]/50">
-                                  {sel.canvasSize === '90x90' ? '90*90 ס"מ · ₪299' : '60*60 ס"מ'}
-                                  {' · '}{sStatus === 'In preparation' ? 'בהכנה' : sStatus === 'Ready' ? 'מוכנה' : 'ניתן לשינוי'}
-                                </p>
-                              </div>
-                              <ImageIcon className="w-3.5 h-3.5 text-[#5E2F88]/40 shrink-0" />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {completed && (
-                      <p className="text-[11px] text-green-600 font-medium mt-1.5 flex items-center gap-1">
-                        <Check className="w-3 h-3" /> הושלם
-                      </p>
-                    )}
+                {hasHidden && (
+                  <div className="relative">
+                    <div className="absolute inset-x-0 -top-16 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+                    <button
+                      type="button"
+                      onClick={() => setParticipantsExpanded(true)}
+                      className="w-full flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-[#5E2F88] hover:text-[#7B3DB0] transition-colors"
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                      הצג עוד {participants.length - 4} קבוצות
+                    </button>
                   </div>
-                );
-              })}
-
-              {hasHidden && (
-                <div className="relative">
-                  <div className="absolute inset-x-0 -top-16 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+                )}
+                {participantsExpanded && participants.length > 4 && (
                   <button
                     type="button"
-                    onClick={() => setParticipantsExpanded(true)}
-                    className="w-full flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-[#5E2F88] hover:text-[#7B3DB0] transition-colors"
+                    onClick={() => setParticipantsExpanded(false)}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-[#464646]/60 hover:text-[#5E2F88] transition-colors"
                   >
-                    <ChevronDown className="w-4 h-4" />
-                    הצג עוד {participants.length - 4} משתתפים
+                    <ChevronDown className="w-4 h-4 rotate-180" />
+                    הצג פחות
                   </button>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Create group modal */}
+      <AnimatePresence>
+        {createOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => !creating && setCreateOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 relative"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => !creating && setCreateOpen(false)}
+                className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="text-center">
+                <div className="w-11 h-11 rounded-full bg-[#f5f0fa] flex items-center justify-center mx-auto mb-2">
+                  <UserPlus className="w-6 h-6 text-[#5E2F88]" />
+                </div>
+                <h3 className="text-[19px] font-bold text-[#581E83]">יצירת קבוצה חדשה</h3>
+                <p className="text-[14px] text-[#464646]/70 mt-1">
+                  נותרו {remainingRugs} {remainingRugs === 1 ? 'משתתף' : 'משתתפים'}
+                  {maxChildren > 0 && ` · ${remainingChildren} ${remainingChildren === 1 ? 'ילד' : 'ילדים'}`}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[14px] font-medium text-[#464646] mb-1">שם הקבוצה</label>
+                  <input
+                    type="text"
+                    autoFocus
+                    value={newGroupName}
+                    onChange={(e) => { setNewGroupName(e.target.value); setCreateError(''); }}
+                    placeholder="לדוגמה: משפחת כהן"
+                    className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-[15px] focus:border-[#5E2F88] focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-[15px] text-[#464646]">
+                    <Users className="w-4 h-4 text-[#5E2F88]" />
+                    מספר משתתפים
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setNewGroupSeats(v => Math.max(1, v - 1))}
+                      disabled={newGroupSeats <= 1}
+                      className="w-7 h-7 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-[15px] font-bold text-[#581E83] tabular-nums w-6 text-center">{newGroupSeats}</span>
+                    <button
+                      type="button"
+                      onClick={() => setNewGroupSeats(v => Math.min(remainingRugs, v + 1))}
+                      disabled={newGroupSeats >= remainingRugs}
+                      className="w-7 h-7 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {maxChildren > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-[15px] text-[#464646]">
+                      <Baby className="w-4 h-4 text-[#5E2F88]" />
+                      מתוכם ילדים
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setNewGroupChildren(v => Math.max(0, v - 1))}
+                        disabled={newGroupChildren <= 0}
+                        className="w-7 h-7 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-[15px] font-bold text-[#581E83] tabular-nums w-6 text-center">{newGroupChildren}</span>
+                      <button
+                        type="button"
+                        onClick={() => setNewGroupChildren(v => Math.min(remainingChildren, Math.min(newGroupSeats, v + 1)))}
+                        disabled={newGroupChildren >= remainingChildren || newGroupChildren >= newGroupSeats}
+                        className="w-7 h-7 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-[13px] text-[#464646]/50 flex items-center gap-1.5">
+                  <LayoutGrid className="w-3.5 h-3.5 text-[#5E2F88]" />
+                  יוקצו אוטומטית {newGroupSeats} {newGroupSeats === 1 ? 'שטיח' : 'שטיחים'} לקבוצה זו
+                </p>
+
+                {createError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-[13px] text-red-700">
+                    {createError}
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={submitCreate}
+                disabled={creating || !newGroupName.trim()}
+                className="w-full flex items-center justify-center gap-2 bg-[#5E2F88] hover:bg-[#7B3DB0] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-[15px] transition-colors"
+              >
+                {creating ? 'שומר...' : (<><Send className="w-4 h-4" /> שמירה ושליחה</>)}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete group — double confirmation */}
+      <AnimatePresence>
+        {deleteFor && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => !deleting && (setDeleteFor(null), setDeleteStep(1))}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 relative"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="w-11 h-11 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-2">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-[19px] font-bold text-red-700">
+                  {deleteStep === 1 ? `מחיקת הקבוצה "${deleteFor.name}"?` : 'אישור סופי למחיקה'}
+                </h3>
+                <div className="text-[14px] text-[#464646]/80 mt-2 space-y-2 text-right">
+                  {deleteStep === 1 ? (
+                    <>
+                      <p>מחיקת הקבוצה תבטל לצמיתות את הקישור הייעודי שלה — הוא יפסיק לעבוד עבור מי שקיבל אותו.</p>
+                      <p className="font-semibold text-red-600">כל הסקיצות שכבר נבחרו על ידי הקבוצה יימחקו לצמיתות.</p>
+                      <p>תוכלו תמיד ליצור קבוצה חדשה במקומה.</p>
+                    </>
+                  ) : (
+                    <p className="font-semibold text-red-600 text-center">
+                      פעולה זו אינה הפיכה. למחוק את "{deleteFor.name}" ואת כל הבחירות שלה?
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {deleteError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-[13px] text-red-700">
+                  {deleteError}
                 </div>
               )}
-              {participantsExpanded && participants.length > 4 && (
+
+              <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setParticipantsExpanded(false)}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-[#464646]/60 hover:text-[#5E2F88] transition-colors"
+                  onClick={() => { if (!deleting) { setDeleteFor(null); setDeleteStep(1); } }}
+                  className="flex-1 border-2 border-[#e8e8e8] text-[#464646] font-medium py-2.5 rounded-xl text-[14px] hover:bg-[#fafafa] transition-colors"
                 >
-                  <ChevronDown className="w-4 h-4 rotate-180" />
-                  הצג פחות
+                  ביטול
                 </button>
-              )}
-            </div>
-          </div>
-        );
-      })()}
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  disabled={deleting}
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-[14px] transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {deleting ? 'מוחק...' : deleteStep === 1 ? 'המשך למחיקה' : 'מחק לצמיתות'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Group share popup */}
       <AnimatePresence>

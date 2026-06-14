@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import OrganizerOrderHub from './OrganizerOrderHub';
@@ -22,8 +22,16 @@ export default function PostPaymentHub({
   const [localOrder, setLocalOrder] = useState(orderContext?.order || null);
   const [localParticipants, setLocalParticipants] = useState(orderContext?.participants || []);
   const [localSelections, setLocalSelections] = useState(orderContext?.selections || []);
-  const [participantLinks, setParticipantLinks] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Share links are derived directly from each group's stable plaintext token so
+  // they survive refreshes and never get re-minted (which would break shared links).
+  const participantLinks = useMemo(
+    () => (localParticipants || [])
+      .filter((p) => p.shareToken)
+      .map((p) => ({ participantId: p._id, name: p.name, token: p.shareToken, link: p.shareToken })),
+    [localParticipants]
+  );
   const [verifiedParticipant, setVerifiedParticipant] = useState(participantContext?.participant || null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [catalog, setCatalog] = useState(initialCatalog || null);
@@ -72,59 +80,62 @@ export default function PostPaymentHub({
   }, [catalog, sendAndWait]);
 
   const handleChooseMode = useCallback(async (mode) => {
+    // Groups are now created explicitly by the organizer (no auto-generation).
     setLocalOrder(prev => ({ ...prev, selectionMode: mode }));
     try {
       await sendAndWait('SET_SELECTION_MODE', { orderId: localOrder._id, mode });
     } catch {
       setLocalOrder(prev => ({ ...prev, selectionMode: null }));
-      return;
     }
+  }, [localOrder?._id, sendAndWait]);
 
-    if (mode === 'participants' && !localParticipants?.length) {
-      const rugCount = localOrder.rugCount || 1;
-      const childrenCount = localOrder.children || 0;
-      const autoParticipants = [];
-      for (let i = 0; i < rugCount; i++) {
-        autoParticipants.push({
-          name: `משתתף ${i + 1}`,
-          phone: '',
-          rugAllowance: 1,
-          hasChildren: i < childrenCount,
-          childrenCount: i < childrenCount ? 1 : 0,
-        });
+  // Create a single group. Returns the created participant so the hub can
+  // immediately open the share modal for it.
+  const handleCreateGroup = useCallback(async (group) => {
+    setIsSaving(true);
+    try {
+      const result = await sendAndWait('CREATE_PARTICIPANT_GROUP', {
+        orderId: localOrder._id,
+        group,
+      });
+      if (result?.error) throw new Error(result.error);
+      if (result?.participant) {
+        setLocalParticipants(prev => [...prev, result.participant]);
+        return result.participant;
       }
-      setIsSaving(true);
-      try {
-        const result = await sendAndWait('SAVE_PARTICIPANTS', {
-          orderId: localOrder._id,
-          participants: autoParticipants,
-        });
-        if (result?.participants) {
-          setLocalParticipants(result.participants);
-          // Auto-generate share links so each group card has a ready link.
-          const linkResult = await sendAndWait('GENERATE_PARTICIPANT_LINKS', { orderId: localOrder._id });
-          if (linkResult?.links) setParticipantLinks(linkResult.links);
-        }
-      } finally {
-        setIsSaving(false);
-      }
+      return null;
+    } finally {
+      setIsSaving(false);
     }
-  }, [localOrder?._id, localOrder?.rugCount, localOrder?.children, localParticipants, sendAndWait]);
+  }, [localOrder?._id, sendAndWait]);
 
-  // Ensure share links exist whenever participants are present (e.g. on refresh).
+  // Delete a group (cascades sketch selections + invalidates link server-side).
+  const handleDeleteGroup = useCallback(async (participantId) => {
+    const result = await sendAndWait('DELETE_PARTICIPANT_GROUP', { participantId });
+    if (result?.error) throw new Error(result.error);
+    setLocalParticipants(prev => prev.filter(p => p._id !== participantId));
+    setLocalSelections(prev => prev.filter(s => s.participantId !== participantId));
+    return result;
+  }, [sendAndWait]);
+
+  // Legacy fallback: backfill share tokens for any groups created before tokens
+  // were stored on the record (so their links can be rebuilt).
   useEffect(() => {
-    if (
-      role === 'organizer' &&
-      localOrder?.selectionMode === 'participants' &&
-      localParticipants?.length > 0 &&
-      !participantLinks?.length
-    ) {
-      (async () => {
-        const linkResult = await sendAndWait('GENERATE_PARTICIPANT_LINKS', { orderId: localOrder._id });
-        if (linkResult?.links) setParticipantLinks(linkResult.links);
-      })();
-    }
-  }, [role, localOrder?.selectionMode, localOrder?._id, localParticipants, participantLinks, sendAndWait]);
+    if (role !== 'organizer') return;
+    if (localOrder?.selectionMode !== 'participants') return;
+    if (!localParticipants?.length) return;
+    if (!localParticipants.some(p => !p.shareToken)) return;
+    (async () => {
+      const linkResult = await sendAndWait('GENERATE_PARTICIPANT_LINKS', { orderId: localOrder._id });
+      if (linkResult?.links) {
+        setLocalParticipants(prev => prev.map(p => {
+          if (p.shareToken) return p;
+          const l = linkResult.links.find(x => x.participantId === p._id);
+          return l ? { ...p, shareToken: l.token } : p;
+        }));
+      }
+    })();
+  }, [role, localOrder?.selectionMode, localOrder?._id, localParticipants, sendAndWait]);
 
   const handleUpdateParticipant = useCallback(async (participantId, updates) => {
     setLocalParticipants(prev => prev.map(p => {
@@ -155,20 +166,6 @@ export default function PostPaymentHub({
     }
   };
 
-  const handleGenerateLinks = async () => {
-    setIsSaving(true);
-    try {
-      const result = await sendAndWait('GENERATE_PARTICIPANT_LINKS', {
-        orderId: localOrder._id,
-      });
-      if (result?.links) {
-        setParticipantLinks(result.links);
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleSelectSketch = async (selection) => {
     setIsSaving(true);
     try {
@@ -177,14 +174,19 @@ export default function PostPaymentHub({
         || verifiedParticipant?.rawPhone
         || ecomSummary?.buyerPhone
         || null;
+      const participantId = selection.participantId || verifiedParticipant?._id || null;
       const result = await sendAndWait('SAVE_SKETCH_SELECTION', {
         orderId: localOrder._id,
         ...selection,
+        participantId,
         phoneNumber,
       });
       if (result?.selection) {
         setLocalSelections(prev => {
-          const filtered = prev.filter(s => s.rugIndex !== selection.rugIndex);
+          const filtered = prev.filter(s => !(
+            s.rugIndex === result.selection.rugIndex &&
+            (s.participantId || null) === (result.selection.participantId || null)
+          ));
           return [...filtered, result.selection];
         });
       }
@@ -227,7 +229,11 @@ export default function PostPaymentHub({
     const sels = Array.isArray(upgradeSelections) ? upgradeSelections : [upgradeSelections];
     if (!sels.length) return;
     const phoneNumber = verifiedParticipant?.phone || verifiedParticipant?.rawPhone || ecomSummary?.buyerPhone || null;
-    const enriched = sels.map(s => ({ ...s, phoneNumber: s.phoneNumber || phoneNumber }));
+    const enriched = sels.map(s => ({
+      ...s,
+      phoneNumber: s.phoneNumber || phoneNumber,
+      participantId: s.participantId || verifiedParticipant?._id || null,
+    }));
     setIsSaving(true);
     setPaymentStatus('creating');
     onSendMessage('REQUEST_UPGRADE_PAYMENT', {
@@ -360,7 +366,8 @@ export default function PostPaymentHub({
           participantLinks={participantLinks}
           onChooseMode={handleChooseMode}
           onSaveParticipants={handleSaveParticipants}
-          onGenerateLinks={handleGenerateLinks}
+          onCreateGroup={handleCreateGroup}
+          onDeleteGroup={handleDeleteGroup}
           onSelectSketch={handleSelectSketch}
           onRequestUpgrade={handleRequestUpgrade}
           onUpdateSettings={handleUpdateSettings}
@@ -393,6 +400,11 @@ export default function PostPaymentHub({
         rugIndex: i,
         participantName: verifiedParticipant.name,
       })
+    );
+
+    // Only this group's own selections (keyed by participantId) feed the view.
+    const mySelections = (localSelections || []).filter(
+      s => !s.participantId || s.participantId === verifiedParticipant._id
     );
 
     return (
@@ -429,10 +441,10 @@ export default function PostPaymentHub({
           totalRugCount={localOrder.rugCount}
           buyerName={ecomSummary?.buyerName}
           orderNumber={ecomSummary?.orderNumber}
-          onSelectSketch={handleSelectSketch}
+          onSelectSketch={(sel) => handleSelectSketch({ ...sel, participantId: verifiedParticipant._id })}
           onRequestUpgrade={handleRequestUpgrade}
           onFetchCatalog={handleFetchCatalog}
-          existingSelections={localSelections}
+          existingSelections={mySelections}
         />
       </div>
     );
