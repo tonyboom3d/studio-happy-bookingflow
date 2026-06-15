@@ -257,6 +257,27 @@ export default function PostPaymentHub({
     return sendAndWait('COPY_TO_CLIPBOARD', { text });
   }, [sendAndWait]);
 
+  // Participant cost — computed at component level to satisfy Rules of Hooks.
+  const participantRugQty = verifiedParticipant?.rugAllowance || groupInfo?.rugs || 1;
+  const participantChildrenQty = verifiedParticipant?.childrenCount ?? groupInfo?.children ?? 0;
+  const participantGroupCost = useMemo(() => {
+    if (!localOrder?.showPriceToParticipants || !localOrder?.basePrice) return null;
+    const totalAdults = localOrder.adults || 1;
+    const totalChildren = localOrder.children || 0;
+    const totalPeople = totalAdults + totalChildren;
+    const pricePerPerson = totalPeople > 0 ? localOrder.basePrice / totalPeople : 0;
+    const adultCost = participantRugQty * pricePerPerson;
+    const childCost = participantChildrenQty * pricePerPerson;
+    return Math.round(adultCost + childCost);
+  }, [
+    localOrder?.showPriceToParticipants,
+    localOrder?.basePrice,
+    localOrder?.adults,
+    localOrder?.children,
+    participantRugQty,
+    participantChildrenQty,
+  ]);
+
   const handleUpdateSettings = async (settings) => {
     try {
       await sendAndWait('UPDATE_ORDER_SETTINGS', {
@@ -400,8 +421,8 @@ export default function PostPaymentHub({
   // Participant with verified access
   if (role === 'participant' && verifiedParticipant) {
     const groupName = verifiedParticipant.name || groupInfo?.name;
-    const rugQty = verifiedParticipant.rugAllowance || groupInfo?.rugs || 1;
-    const childrenQty = verifiedParticipant.childrenCount ?? groupInfo?.children ?? 0;
+    const rugQty = participantRugQty;
+    const childrenQty = participantChildrenQty;
     const rugSlots = Array.from(
       { length: rugQty },
       (_, i) => ({
@@ -414,22 +435,6 @@ export default function PostPaymentHub({
     const mySelections = (localSelections || []).filter(
       s => !s.participantId || s.participantId === verifiedParticipant._id
     );
-
-    const showPrice = localOrder.showPriceToParticipants === true;
-    const groupCost = useMemo(() => {
-      if (!showPrice || !localOrder.basePrice) return null;
-      const totalAdults = localOrder.adults || 1;
-      const totalChildren = localOrder.children || 0;
-      const pricePerAdult = totalChildren > 0 && totalAdults > 0
-        ? localOrder.basePrice / (totalAdults + totalChildren) * 1
-        : localOrder.basePrice / totalAdults;
-      const pricePerChild = totalChildren > 0
-        ? localOrder.basePrice / (totalAdults + totalChildren)
-        : 0;
-      const adultCost = rugQty * pricePerAdult;
-      const childCost = childrenQty * pricePerChild;
-      return Math.round(adultCost + childCost);
-    }, [showPrice, localOrder.basePrice, localOrder.adults, localOrder.children, rugQty, childrenQty]);
 
     return (
       <div className="max-w-2xl mx-auto p-4 md:p-6" dir="rtl">
@@ -456,10 +461,10 @@ export default function PostPaymentHub({
               </span>
             )}
           </div>
-          {showPrice && groupCost != null && (
+          {localOrder?.showPriceToParticipants && participantGroupCost != null && (
             <div className="mt-2 inline-flex items-center gap-1.5 bg-[#f5f0fa] border border-[#5E2F88]/15 rounded-lg px-3 py-1.5">
               <CreditCard className="w-3.5 h-3.5 text-[#5E2F88]" />
-              <span className="text-[13px] font-medium text-[#581E83]">עלות הקבוצה: ₪{groupCost}</span>
+              <span className="text-[13px] font-medium text-[#581E83]">עלות הקבוצה: ₪{participantGroupCost}</span>
             </div>
           )}
         </motion.div>
