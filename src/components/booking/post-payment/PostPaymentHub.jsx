@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import OrganizerOrderHub from './OrganizerOrderHub';
-import PhoneVerification from './PhoneVerification';
 import SketchSelectionView from './SketchSelectionView';
 import InvalidLinkMessage from './InvalidLinkMessage';
 import OrderLoadError from './OrderLoadError';
@@ -13,7 +12,6 @@ export default function PostPaymentHub({
   ecomSummary,
   participantContext,
   role,
-  accessToken,
   catalog: initialCatalog,
   onSendMessage,
   isLoading,
@@ -34,7 +32,6 @@ export default function PostPaymentHub({
     [localParticipants]
   );
   const [verifiedParticipant, setVerifiedParticipant] = useState(participantContext?.participant || null);
-  const [isVerifying, setIsVerifying] = useState(false);
   const [catalog, setCatalog] = useState(initialCatalog || null);
   const [paymentStatus, setPaymentStatus] = useState(null);
   const catalogFetchedRef = React.useRef(false);
@@ -49,6 +46,8 @@ export default function PostPaymentHub({
   useEffect(() => {
     if (participantContext?.participant) setVerifiedParticipant(participantContext.participant);
     if (participantContext?.selections) setLocalSelections(participantContext.selections);
+    // Participant context carries the minimal order fields needed for the selection view.
+    if (participantContext?.order && !localOrder) setLocalOrder(participantContext.order);
   }, [participantContext]);
 
   useEffect(() => {
@@ -263,15 +262,6 @@ export default function PostPaymentHub({
     }
   };
 
-  const handlePhoneVerify = async (phone) => {
-    setIsVerifying(true);
-    try {
-      // Send VERIFY_ACCESS_TOKEN with the resolved token + phone for backend validation.
-      onSendMessage('VERIFY_ACCESS_TOKEN', { token: accessToken, phone });
-    } finally {
-      setTimeout(() => setIsVerifying(false), 3000);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -282,12 +272,15 @@ export default function PostPaymentHub({
     );
   }
 
-  if (orderError && !localOrder) {
-    return <OrderLoadError />;
-  }
-
-  if (!localOrder) {
-    return <InvalidLinkMessage />;
+  // Only non-participants need a loaded order to render; participants receive
+  // their data through participantContext after token resolution.
+  if (role !== 'participant') {
+    if (orderError && !localOrder) {
+      return <OrderLoadError />;
+    }
+    if (!localOrder) {
+      return <InvalidLinkMessage />;
+    }
   }
 
   const paymentOverlay = (
@@ -386,13 +379,13 @@ export default function PostPaymentHub({
     );
   }
 
-  // Participant view — needs phone verification first
+  // Participant view — waiting for context to arrive (no phone step needed)
   if (role === 'participant' && !verifiedParticipant) {
     return (
-      <PhoneVerification
-        onVerified={handlePhoneVerify}
-        isVerifying={isVerifying}
-      />
+      <div className="min-h-[60vh] flex flex-col items-center justify-center">
+        <Loader2 className="w-10 h-10 text-[#5E2F88] animate-spin" />
+        <p className="mt-3 text-sm text-[#581E83]">טוען...</p>
+      </div>
     );
   }
 

@@ -21,7 +21,6 @@ export default function OrderPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [orderError, setOrderError] = useState(false);
   const [groupInfo, setGroupInfo] = useState(null);
-  const [accessToken, setAccessToken] = useState(token || null);
 
   useEffect(() => {
     const cached = getWixData();
@@ -64,8 +63,6 @@ export default function OrderPage() {
       }
 
       if (data.tokenAccess) {
-        setRole('participant');
-        setAccessToken(data.tokenAccess);
         if (data.groupInfo) setGroupInfo(data.groupInfo);
         setIsLoading(false);
       }
@@ -111,7 +108,6 @@ export default function OrderPage() {
         ecomSummary={ecomSummary}
         participantContext={participantContext}
         role={role}
-        accessToken={accessToken}
         catalog={catalog || []}
         onSendMessage={handleSendMessage}
         isLoading={isLoading}
