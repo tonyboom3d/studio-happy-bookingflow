@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { X, Check, ZoomIn, Search, ChevronDown, AlertTriangle } from 'lucide-react';
+import { X, Check, ZoomIn, Search, ChevronDown, AlertTriangle, Plus, Minus } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -19,7 +19,7 @@ function isHardDifficulty(label) {
   return l === 'קשה' || l === 'hard' || l === 'מאתגר';
 }
 
-function ProductCard({ product, isSelected, onPick, onZoom, disabled }) {
+function ProductCard({ product, isSelected, selectedCount = 0, onPick, onRemove, onZoom, disabled, showQuantity = false }) {
   const difficultyLabel = getDifficultyLabel(product);
   const hard = isHardDifficulty(difficultyLabel);
 
@@ -36,7 +36,11 @@ function ProductCard({ product, isSelected, onPick, onZoom, disabled }) {
     >
       {isSelected && (
         <div className="absolute top-3 left-3 z-10 w-6 h-6 rounded-full bg-[#5E2F88] flex items-center justify-center shadow-md">
-          <Check className="w-4 h-4 text-white" />
+          {showQuantity && selectedCount > 0 ? (
+            <span className="text-[11px] font-bold text-white">{selectedCount}</span>
+          ) : (
+            <Check className="w-4 h-4 text-white" />
+          )}
         </div>
       )}
 
@@ -77,6 +81,27 @@ function ProductCard({ product, isSelected, onPick, onZoom, disabled }) {
           <h3 className="font-semibold text-[#581E83] text-sm sm:text-base mb-1 leading-snug">
             {product.title}
           </h3>
+          {showQuantity && (
+            <div className="flex items-center justify-center gap-3 mt-1 mb-1 pt-1.5 border-t border-[#e8e8e8]">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onRemove?.(product); }}
+                disabled={selectedCount <= 0}
+                className="w-7 h-7 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-sm font-bold text-[#581E83] tabular-nums w-6 text-center">{selectedCount}</span>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); if (!disabled) onPick(product); }}
+                disabled={disabled}
+                className="w-7 h-7 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
           {difficultyLabel && (
             <div className="flex items-center gap-1 pt-1.5 border-t border-[#e8e8e8]">
               <span className="text-xs sm:text-sm text-[#464646]/70">{difficultyLabel}</span>
@@ -100,9 +125,13 @@ export default function SketchCatalogSheet({
   catalog = [],
   selectedProductId,
   onPick,
+  onRemovePick,
   slotLabel,
   readOnly = false,
   keepOpenOnPick = false,
+  selectedCounts = {},
+  maxSelections = Infinity,
+  totalSelected = 0,
 }) {
   const [enlargedImage, setEnlargedImage] = useState(null);
   const [searchText, setSearchText] = useState('');
@@ -225,20 +254,25 @@ export default function SketchCatalogSheet({
             <div className="grid grid-cols-2 gap-2 sm:gap-4">
               {filteredProducts.map((product) => {
                 const productId = product._id || product.id;
-                const isSelected = selectedProductId === productId;
+                const count = selectedCounts[productId] || 0;
+                const isSelected = keepOpenOnPick ? count > 0 : selectedProductId === productId;
+                const quotaReached = totalSelected >= maxSelections;
                 return (
                   <ProductCard
                     key={productId}
                     product={product}
                     isSelected={isSelected}
+                    selectedCount={count}
+                    showQuantity={keepOpenOnPick}
                     onPick={(p) => {
-                      if (!readOnly) {
+                      if (!readOnly && !(quotaReached && !isSelected)) {
                         onPick(p);
                         if (!keepOpenOnPick) onClose();
                       }
                     }}
+                    onRemove={onRemovePick}
                     onZoom={setEnlargedImage}
-                    disabled={readOnly}
+                    disabled={readOnly || (quotaReached && count === 0)}
                   />
                 );
               })}

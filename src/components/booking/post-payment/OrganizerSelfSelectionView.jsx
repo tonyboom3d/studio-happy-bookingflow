@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   Check, Plus, Minus, Baby, Users, LayoutGrid, ChevronDown, ChevronUp,
-  Sparkles, Image as ImageIcon, X, AlertCircle, CreditCard,
+  Sparkles, Image as ImageIcon, X, AlertCircle, CreditCard, Trash2, Pencil,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SketchCatalogSheet from './SketchCatalogSheet';
@@ -35,6 +35,16 @@ export default function OrganizerSelfSelectionView({
 
   // Expanded cards
   const [expandedCards, setExpandedCards] = useState({});
+
+  // Setup error
+  const [setupError, setSetupError] = useState('');
+
+  // Group deletion confirmation
+  const [deleteConfirmIdx, setDeleteConfirmIdx] = useState(null);
+
+  // Group name editing
+  const [editingNameIdx, setEditingNameIdx] = useState(null);
+  const [editNameValue, setEditNameValue] = useState('');
 
   const totalRugs = order.rugCount || 0;
   const maxChildren = order.children || 0;
@@ -78,6 +88,11 @@ export default function OrganizerSelfSelectionView({
   };
 
   const confirmSetup = () => {
+    if (setupChildren > setupAdults) {
+      setSetupError('מספר הילדים לא יכול לעלות על מספר המבוגרים בקבוצה');
+      return;
+    }
+    setSetupError('');
     const newCard = {
       id: `card_${Date.now()}`,
       name: `קבוצה ${cards.length + 1}`,
@@ -162,6 +177,28 @@ export default function OrganizerSelfSelectionView({
   const catalogPicked = catalogCard ? catalogCard.sketches.length : 0;
   const catalogRemaining = Math.max(0, catalogQuota - catalogPicked);
 
+  const catalogSelectedCounts = useMemo(() => {
+    if (catalogCardIdx == null) return {};
+    const card = cards[catalogCardIdx];
+    if (!card) return {};
+    const counts = {};
+    card.sketches.forEach(s => {
+      if (s.productId) counts[s.productId] = (counts[s.productId] || 0) + 1;
+    });
+    return counts;
+  }, [catalogCardIdx, cards]);
+
+  const handleCatalogRemovePick = useCallback((product) => {
+    if (catalogCardIdx == null) return;
+    setCards(prev => prev.map((c, i) => {
+      if (i !== catalogCardIdx) return c;
+      const lastIdx = [...c.sketches].reverse().findIndex(s => s.productId === (product._id || product.id));
+      if (lastIdx < 0) return c;
+      const realIdx = c.sketches.length - 1 - lastIdx;
+      return { ...c, sketches: c.sketches.filter((_, si) => si !== realIdx) };
+    }));
+  }, [catalogCardIdx]);
+
   const handleCatalogDone = () => {
     setCatalogOpen(false);
     setReviewCardIdx(catalogCardIdx);
@@ -233,6 +270,20 @@ export default function OrganizerSelfSelectionView({
 
   const deleteCard = (idx) => {
     setCards(prev => prev.filter((_, i) => i !== idx));
+    setDeleteConfirmIdx(null);
+  };
+
+  const startEditName = (idx) => {
+    setEditNameValue(cards[idx]?.name || '');
+    setEditingNameIdx(idx);
+  };
+
+  const saveEditName = () => {
+    if (editingNameIdx == null || editNameValue.trim().length < 1) return;
+    setCards(prev => prev.map((c, i) =>
+      i === editingNameIdx ? { ...c, name: editNameValue.trim() } : c
+    ));
+    setEditingNameIdx(null);
   };
 
   return (
@@ -311,13 +362,40 @@ export default function OrganizerSelfSelectionView({
                   {complete ? 'הושלם' : picked > 0 ? 'חלקי' : 'ממתין'}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => toggleExpand(idx)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] transition-colors"
-              >
-                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => startEditName(idx)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-[#5E2F88]/60 hover:text-[#5E2F88] hover:bg-[#f5f0fa] transition-colors"
+                  title="עריכת שם"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                {complete && (
+                  <button
+                    type="button"
+                    onClick={() => openReview(idx)}
+                    className="text-[11px] font-medium text-[#5E2F88] bg-[#f5f0fa] hover:bg-[#ebe0f5] px-2 py-1 rounded-lg transition-colors"
+                  >
+                    עריכה
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmIdx(idx)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  title="מחיקת קבוצה"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleExpand(idx)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] transition-colors"
+                >
+                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             {/* Summary line */}
@@ -485,6 +563,13 @@ export default function OrganizerSelfSelectionView({
                   <LayoutGrid className="w-3.5 h-3.5 text-[#5E2F88]" />
                   יש לבחור {setupAdults} {setupAdults === 1 ? 'סקיצה' : 'סקיצות'} לקבוצה זו
                 </p>
+
+                {setupError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-[13px] text-red-700 flex items-center gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {setupError}
+                  </div>
+                )}
               </div>
 
               <button
@@ -571,9 +656,13 @@ export default function OrganizerSelfSelectionView({
         catalog={catalog}
         selectedProductId={null}
         onPick={handleCatalogPick}
-        slotLabel={catalogRemaining > 0 ? `נותרו ${catalogRemaining} סקיצות לבחירה` : 'ניתן להמשיך לבחור או לסיים'}
+        onRemovePick={handleCatalogRemovePick}
+        slotLabel={catalogRemaining > 0 ? `נותרו ${catalogRemaining} סקיצות לבחירה` : 'כל הסקיצות נבחרו'}
         readOnly={false}
-        keepOpenOnPick
+        keepOpenOnPick={catalogQuota > 1}
+        selectedCounts={catalogSelectedCounts}
+        maxSelections={catalogQuota}
+        totalSelected={catalogPicked}
       />
 
       {/* Review Modal */}
@@ -704,6 +793,117 @@ export default function OrganizerSelfSelectionView({
             </motion.div>
           );
         })()}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirmIdx != null && (() => {
+          const card = cards[deleteConfirmIdx];
+          if (!card) return null;
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+              onClick={() => setDeleteConfirmIdx(null)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 relative"
+                dir="rtl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button type="button" onClick={() => setDeleteConfirmIdx(null)} className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646]">
+                  <X className="w-5 h-5" />
+                </button>
+                <div className="text-center">
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
+                    <Trash2 className="w-6 h-6 text-red-600" />
+                  </div>
+                  <h3 className="text-[19px] font-bold text-[#581E83]">מחיקת קבוצה</h3>
+                  <p className="text-[14px] text-[#464646]/70 mt-2">
+                    האם למחוק את הקבוצה <strong>"{card.name}"</strong>?
+                  </p>
+                  {card.sketches.length > 0 && (
+                    <p className="text-[13px] text-red-600 mt-1 font-medium">
+                      {card.sketches.length} סקיצות שנבחרו יימחקו לצמיתות
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmIdx(null)}
+                    className="flex-1 py-2.5 rounded-xl border-2 border-[#e8e8e8] text-[14px] font-medium text-[#464646] hover:bg-[#fafafa] transition-colors"
+                  >
+                    ביטול
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteCard(deleteConfirmIdx)}
+                    className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[14px] font-medium transition-colors"
+                  >
+                    מחיקה
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Edit Name Modal */}
+      <AnimatePresence>
+        {editingNameIdx != null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setEditingNameIdx(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-5 space-y-4 relative"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-[17px] font-bold text-[#581E83] text-center">שינוי שם קבוצה</h3>
+              <input
+                type="text"
+                value={editNameValue}
+                onChange={(e) => setEditNameValue(e.target.value)}
+                placeholder="שם הקבוצה"
+                className="w-full border-2 border-[#e8e8e8] focus:border-[#5E2F88] rounded-xl px-4 py-3 text-sm text-[#464646] outline-none transition-colors"
+                autoFocus
+              />
+              <div className="flex gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={() => setEditingNameIdx(null)}
+                  className="flex-1 py-2.5 rounded-xl border-2 border-[#e8e8e8] text-[14px] font-medium text-[#464646] hover:bg-[#fafafa] transition-colors"
+                >
+                  ביטול
+                </button>
+                <button
+                  type="button"
+                  onClick={saveEditName}
+                  disabled={editNameValue.trim().length < 1}
+                  className="flex-1 py-2.5 rounded-xl bg-[#5E2F88] hover:bg-[#7B3DB0] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-medium transition-colors"
+                >
+                  שמירה
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {catalogLoading && (
