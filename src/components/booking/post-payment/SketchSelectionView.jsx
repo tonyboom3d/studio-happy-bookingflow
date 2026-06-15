@@ -235,7 +235,7 @@ export default function SketchSelectionView({
           const name = participantNames[slot.rugIndex] || sel?.participantName || slot.participantName;
           const sketchStatus = sel?.sketchStatus || 'Changeable';
           const sizePaidLock = sel?.upgradePaymentStatus === 'paid';
-          const awaitingApproval = sel?.upgradePaymentStatus === 'pending-payment-approval';
+          const awaitingApproval = sel?.canvasSize === '90x90' && sel?.upgradePaymentStatus === 'pending-payment-approval';
           const isLocked = sel && (
             sketchStatus !== 'Changeable' ||
             (daysUntilWorkshop <= 6 && sel.confirmedAt)

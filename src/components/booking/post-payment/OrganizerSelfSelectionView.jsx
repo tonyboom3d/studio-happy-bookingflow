@@ -9,6 +9,7 @@ import SketchCatalogSheet from './SketchCatalogSheet';
 function getSketchStatusBadge(sketch, editingWindowClosed) {
   const status = sketch.sketchStatus || '';
   const upgrade = sketch.upgradePaymentStatus || null;
+  const is90 = sketch.size === '90x90';
 
   if (status === 'סקיצה מוכנה' || status === 'Ready')
     return { label: 'סקיצה מוכנה', bg: 'bg-green-100', text: 'text-green-700' };
@@ -16,9 +17,9 @@ function getSketchStatusBadge(sketch, editingWindowClosed) {
     return { label: 'סקיצה בהכנה', bg: 'bg-blue-100', text: 'text-blue-700' };
   if (editingWindowClosed)
     return { label: 'לא ניתן לשינוי', bg: 'bg-gray-100', text: 'text-gray-600' };
-  if (upgrade === 'pending-payment-approval')
+  if (is90 && upgrade === 'pending-payment-approval')
     return { label: 'ממתין לאישור תשלום', bg: 'bg-orange-100', text: 'text-orange-700' };
-  if (sketch.size === '90x90' && upgrade !== 'paid')
+  if (is90 && upgrade !== 'paid')
     return { label: 'לא שולמה', bg: 'bg-red-100', text: 'text-red-700' };
   return { label: 'הושלמה', bg: 'bg-green-100', text: 'text-green-700' };
 }

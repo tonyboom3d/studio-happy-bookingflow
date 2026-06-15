@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Baby, CreditCard } from 'lucide-react';
 import OrganizerOrderHub from './OrganizerOrderHub';
 import SketchSelectionView from './SketchSelectionView';
 import InvalidLinkMessage from './InvalidLinkMessage';
@@ -138,14 +138,11 @@ export default function PostPaymentHub({
   }, [role, localOrder?.selectionMode, localOrder?._id, localParticipants, sendAndWait]);
 
   const handleSwitchModeWithClear = useCallback(async (newMode) => {
-    const deletePromises = (localParticipants || []).map(p =>
-      sendAndWait('DELETE_PARTICIPANT_GROUP', { participantId: p._id }).catch(() => {})
-    );
-    await Promise.all(deletePromises);
+    await sendAndWait('CLEAR_ALL_ORDER_DATA', { orderId: localOrder._id });
     setLocalParticipants([]);
     setLocalSelections([]);
     await handleChooseMode(newMode);
-  }, [localParticipants, sendAndWait, handleChooseMode]);
+  }, [localOrder?._id, sendAndWait, handleChooseMode]);
 
   const handleUpdateParticipant = useCallback(async (participantId, updates) => {
     setLocalParticipants(prev => prev.map(p => {
@@ -418,6 +415,22 @@ export default function PostPaymentHub({
       s => !s.participantId || s.participantId === verifiedParticipant._id
     );
 
+    const showPrice = localOrder.showPriceToParticipants === true;
+    const groupCost = useMemo(() => {
+      if (!showPrice || !localOrder.basePrice) return null;
+      const totalAdults = localOrder.adults || 1;
+      const totalChildren = localOrder.children || 0;
+      const pricePerAdult = totalChildren > 0 && totalAdults > 0
+        ? localOrder.basePrice / (totalAdults + totalChildren) * 1
+        : localOrder.basePrice / totalAdults;
+      const pricePerChild = totalChildren > 0
+        ? localOrder.basePrice / (totalAdults + totalChildren)
+        : 0;
+      const adultCost = rugQty * pricePerAdult;
+      const childCost = childrenQty * pricePerChild;
+      return Math.round(adultCost + childCost);
+    }, [showPrice, localOrder.basePrice, localOrder.adults, localOrder.children, rugQty, childrenQty]);
+
     return (
       <div className="max-w-2xl mx-auto p-4 md:p-6" dir="rtl">
         {paymentOverlay}
@@ -432,10 +445,23 @@ export default function PostPaymentHub({
           <p className="text-sm text-[#464646]/70 mt-1">
             בחר/י את הסקיצה לשטיח שלך
           </p>
-          <p className="text-[13px] text-[#5E2F88] font-medium mt-1.5">
-            {rugQty} {rugQty === 1 ? 'שטיח' : 'שטיחים'}
-            {childrenQty > 0 && ` · ${childrenQty} ${childrenQty === 1 ? 'ילד' : 'ילדים'}`}
-          </p>
+          <div className="flex items-center justify-center gap-3 mt-1.5">
+            <span className="text-[13px] text-[#5E2F88] font-medium">
+              {rugQty} {rugQty === 1 ? 'שטיח' : 'שטיחים'}
+            </span>
+            {childrenQty > 0 && (
+              <span className="text-[13px] text-[#5E2F88] font-medium flex items-center gap-1">
+                <Baby className="w-3.5 h-3.5" />
+                {childrenQty} {childrenQty === 1 ? 'ילד' : 'ילדים'}
+              </span>
+            )}
+          </div>
+          {showPrice && groupCost != null && (
+            <div className="mt-2 inline-flex items-center gap-1.5 bg-[#f5f0fa] border border-[#5E2F88]/15 rounded-lg px-3 py-1.5">
+              <CreditCard className="w-3.5 h-3.5 text-[#5E2F88]" />
+              <span className="text-[13px] font-medium text-[#581E83]">עלות הקבוצה: ₪{groupCost}</span>
+            </div>
+          )}
         </motion.div>
 
         <DeadlineCountdown

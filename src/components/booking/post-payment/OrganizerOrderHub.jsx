@@ -17,6 +17,7 @@ import OrganizerSelfSelectionView from './OrganizerSelfSelectionView';
 function getSelectionStatusBadge(sel, editingWindowClosed) {
   const status = sel.sketchStatus || '';
   const upgrade = sel.upgradePaymentStatus || null;
+  const is90 = sel.canvasSize === '90x90';
 
   if (status === 'סקיצה מוכנה' || status === 'Ready')
     return { label: 'סקיצה מוכנה', bg: 'bg-green-100', text: 'text-green-700', icon: true };
@@ -24,9 +25,9 @@ function getSelectionStatusBadge(sel, editingWindowClosed) {
     return { label: 'סקיצה בהכנה', bg: 'bg-blue-100', text: 'text-blue-700', icon: false };
   if (editingWindowClosed)
     return { label: 'לא ניתן לשינוי', bg: 'bg-gray-100', text: 'text-gray-600', icon: true };
-  if (upgrade === 'pending-payment-approval')
+  if (is90 && upgrade === 'pending-payment-approval')
     return { label: 'ממתין לאישור תשלום', bg: 'bg-orange-100', text: 'text-orange-700', icon: false };
-  if (sel.canvasSize === '90x90' && upgrade !== 'paid')
+  if (is90 && upgrade !== 'paid')
     return { label: 'לא שולמה', bg: 'bg-red-100', text: 'text-red-700', icon: false };
   return { label: 'הושלמה', bg: 'bg-green-100', text: 'text-green-700', icon: false };
 }
@@ -685,15 +686,6 @@ export default function OrganizerOrderHub({
                     type="checkbox"
                     checked={order.showPriceToParticipants === true}
                     onChange={(e) => onUpdateSettings({ showPriceToParticipants: e.target.checked })}
-                    className="w-4 h-4 accent-[#5E2F88]"
-                  />
-                </label>
-                <label className="flex items-center justify-between">
-                  <span className="text-[17px] text-[#464646]">הצגת סקיצות שבחרו אחרים</span>
-                  <input
-                    type="checkbox"
-                    checked={order.showOtherSelections === true}
-                    onChange={(e) => onUpdateSettings({ showOtherSelections: e.target.checked })}
                     className="w-4 h-4 accent-[#5E2F88]"
                   />
                 </label>
