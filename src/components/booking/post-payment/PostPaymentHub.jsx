@@ -6,6 +6,7 @@ import SketchSelectionView from './SketchSelectionView';
 import InvalidLinkMessage from './InvalidLinkMessage';
 import OrderLoadError from './OrderLoadError';
 import DeadlineCountdown from './DeadlineCountdown';
+import AdminOtpVerification from './AdminOtpVerification';
 
 export default function PostPaymentHub({
   orderContext,
@@ -17,6 +18,9 @@ export default function PostPaymentHub({
   isLoading,
   orderError,
   groupInfo,
+  adminOtpRequired,
+  adminOrderId,
+  onAdminVerified,
 }) {
   const [localOrder, setLocalOrder] = useState(orderContext?.order || null);
   const [localParticipants, setLocalParticipants] = useState(orderContext?.participants || []);
@@ -290,6 +294,21 @@ export default function PostPaymentHub({
     }
   };
 
+
+  if (adminOtpRequired && !localOrder) {
+    return (
+      <AdminOtpVerification
+        orderId={adminOrderId}
+        onSendMessage={onSendMessage}
+        onVerified={(ctx) => {
+          if (ctx?.order) setLocalOrder(ctx.order);
+          if (ctx?.participants) setLocalParticipants(ctx.participants);
+          if (ctx?.selections) setLocalSelections(ctx.selections);
+          if (onAdminVerified) onAdminVerified(ctx);
+        }}
+      />
+    );
+  }
 
   if (isLoading) {
     return (

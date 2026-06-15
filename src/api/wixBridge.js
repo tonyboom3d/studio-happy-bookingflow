@@ -191,6 +191,10 @@ function handleWixMessage(event) {
             break;
         }
 
+        case 'ADMIN_OTP_REQUIRED':
+            notifyListeners({ adminOtpRequired: true, adminOrderId: data.orderId });
+            break;
+
         case 'SKETCH_SELECTION_SAVED':
             notifyListeners({ sketchSelectionSaved: data.selection });
             break;

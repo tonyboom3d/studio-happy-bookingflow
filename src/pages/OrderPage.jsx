@@ -21,6 +21,8 @@ export default function OrderPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [orderError, setOrderError] = useState(false);
   const [groupInfo, setGroupInfo] = useState(null);
+  const [adminOtpRequired, setAdminOtpRequired] = useState(false);
+  const [adminOrderId, setAdminOrderId] = useState(null);
 
   useEffect(() => {
     const cached = getWixData();
@@ -59,6 +61,12 @@ export default function OrderPage() {
         }
         setParticipantContext(data.participantContext);
         setRole('participant');
+        setIsLoading(false);
+      }
+
+      if (data.adminOtpRequired) {
+        setAdminOtpRequired(true);
+        setAdminOrderId(data.adminOrderId);
         setIsLoading(false);
       }
 
@@ -113,6 +121,13 @@ export default function OrderPage() {
         isLoading={isLoading}
         orderError={orderError}
         groupInfo={groupInfo}
+        adminOtpRequired={adminOtpRequired}
+        adminOrderId={adminOrderId}
+        onAdminVerified={(ctx) => {
+          setAdminOtpRequired(false);
+          setOrderContext(ctx);
+          setRole('organizer');
+        }}
       />
     </div>
   );

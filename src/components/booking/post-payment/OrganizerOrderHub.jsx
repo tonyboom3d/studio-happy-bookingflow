@@ -822,7 +822,10 @@ export default function OrganizerOrderHub({
                                   <img src={sel.productSnapshot.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
                                 )}
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-medium text-[#581E83] truncate">{sel.productSnapshot?.title || 'סקיצה'}</p>
+                                  <p className="text-xs font-medium text-[#581E83] truncate">
+                                    {sel.productSnapshot?.title || 'סקיצה'}
+                                    {sel.participantName && <span className="text-[#464646]/50 font-normal"> · {sel.participantName}</span>}
+                                  </p>
                                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                     <span className="text-[11px] text-[#464646]/50">
                                       {sel.canvasSize === '90x90' ? '90×90 ס"מ' : '60×60 ס"מ'}
