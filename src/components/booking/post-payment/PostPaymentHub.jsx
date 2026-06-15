@@ -246,6 +246,10 @@ export default function PostPaymentHub({
     });
   }, [localOrder?._id, ecomSummary, verifiedParticipant, onSendMessage]);
 
+  const handleCopyToClipboard = useCallback((text) => {
+    return sendAndWait('COPY_TO_CLIPBOARD', { text });
+  }, [sendAndWait]);
+
   const handleUpdateSettings = async (settings) => {
     try {
       await sendAndWait('UPDATE_ORDER_SETTINGS', {
@@ -372,6 +376,7 @@ export default function PostPaymentHub({
           onRequestUpgrade={handleRequestUpgrade}
           onUpdateSettings={handleUpdateSettings}
           onUpdateParticipant={handleUpdateParticipant}
+          onCopyToClipboard={handleCopyToClipboard}
           onFetchCatalog={handleFetchCatalog}
           isSaving={isSaving}
         />

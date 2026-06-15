@@ -4,7 +4,7 @@ import {
   Check, UserCheck, Send, Copy, Settings, ChevronDown, ChevronUp,
   Calendar, MapPin, Tag, CreditCard, CalendarPlus, MessageCircle,
   HelpCircle, X, ExternalLink, User, Mail, Phone, MoveLeft, Baby, Plus, Minus, Image as ImageIcon,
-  Pencil, Link2, LayoutGrid, Users, Trash2, AlertTriangle, UserPlus, Lock,
+  Link2, LayoutGrid, Users, Trash2, AlertTriangle, UserPlus, Lock, CheckSquare, Square,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
@@ -28,6 +28,7 @@ export default function OrganizerOrderHub({
   onRequestUpgrade,
   onUpdateSettings,
   onUpdateParticipant,
+  onCopyToClipboard,
   onFetchCatalog,
   isSaving,
 }) {
@@ -39,8 +40,6 @@ export default function OrganizerOrderHub({
   const [orderDetailsCollapsed, setOrderDetailsCollapsed] = useState(false);
   const [participantsExpanded, setParticipantsExpanded] = useState(false);
   const [shareFor, setShareFor] = useState(null); // participant currently being shared
-  const [editingNameId, setEditingNameId] = useState(null);
-  const [editingNameValue, setEditingNameValue] = useState('');
 
   // Group creation modal
   const [createOpen, setCreateOpen] = useState(false);
@@ -50,9 +49,8 @@ export default function OrganizerOrderHub({
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
 
-  // Group deletion (double confirmation)
+  // Group deletion (single confirmation)
   const [deleteFor, setDeleteFor] = useState(null);
-  const [deleteStep, setDeleteStep] = useState(1);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
@@ -92,6 +90,9 @@ export default function OrganizerOrderHub({
   // The group allocation (name, rugs, children) is embedded so the recipient page
   // can display the exact intended state.
   const buildGroupShareUrl = useCallback((token, participant) => {
+    if (participant?.shortRef) {
+      return `${USER_SELECTIONS_BASE}?ref=${participant.shortRef}`;
+    }
     const params = new URLSearchParams();
     if (order?._id) params.set('orderId', order._id);
     if (token) params.set('token', token);
@@ -117,12 +118,29 @@ export default function OrganizerOrderHub({
     );
   }, [ecomSummary, workshopDate, workshopStartTime, buildGroupShareUrl]);
 
+  const [copyWithDetails, setCopyWithDetails] = useState(true);
+
   const copyLink = (token, id, participant) => {
-    const url = buildGroupShareUrl(token, participant);
-    navigator.clipboard.writeText(url).then(() => {
+    const text = copyWithDetails
+      ? buildShareMessage(token, participant)
+      : buildGroupShareUrl(token, participant);
+    if (onCopyToClipboard) {
+      onCopyToClipboard(text).then(() => {
+        setCopiedLink(id);
+        setTimeout(() => setCopiedLink(null), 2000);
+      }).catch(() => {
+        fallbackCopy(text, id);
+      });
+    } else {
+      fallbackCopy(text, id);
+    }
+  };
+
+  const fallbackCopy = (text, id) => {
+    navigator.clipboard.writeText(text).then(() => {
       setCopiedLink(id);
       setTimeout(() => setCopiedLink(null), 2000);
-    });
+    }).catch(() => {});
   };
 
   const shareViaWhatsApp = (token, participant) => {
@@ -195,13 +213,59 @@ export default function OrganizerOrderHub({
     if (!name) { setCreateError('יש להזין שם קבוצה'); return; }
     if (newGroupSeats < 1 || newGroupSeats > remainingRugs) { setCreateError('מספר המשתתפים חורג מהזמין'); return; }
     if (newGroupChildren > remainingChildren) { setCreateError('מספר הילדים חורג מהזמין'); return; }
+    if (newGroupChildren > newGroupSeats) { setCreateError('מספר הילדים לא יכול לעלות על מספר המבוגרים בקבוצה'); return; }
+
+    // Auto-allocation: if this group consumes the last rugs AND there are
+    // remaining unallocated children, distribute them proportionally across
+    // groups that don't yet have children (including this one).
+    let childrenForThisGroup = newGroupChildren;
+    const rugsAfterThis = remainingRugs - newGroupSeats;
+    const childrenLeftAfterThis = remainingChildren - newGroupChildren;
+    if (rugsAfterThis === 0 && childrenLeftAfterThis > 0 && maxChildren > 0) {
+      const adultsInGroup = newGroupSeats;
+      const groupsToSpread = [
+        ...(participants || []).filter(p => (p.childrenCount || 0) === 0).map(p => ({ id: p._id, adults: p.rugAllowance || 0 })),
+        ...(childrenForThisGroup === 0 ? [{ id: '__new__', adults: adultsInGroup }] : []),
+      ];
+      const totalAdultsInSpread = groupsToSpread.reduce((s, g) => s + g.adults, 0);
+      if (totalAdultsInSpread > 0) {
+        let leftover = childrenLeftAfterThis;
+        const allocations = {};
+        for (const g of groupsToSpread) {
+          const share = Math.round((g.adults / totalAdultsInSpread) * childrenLeftAfterThis);
+          const bounded = Math.min(share, g.adults, leftover);
+          allocations[g.id] = bounded;
+          leftover -= bounded;
+        }
+        if (leftover > 0) {
+          for (const g of groupsToSpread) {
+            const canAdd = g.adults - (allocations[g.id] || 0);
+            const add = Math.min(canAdd, leftover);
+            allocations[g.id] = (allocations[g.id] || 0) + add;
+            leftover -= add;
+            if (leftover <= 0) break;
+          }
+        }
+        if (allocations['__new__']) childrenForThisGroup += allocations['__new__'];
+        delete allocations['__new__'];
+        const updatePromises = [];
+        for (const [pid, extra] of Object.entries(allocations)) {
+          if (extra > 0) {
+            const p = (participants || []).find(x => x._id === pid);
+            if (p) updatePromises.push(onUpdateParticipant(pid, { childrenCount: (p.childrenCount || 0) + extra }));
+          }
+        }
+        if (updatePromises.length) await Promise.all(updatePromises);
+      }
+    }
+
     setCreating(true);
     setCreateError('');
     try {
-      const created = await onCreateGroup({ name, participants: newGroupSeats, children: newGroupChildren });
+      const created = await onCreateGroup({ name, participants: newGroupSeats, children: childrenForThisGroup });
       if (created) {
         setCreateOpen(false);
-        setShareFor(created); // D: immediately open the sharing modal
+        setShareFor(created);
       } else {
         setCreateError('יצירת הקבוצה נכשלה, נסו שוב');
       }
@@ -218,18 +282,15 @@ export default function OrganizerOrderHub({
   const askDelete = (p) => {
     if (within48h) return;
     setDeleteError('');
-    setDeleteStep(1);
     setDeleteFor(p);
   };
 
   const confirmDelete = async () => {
-    if (deleteStep === 1) { setDeleteStep(2); return; }
     setDeleting(true);
     setDeleteError('');
     try {
       await onDeleteGroup(deleteFor._id);
       setDeleteFor(null);
-      setDeleteStep(1);
     } catch (e) {
       const msg = String(e?.message || '');
       if (msg.includes('DELETE_LOCKED_48H')) setDeleteError('לא ניתן למחוק קבוצה בתוך 48 שעות מהסדנה');
@@ -541,7 +602,7 @@ export default function OrganizerOrderHub({
             >
               <div className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
-                <span>הגדרות</span>
+                <span>הגדרות קבוצות</span>
               </div>
               {settingsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
@@ -600,19 +661,6 @@ export default function OrganizerOrderHub({
             const visibleParticipants = participantsExpanded ? participants : participants.slice(0, 4);
             const hasHidden = participants.length > 4 && !participantsExpanded;
 
-            const startEditName = (p) => {
-              setEditingNameId(p._id);
-              setEditingNameValue(p.name || '');
-            };
-            const commitName = (p) => {
-              const trimmed = (editingNameValue || '').trim();
-              if (trimmed && trimmed !== p.name) {
-                onUpdateParticipant(p._id, { name: trimmed });
-              }
-              setEditingNameId(null);
-              setEditingNameValue('');
-            };
-
             return (
               <div className="space-y-2.5 relative">
                 {visibleParticipants.map((p, i) => {
@@ -649,27 +697,7 @@ export default function OrganizerOrderHub({
                           }`}>
                             {completed ? <Check className="w-3.5 h-3.5" /> : i + 1}
                           </div>
-                          {editingNameId === p._id ? (
-                            <input
-                              autoFocus
-                              value={editingNameValue}
-                              onChange={(e) => setEditingNameValue(e.target.value)}
-                              onBlur={() => commitName(p)}
-                              onKeyDown={(e) => { if (e.key === 'Enter') commitName(p); if (e.key === 'Escape') { setEditingNameId(null); setEditingNameValue(''); } }}
-                              placeholder="שם הקבוצה"
-                              className="text-[15px] font-semibold text-[#581E83] border-b border-[#5E2F88] outline-none bg-transparent w-32"
-                            />
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => startEditName(p)}
-                              className="flex items-center gap-1 min-w-0 group"
-                              title="עריכת שם הקבוצה"
-                            >
-                              <span className="text-[15px] font-semibold text-[#581E83] truncate">{p.name}</span>
-                              <Pencil className="w-3 h-3 text-[#5E2F88]/50 group-hover:text-[#5E2F88] shrink-0" />
-                            </button>
-                          )}
+                          <span className="text-[15px] font-semibold text-[#581E83] truncate">{p.name}</span>
                           <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${badgeInfo.bg} ${badgeInfo.text}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${badgeInfo.dot}`} />
                             {badgeInfo.label}
@@ -908,7 +936,7 @@ export default function OrganizerOrderHub({
         )}
       </AnimatePresence>
 
-      {/* Delete group — double confirmation */}
+      {/* Delete group confirmation */}
       <AnimatePresence>
         {deleteFor && (
           <motion.div
@@ -916,7 +944,7 @@ export default function OrganizerOrderHub({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            onClick={() => !deleting && (setDeleteFor(null), setDeleteStep(1))}
+            onClick={() => !deleting && setDeleteFor(null)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -931,21 +959,11 @@ export default function OrganizerOrderHub({
                 <div className="w-11 h-11 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-2">
                   <AlertTriangle className="w-6 h-6 text-red-600" />
                 </div>
-                <h3 className="text-[19px] font-bold text-red-700">
-                  {deleteStep === 1 ? `מחיקת הקבוצה "${deleteFor.name}"?` : 'אישור סופי למחיקה'}
-                </h3>
+                <h3 className="text-[19px] font-bold text-red-700">מחיקת הקבוצה "{deleteFor.name}"?</h3>
                 <div className="text-[14px] text-[#464646]/80 mt-2 space-y-2 text-right">
-                  {deleteStep === 1 ? (
-                    <>
-                      <p>מחיקת הקבוצה תבטל לצמיתות את הקישור הייעודי שלה — הוא יפסיק לעבוד עבור מי שקיבל אותו.</p>
-                      <p className="font-semibold text-red-600">כל הסקיצות שכבר נבחרו על ידי הקבוצה יימחקו לצמיתות.</p>
-                      <p>תוכלו תמיד ליצור קבוצה חדשה במקומה.</p>
-                    </>
-                  ) : (
-                    <p className="font-semibold text-red-600 text-center">
-                      פעולה זו אינה הפיכה. למחוק את "{deleteFor.name}" ואת כל הבחירות שלה?
-                    </p>
-                  )}
+                  <p>מחיקת הקבוצה יבטל לצמיתות את הקישור שלה — הוא יפסיק לעבוד עבור מי שקיבל אותו.</p>
+                  <p className="font-semibold text-red-600">כל הסקיצות שכבר נבחרו על ידי אותה קבוצה יימחקו.</p>
+                  <p>תוכלו תמיד ליצור קבוצה חדשה במקומה.</p>
                 </div>
               </div>
 
@@ -958,7 +976,7 @@ export default function OrganizerOrderHub({
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => { if (!deleting) { setDeleteFor(null); setDeleteStep(1); } }}
+                  onClick={() => { if (!deleting) setDeleteFor(null); }}
                   className="flex-1 border-2 border-[#e8e8e8] text-[#464646] font-medium py-2.5 rounded-xl text-[14px] hover:bg-[#fafafa] transition-colors"
                 >
                   ביטול
@@ -970,7 +988,7 @@ export default function OrganizerOrderHub({
                   className="flex-1 flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-[14px] transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
-                  {deleting ? 'מוחק...' : deleteStep === 1 ? 'המשך למחיקה' : 'מחק לצמיתות'}
+                  {deleting ? 'מוחק...' : 'מחק לצמיתות'}
                 </button>
               </div>
             </motion.div>
@@ -1048,20 +1066,35 @@ export default function OrganizerOrderHub({
                     <ExternalLink className="w-4 h-4 text-[#464646]/40 shrink-0" />
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => copyLink(token, shareFor._id, shareFor)}
-                    className="flex items-center gap-3 w-full p-3.5 rounded-xl border-2 border-[#e8e8e8] bg-white hover:border-[#5E2F88] hover:bg-[#f5f0fa] transition-colors text-right"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-[#f5f0fa] flex items-center justify-center shrink-0">
-                      {copiedLink === shareFor._id ? <Check className="w-5 h-5 text-green-600" /> : <Link2 className="w-5 h-5 text-[#5E2F88]" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[16px] font-semibold text-[#464646]">{copiedLink === shareFor._id ? 'הקישור הועתק!' : 'העתקת קישור'}</span>
-                      <p className="text-[13px] text-[#464646]/60 mt-0.5">העתיקו ושתפו בכל מקום</p>
-                    </div>
-                    <Copy className="w-4 h-4 text-[#464646]/40 shrink-0" />
-                  </button>
+                  <div className="rounded-xl border-2 border-[#e8e8e8] bg-white overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => copyLink(token, shareFor._id, shareFor)}
+                      className="flex items-center gap-3 w-full p-3.5 hover:bg-[#f5f0fa] transition-colors text-right"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-[#f5f0fa] flex items-center justify-center shrink-0">
+                        {copiedLink === shareFor._id ? <Check className="w-5 h-5 text-green-600" /> : <Link2 className="w-5 h-5 text-[#5E2F88]" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[16px] font-semibold text-[#464646]">{copiedLink === shareFor._id ? 'הועתק!' : 'העתקת קישור'}</span>
+                        <p className="text-[13px] text-[#464646]/60 mt-0.5">העתיקו ושתפו בכל מקום</p>
+                      </div>
+                      <Copy className="w-4 h-4 text-[#464646]/40 shrink-0" />
+                    </button>
+                    <label
+                      className="flex items-center gap-2 px-3.5 pb-3 pt-0 cursor-pointer select-none"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); setCopyWithDetails(v => !v); }}
+                        className="text-[#5E2F88]"
+                      >
+                        {copyWithDetails ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                      </button>
+                      <span className="text-[13px] text-[#464646]/70">העתקה עם פרטי הסדנה</span>
+                    </label>
+                  </div>
                 </div>
               </motion.div>
             </motion.div>
