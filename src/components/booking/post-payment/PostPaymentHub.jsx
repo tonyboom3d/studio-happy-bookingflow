@@ -137,6 +137,16 @@ export default function PostPaymentHub({
     })();
   }, [role, localOrder?.selectionMode, localOrder?._id, localParticipants, sendAndWait]);
 
+  const handleSwitchModeWithClear = useCallback(async (newMode) => {
+    const deletePromises = (localParticipants || []).map(p =>
+      sendAndWait('DELETE_PARTICIPANT_GROUP', { participantId: p._id }).catch(() => {})
+    );
+    await Promise.all(deletePromises);
+    setLocalParticipants([]);
+    setLocalSelections([]);
+    await handleChooseMode(newMode);
+  }, [localParticipants, sendAndWait, handleChooseMode]);
+
   const handleUpdateParticipant = useCallback(async (participantId, updates) => {
     setLocalParticipants(prev => prev.map(p => {
       if (p._id !== participantId) return p;
@@ -373,6 +383,7 @@ export default function PostPaymentHub({
           onUpdateParticipant={handleUpdateParticipant}
           onCopyToClipboard={handleCopyToClipboard}
           onFetchCatalog={handleFetchCatalog}
+          onSwitchModeWithClear={handleSwitchModeWithClear}
           isSaving={isSaving}
         />
       </div>

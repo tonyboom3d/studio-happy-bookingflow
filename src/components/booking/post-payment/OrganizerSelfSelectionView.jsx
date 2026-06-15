@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   Check, Plus, Minus, Baby, Users, LayoutGrid, ChevronDown, ChevronUp,
   Sparkles, Image as ImageIcon, X, AlertCircle, CreditCard, Trash2, Pencil,
@@ -55,6 +55,37 @@ export default function OrganizerSelfSelectionView({
 
   const totalSelectedSketches = cards.reduce((s, c) => s + c.sketches.length, 0);
 
+  // Bulk 90cm upgrade tracking
+  const allPendingUpgrades = useMemo(() => {
+    const upgrades = [];
+    cards.forEach(card => {
+      card.sketches.forEach(sketch => {
+        if (sketch.size === '90x90' && sketch.upgradePaymentStatus !== 'paid') {
+          upgrades.push({
+            rugIndex: sketch.rugIndex,
+            productId: sketch.productId,
+            productSnapshot: { title: sketch.title, image: sketch.image },
+            canvasSize: '90x90',
+            participantName: card.name,
+          });
+        }
+      });
+    });
+    return upgrades;
+  }, [cards]);
+
+  // Child allocation: minimum children to keep remaining pool valid
+  const minChildrenForSetup = useMemo(() => {
+    if (maxChildren <= 0 || remainingChildren <= 0) return 0;
+    return Math.max(0, remainingChildren - (remainingRugs - setupAdults));
+  }, [maxChildren, remainingChildren, remainingRugs, setupAdults]);
+
+  useEffect(() => {
+    if (setupOpen && setupChildren < minChildrenForSetup) {
+      setSetupChildren(minChildrenForSetup);
+    }
+  }, [minChildrenForSetup, setupOpen]);
+
   function buildInitialCards(ord, sels) {
     if (!sels?.length) return [];
     const grouped = {};
@@ -92,12 +123,17 @@ export default function OrganizerSelfSelectionView({
       setSetupError('מספר הילדים לא יכול לעלות על מספר המבוגרים בקבוצה');
       return;
     }
+    const effectiveChildren = Math.max(setupChildren, minChildrenForSetup);
+    if (effectiveChildren > setupAdults) {
+      setSetupError('מספר הילדים לא יכול לעלות על מספר המבוגרים בקבוצה');
+      return;
+    }
     setSetupError('');
     const newCard = {
       id: `card_${Date.now()}`,
       name: `קבוצה ${cards.length + 1}`,
       adults: setupAdults,
-      children: setupChildren,
+      children: effectiveChildren,
       sketches: [],
     };
     setCards(prev => [...prev, newCard]);
@@ -238,26 +274,16 @@ export default function OrganizerSelfSelectionView({
     }
     setReviewError('');
 
-    // Save each sketch as a selection
-    const upgrades = [];
     for (const sketch of card.sketches) {
-      if (sketch.source === 'ai') continue; // AI placeholders handled separately
+      if (sketch.source === 'ai') continue;
       const selData = {
         rugIndex: sketch.rugIndex,
         productId: sketch.productId,
         productSnapshot: { title: sketch.title, image: sketch.image },
-        canvasSize: sketch.size,
+        canvasSize: '60x60',
         participantName: card.name,
       };
-      if (sketch.size === '90x90') {
-        upgrades.push(selData);
-      } else {
-        await onSelectSketch(selData);
-      }
-    }
-
-    if (upgrades.length > 0) {
-      onRequestUpgrade(upgrades);
+      await onSelectSketch(selData);
     }
 
     setReviewOpen(false);
@@ -317,6 +343,30 @@ export default function OrganizerSelfSelectionView({
           </div>
         )}
       </div>
+
+      {/* Bulk 90cm upgrade payment */}
+      {allPendingUpgrades.length > 0 && (
+        <div className="bg-orange-50 border-2 border-orange-300 rounded-xl p-3.5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[14px] font-semibold text-orange-800 flex items-center gap-1.5">
+              <CreditCard className="w-4 h-4" />
+              {allPendingUpgrades.length} {allPendingUpgrades.length === 1 ? 'שטיח' : 'שטיחים'} בגודל 90×90 ממתינים לתשלום
+            </span>
+            <span className="text-[15px] font-bold text-orange-800">₪{allPendingUpgrades.length * 299}</span>
+          </div>
+          <p className="text-[12px] text-orange-700/70 mb-2.5">
+            שטיחים אלו נשמרו בגודל 60×60 ויעודכנו ל-90×90 רק לאחר השלמת התשלום
+          </p>
+          <button
+            type="button"
+            onClick={() => onRequestUpgrade(allPendingUpgrades)}
+            className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-[15px] transition-colors shadow-sm"
+          >
+            <CreditCard className="w-4 h-4" />
+            תשלום שדרוג 90×90 · ₪{allPendingUpgrades.length * 299}
+          </button>
+        </div>
+      )}
 
       {/* Create button */}
       <button
@@ -540,8 +590,8 @@ export default function OrganizerSelfSelectionView({
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => setSetupChildren(v => Math.max(0, v - 1))}
-                        disabled={setupChildren <= 0}
+                        onClick={() => setSetupChildren(v => Math.max(minChildrenForSetup, v - 1))}
+                        disabled={setupChildren <= minChildrenForSetup}
                         className="w-7 h-7 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <Minus className="w-3.5 h-3.5" />
@@ -563,6 +613,16 @@ export default function OrganizerSelfSelectionView({
                   <LayoutGrid className="w-3.5 h-3.5 text-[#5E2F88]" />
                   יש לבחור {setupAdults} {setupAdults === 1 ? 'סקיצה' : 'סקיצות'} לקבוצה זו
                 </p>
+
+                {minChildrenForSetup > 0 && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-[13px] text-orange-700 flex items-start gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>
+                      יש לשייך לפחות {minChildrenForSetup} {minChildrenForSetup === 1 ? 'ילד' : 'ילדים'} לקבוצה זו.
+                      {' '}אחרת ייוותרו {remainingRugs - setupAdults} {(remainingRugs - setupAdults) === 1 ? 'מבוגר' : 'מבוגרים'} ו-{remainingChildren - setupChildren} ילדים — מספר הילדים יעלה על המבוגרים.
+                    </span>
+                  </div>
+                )}
 
                 {setupError && (
                   <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-[13px] text-red-700 flex items-center gap-2">

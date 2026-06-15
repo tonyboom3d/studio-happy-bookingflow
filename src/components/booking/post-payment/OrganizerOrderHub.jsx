@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Check, UserCheck, Send, Copy, Settings, ChevronDown, ChevronUp,
@@ -31,6 +31,7 @@ export default function OrganizerOrderHub({
   onUpdateParticipant,
   onCopyToClipboard,
   onFetchCatalog,
+  onSwitchModeWithClear,
   isSaving,
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -55,11 +56,36 @@ export default function OrganizerOrderHub({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
+  // Mode switch warning
+  const [modeSwitchTarget, setModeSwitchTarget] = useState(null);
+  const [modeSwitching, setModeSwitching] = useState(false);
+
   const handleModeClick = useCallback((mode) => {
+    const currentMode = order.selectionMode;
+    if (currentMode && currentMode !== mode) {
+      const hasData = (participants?.length > 0) || (selections?.length > 0);
+      if (hasData) {
+        setModeSwitchTarget(mode);
+        return;
+      }
+    }
     setModeChosen(true);
     setOrderDetailsCollapsed(true);
     onChooseMode(mode);
-  }, [onChooseMode]);
+  }, [order.selectionMode, participants, selections, onChooseMode]);
+
+  const confirmModeSwitch = useCallback(async () => {
+    if (!modeSwitchTarget || !onSwitchModeWithClear) return;
+    setModeSwitching(true);
+    try {
+      await onSwitchModeWithClear(modeSwitchTarget);
+      setModeSwitchTarget(null);
+      setModeChosen(true);
+      setOrderDetailsCollapsed(true);
+    } finally {
+      setModeSwitching(false);
+    }
+  }, [modeSwitchTarget, onSwitchModeWithClear]);
 
   const workshopDate = order.workshopStart
     ? format(new Date(order.workshopStart), 'EEEE, d בMMMM yyyy', { locale: he })
@@ -197,6 +223,18 @@ export default function OrganizerOrderHub({
   const remainingRugs = Math.max(0, maxRugs - usedRugs);
   const remainingChildren = Math.max(0, maxChildren - usedChildren);
 
+  // Child allocation: minimum children for new group to keep remaining pool valid
+  const minChildrenForCreate = useMemo(() => {
+    if (maxChildren <= 0 || remainingChildren <= 0) return 0;
+    return Math.max(0, remainingChildren - (remainingRugs - newGroupSeats));
+  }, [maxChildren, remainingChildren, remainingRugs, newGroupSeats]);
+
+  useEffect(() => {
+    if (createOpen && newGroupChildren < minChildrenForCreate) {
+      setNewGroupChildren(minChildrenForCreate);
+    }
+  }, [minChildrenForCreate, createOpen]);
+
   // 48h-before-workshop lock (server enforces authoritatively; this is UX only).
   const within48h = order.workshopStart
     ? (new Date(order.workshopStart).getTime() - Date.now() <= 48 * 60 * 60 * 1000)
@@ -216,12 +254,10 @@ export default function OrganizerOrderHub({
     if (!name) { setCreateError('יש להזין שם קבוצה'); return; }
     if (newGroupSeats < 1 || newGroupSeats > remainingRugs) { setCreateError('מספר המשתתפים חורג מהזמין'); return; }
     if (newGroupChildren > remainingChildren) { setCreateError('מספר הילדים חורג מהזמין'); return; }
-    if (newGroupChildren > newGroupSeats) { setCreateError('מספר הילדים לא יכול לעלות על מספר המבוגרים בקבוצה'); return; }
+    const effectiveChildren = Math.max(newGroupChildren, minChildrenForCreate);
+    if (effectiveChildren > newGroupSeats) { setCreateError('מספר הילדים לא יכול לעלות על מספר המבוגרים בקבוצה'); return; }
 
-    // Auto-allocation: if this group consumes the last rugs AND there are
-    // remaining unallocated children, distribute them proportionally across
-    // groups that don't yet have children (including this one).
-    let childrenForThisGroup = newGroupChildren;
+    let childrenForThisGroup = effectiveChildren;
     const rugsAfterThis = remainingRugs - newGroupSeats;
     const childrenLeftAfterThis = remainingChildren - newGroupChildren;
     if (rugsAfterThis === 0 && childrenLeftAfterThis > 0 && maxChildren > 0) {
@@ -890,8 +926,8 @@ export default function OrganizerOrderHub({
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => setNewGroupChildren(v => Math.max(0, v - 1))}
-                        disabled={newGroupChildren <= 0}
+                        onClick={() => setNewGroupChildren(v => Math.max(minChildrenForCreate, v - 1))}
+                        disabled={newGroupChildren <= minChildrenForCreate}
                         className="w-7 h-7 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <Minus className="w-3.5 h-3.5" />
@@ -913,6 +949,16 @@ export default function OrganizerOrderHub({
                   <LayoutGrid className="w-3.5 h-3.5 text-[#5E2F88]" />
                   יוקצו אוטומטית {newGroupSeats} {newGroupSeats === 1 ? 'שטיח' : 'שטיחים'} לקבוצה זו
                 </p>
+
+                {minChildrenForCreate > 0 && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-[13px] text-orange-700 flex items-start gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>
+                      יש לשייך לפחות {minChildrenForCreate} {minChildrenForCreate === 1 ? 'ילד' : 'ילדים'} לקבוצה זו.
+                      {' '}אחרת ייוותרו {remainingRugs - newGroupSeats} {(remainingRugs - newGroupSeats) === 1 ? 'מבוגר' : 'מבוגרים'} ו-{remainingChildren - newGroupChildren} ילדים — מספר הילדים יעלה על המבוגרים.
+                    </span>
+                  </div>
+                )}
 
                 {/* Auto-allocation preview */}
                 {(() => {
@@ -1008,6 +1054,60 @@ export default function OrganizerOrderHub({
                 >
                   <Trash2 className="w-4 h-4" />
                   {deleting ? 'מוחק...' : 'מחק לצמיתות'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mode switch warning */}
+      <AnimatePresence>
+        {modeSwitchTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => !modeSwitching && setModeSwitchTarget(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 relative"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="w-11 h-11 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-2">
+                  <AlertTriangle className="w-6 h-6 text-orange-600" />
+                </div>
+                <h3 className="text-[19px] font-bold text-[#581E83]">שינוי שיטת בחירה</h3>
+                <div className="text-[14px] text-[#464646]/80 mt-2 space-y-2 text-right">
+                  <p>ניתן להשתמש רק בשיטת בחירה אחת.</p>
+                  <p className="font-semibold text-red-600">
+                    מעבר ל{modeSwitchTarget === 'organizer' ? '״אבחר בעצמי״' : '״שליחה לקבוצה״'} ימחק את כל הקבוצות והסקיצות שנבחרו עד כה.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { if (!modeSwitching) setModeSwitchTarget(null); }}
+                  className="flex-1 border-2 border-[#e8e8e8] text-[#464646] font-medium py-2.5 rounded-xl text-[14px] hover:bg-[#fafafa] transition-colors"
+                >
+                  ביטול
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmModeSwitch}
+                  disabled={modeSwitching}
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-[14px] transition-colors"
+                >
+                  {modeSwitching ? 'מחליף...' : 'אישור ומעבר'}
                 </button>
               </div>
             </motion.div>
