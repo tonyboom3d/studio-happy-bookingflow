@@ -640,7 +640,7 @@ export default function OrganizerSelfSelectionView({
                   יש לבחור {setupAdults} {setupAdults === 1 ? 'סקיצה' : 'סקיצות'} לקבוצה זו
                 </p>
 
-                {minChildrenForSetup > 0 && (
+                {minChildrenForSetup > 0 && setupChildren < minChildrenForSetup && (
                   <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-[13px] text-orange-700 flex items-start gap-2">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     <span>
