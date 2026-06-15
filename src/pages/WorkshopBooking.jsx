@@ -419,6 +419,7 @@ export default function WorkshopBooking() {
                 {section.id === 3 && (
                   <SketchInfoSection
                     onContinue={() => completeSection(3)}
+                    selectedSlot={selectedSlot}
                   />
                 )}
                 {section.id === 4 && (

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { MessageCircle, ChevronDown, ChevronLeft, ChevronRight, Clock, Timer, X } from 'lucide-react';
+import { MessageCircle, ChevronDown, ChevronLeft, ChevronRight, Clock, Timer, X, AlertTriangle, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   getSlotDateStrIsrael,
@@ -21,6 +21,31 @@ import {
   subMonths
 } from 'date-fns';
 import { he } from 'date-fns/locale';
+
+const BOOKING_BLOCK_HOURS = 48;
+const URGENCY_BUFFER_HOURS = 56;
+
+function isSlotBlocked(slot) {
+  if (!slot?.start?.timestamp) return false;
+  const hoursUntilStart = (new Date(slot.start.timestamp).getTime() - Date.now()) / (1000 * 60 * 60);
+  return hoursUntilStart > 0 && hoursUntilStart < BOOKING_BLOCK_HOURS;
+}
+
+function isSlotInUrgencyBuffer(slot) {
+  if (!slot?.start?.timestamp) return false;
+  const hoursUntilStart = (new Date(slot.start.timestamp).getTime() - Date.now()) / (1000 * 60 * 60);
+  return hoursUntilStart >= BOOKING_BLOCK_HOURS && hoursUntilStart < URGENCY_BUFFER_HOURS;
+}
+
+function isDayBlocked(slots) {
+  if (!slots?.length) return false;
+  return slots.every(isSlotBlocked);
+}
+
+function isDayHasRedDot(slots) {
+  if (!slots?.length) return false;
+  return slots.some(s => isSlotBlocked(s) || isSlotInUrgencyBuffer(s));
+}
 
 // חגי ישראל 2024-2027
 const ISRAELI_HOLIDAYS = {
@@ -62,6 +87,10 @@ function isSlotClosingSoon(slot) {
 function isDayClosingSoon(slots) {
   if (!slots?.length) return false;
   return slots.some(isSlotClosingSoon);
+}
+
+function getBookableSlots(slots) {
+  return slots.filter(s => !isSlotBlocked(s));
 }
 
 function getAvailabilityInfo(availableSlots) {
@@ -113,15 +142,13 @@ function getMinPriceForDate(slots, servicePricing) {
 }
 
 // Tooltip קומפוננטה
-function DayTooltip({ slots, servicePricing, holiday, closingSoon, isVisible }) {
+function DayTooltip({ slots, servicePricing, holiday, closingSoon, allBlocked, isVisible }) {
   if (!isVisible || !slots?.length) return null;
 
   const minPrice = getMinPriceForDate(slots, servicePricing);
   const times = slots.map(slot => getSlotTimeRange(slot)).sort();
   const uniqueTimes = [...new Set(times)].slice(0, 3);
 
-  // div חיצוני סטטי — מטפל אך ורק במיקום (לא ייסתר על ידי framer-motion)
-  // motion.div פנימי — מטפל אך ורק באנימציה
   return (
     <div
       className="absolute z-[100] bottom-full mb-1.5"
@@ -135,8 +162,13 @@ function DayTooltip({ slots, servicePricing, holiday, closingSoon, isVisible }) 
         className="bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 p-2 whitespace-nowrap text-right"
       >
         <div className="space-y-1.5 text-[14px]">
-          {/* הרשמה נסגרת בקרוב */}
-          {closingSoon && (
+          {allBlocked && (
+            <div className="flex items-center gap-1.5 text-red-600 font-medium">
+              <span>🚫</span>
+              <span>הזמנה מקוונת סגורה</span>
+            </div>
+          )}
+          {!allBlocked && closingSoon && (
             <div className="flex items-center gap-1.5 text-red-600 font-medium">
               <span>⏰</span>
               <span>ההרשמה נסגרת בקרוב!</span>
@@ -186,6 +218,7 @@ export default function TimeSlotsSection({
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [today] = useState(() => startOfDay(new Date()));
   const [whatsappOpen, setWhatsappOpen] = useState(false);
+  const [blockedPopup, setBlockedPopup] = useState(false);
   const [timePickerDate, setTimePickerDate] = useState(null);
   const [hoveredDate, setHoveredDate] = useState(null);
 
@@ -207,17 +240,27 @@ export default function TimeSlotsSection({
     if (!availableDates.has(dateStr)) return;
 
     const daySlots = slotsMap.get(dateStr) || [];
-    if (daySlots.length === 1) {
-      setSelectedSlot(daySlots[0]);
+    const bookable = getBookableSlots(daySlots);
+
+    if (bookable.length === 0) {
+      setBlockedPopup(true);
+      return;
+    }
+
+    if (bookable.length === 1) {
+      setSelectedSlot(bookable[0]);
       setTimePickerDate(null);
-    } else if (daySlots.length > 1) {
+    } else {
       setTimePickerDate(dateStr);
     }
   };
 
   const handleTimeSelect = (slot) => {
+    if (isSlotBlocked(slot)) {
+      setBlockedPopup(true);
+      return;
+    }
     setSelectedSlot(slot);
-    // לא סוגרים את חלונית השעות - המשתמש יכול לשנות בקלות
   };
 
   const isDateSelected = (date) => {
@@ -291,6 +334,8 @@ export default function TimeSlotsSection({
             const isHoliday = ISRAELI_HOLIDAYS[dateStr];
             const hasMultipleSlots = daySlots.length > 1;
             const closingSoon = hasSlot && isDayClosingSoon(daySlots);
+            const showRedDot = hasSlot && isDayHasRedDot(daySlots);
+            const allBlocked = hasSlot && isDayBlocked(daySlots);
             const isHovered = hoveredDate === dateStr && hasSlot;
 
             return (
@@ -328,8 +373,8 @@ export default function TimeSlotsSection({
                   {isCurrentMonth && isHoliday && (
                     <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[#DA9BFF]" />
                   )}
-                  {/* נקודה אדומה — ההרשמה נסגרת בקרוב */}
-                  {closingSoon && !isSelected && (
+                  {/* נקודה אדומה — חסום / נסגר בקרוב */}
+                  {(showRedDot || closingSoon) && !isSelected && (
                     <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                   )}
                   {/* עיגול למספר שעות */}
@@ -346,6 +391,7 @@ export default function TimeSlotsSection({
                       servicePricing={servicePricing}
                       holiday={isHoliday}
                       closingSoon={closingSoon}
+                      allBlocked={allBlocked}
                       isVisible={true}
                     />
                   )}
@@ -356,7 +402,7 @@ export default function TimeSlotsSection({
         </div>
 
         {/* מקרא */}
-        <div className="mt-1.5 flex items-center justify-center gap-3 text-[11px] text-[#464646]/70">
+        <div className="mt-1.5 flex items-center justify-center gap-3 flex-wrap text-[11px] text-[#464646]/70">
           <div className="flex items-center gap-1">
             <div className="h-2.5 w-2.5 rounded border border-[#5E2F88]/30 bg-[#5E2F88]/5"></div>
             <span>זמין</span>
@@ -375,7 +421,7 @@ export default function TimeSlotsSection({
           </div>
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-red-500" />
-            <span>נסגר בקרוב</span>
+            <span>חסום / נסגר בקרוב</span>
           </div>
         </div>
       </div>
@@ -403,19 +449,26 @@ export default function TimeSlotsSection({
               <div className="flex flex-wrap gap-2">
                 {timePickerSlots.map((slot, idx) => {
                   const isThisSlotSelected = selectedSlot?.sessionId === slot.sessionId;
+                  const blocked = isSlotBlocked(slot);
+                  const urgency = isSlotInUrgencyBuffer(slot);
                   return (
                     <button
                       key={idx}
                       type="button"
                       onClick={() => handleTimeSelect(slot)}
                       className={cn(
-                        "px-4 py-2 rounded-lg border font-medium transition-colors",
-                        isThisSlotSelected
-                          ? "bg-[#5E2F88] text-white border-[#5E2F88]"
-                          : "border-[#5E2F88]/30 bg-white text-[#581E83] hover:bg-[#5E2F88] hover:text-white hover:border-[#5E2F88]"
+                        "relative px-4 py-2 rounded-lg border font-medium transition-colors",
+                        blocked
+                          ? "border-red-300 bg-red-50 text-red-400 cursor-not-allowed"
+                          : isThisSlotSelected
+                            ? "bg-[#5E2F88] text-white border-[#5E2F88]"
+                            : "border-[#5E2F88]/30 bg-white text-[#581E83] hover:bg-[#5E2F88] hover:text-white hover:border-[#5E2F88]"
                       )}
                     >
                       <span className="text-[18px]">{getSlotTimeRange(slot)}</span>
+                      {(blocked || urgency) && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse border border-white" />
+                      )}
                     </button>
                   );
                 })}
@@ -464,6 +517,62 @@ export default function TimeSlotsSection({
           המשך לבחירת משתתפים
         </button>
       </div>
+
+      {/* Blocked slot popup — < 48 hours */}
+      <AnimatePresence>
+        {blockedPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setBlockedPopup(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 relative"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button type="button" onClick={() => setBlockedPopup(false)} className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646]">
+                <X className="w-5 h-5" />
+              </button>
+              <div className="text-center">
+                <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-red-50 flex items-center justify-center">
+                  <AlertTriangle className="w-7 h-7 text-red-500" />
+                </div>
+                <h3 className="text-[17px] font-bold text-[#581E83]">ההזמנה המקוונת סגורה</h3>
+                <p className="text-sm text-[#464646]/70 mt-2 leading-relaxed">
+                  לא ניתן להזמין באופן מקוון סדנה שמתחילה בעוד פחות מ-48 שעות.
+                </p>
+                <p className="text-sm text-[#464646]/70 mt-1 leading-relaxed">
+                  ניתן להשלים את ההזמנה ישירות מול נציג שלנו בוואטסאפ.
+                </p>
+              </div>
+              <a
+                href="https://wa.link/jbfarf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-medium py-3 rounded-xl text-[14px] transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" />
+                הזמנה דרך וואטסאפ
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+              <button
+                type="button"
+                onClick={() => setBlockedPopup(false)}
+                className="w-full text-center text-sm text-[#464646]/60 hover:text-[#464646] py-2 transition-colors"
+              >
+                חזרה ללוח שנה
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* WhatsApp */}
       <div className="mt-2.5 rounded-lg border border-[#5E2F88]/15 bg-[#5E2F88]/5 overflow-hidden">
