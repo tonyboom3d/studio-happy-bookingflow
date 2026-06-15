@@ -13,6 +13,7 @@ export default function PostPaymentHub({
   ecomSummary,
   participantContext,
   role,
+  accessToken,
   catalog: initialCatalog,
   onSendMessage,
   isLoading,
@@ -265,7 +266,8 @@ export default function PostPaymentHub({
   const handlePhoneVerify = async (phone) => {
     setIsVerifying(true);
     try {
-      onSendMessage('VERIFY_PARTICIPANT_PHONE', { phone });
+      // Send VERIFY_ACCESS_TOKEN with the resolved token + phone for backend validation.
+      onSendMessage('VERIFY_ACCESS_TOKEN', { token: accessToken, phone });
     } finally {
       setTimeout(() => setIsVerifying(false), 3000);
     }
