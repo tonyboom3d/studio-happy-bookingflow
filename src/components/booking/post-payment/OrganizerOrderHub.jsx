@@ -12,6 +12,7 @@ import { he } from 'date-fns/locale';
 import DeadlineCountdown from './DeadlineCountdown';
 import ParticipantSetupForm from './ParticipantSetupForm';
 import SketchSelectionView from './SketchSelectionView';
+import OrganizerSelfSelectionView from './OrganizerSelfSelectionView';
 
 export default function OrganizerOrderHub({
   order,
@@ -106,17 +107,19 @@ export default function OrganizerOrderHub({
   const buildShareMessage = useCallback((token, participant) => {
     const wsName = ecomSummary?.workshopName || 'סדנת טאפטינג - סטודיו האפי';
     const datePart = workshopDate || '';
-    const timePart = workshopStartTime || '';
+    const timePart = workshopStartTime && workshopEndTime
+      ? `${workshopStartTime}-${workshopEndTime}`
+      : workshopStartTime || '';
     const url = buildGroupShareUrl(token, participant);
     return (
       `היי, הזמנתי לנו ${wsName}` +
       (datePart ? ` בתאריך ${datePart}` : '') +
-      (timePart ? ` בשעה ${timePart}` : '') +
+      (timePart ? ` בשעות ${timePart}` : '') +
       ` - כל מה שנשאר לך זה לבחור סקיצה שתרצה/י לתפוף בקישור הבא:\n` +
       `${url}\n\n` +
       `לתשומת לבך, ניתן לבחור סקיצה עד 48 שעות לפני מועד הסדנה!`
     );
-  }, [ecomSummary, workshopDate, workshopStartTime, buildGroupShareUrl]);
+  }, [ecomSummary, workshopDate, workshopStartTime, workshopEndTime, buildGroupShareUrl]);
 
   const [copyWithDetails, setCopyWithDetails] = useState(true);
 
@@ -544,20 +547,15 @@ export default function OrganizerOrderHub({
         </div>
       </div>
 
-      {/* Organizer picks all sketches */}
+      {/* Organizer picks all sketches — card-based flow */}
       {modeChosen && order.selectionMode === 'organizer' && (
-        <SketchSelectionView
-          rugSlots={allRugSlots}
+        <OrganizerSelfSelectionView
+          order={order}
           catalog={catalog}
-          workshopStart={order.workshopStart}
-          deadlineAt={order.deadlineAt}
-          totalRugCount={order.rugCount}
-          buyerName={ecomSummary?.buyerName}
-          orderNumber={ecomSummary?.orderNumber}
+          selections={selections}
           onSelectSketch={onSelectSketch}
           onRequestUpgrade={onRequestUpgrade}
           onFetchCatalog={onFetchCatalog}
-          existingSelections={selections}
         />
       )}
 
@@ -901,8 +899,8 @@ export default function OrganizerOrderHub({
                       <span className="text-[15px] font-bold text-[#581E83] tabular-nums w-6 text-center">{newGroupChildren}</span>
                       <button
                         type="button"
-                        onClick={() => setNewGroupChildren(v => Math.min(remainingChildren, Math.min(newGroupSeats, v + 1)))}
-                        disabled={newGroupChildren >= remainingChildren || newGroupChildren >= newGroupSeats}
+                        onClick={() => setNewGroupChildren(v => Math.min(remainingChildren, v + 1))}
+                        disabled={newGroupChildren >= remainingChildren}
                         className="w-7 h-7 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -915,6 +913,27 @@ export default function OrganizerOrderHub({
                   <LayoutGrid className="w-3.5 h-3.5 text-[#5E2F88]" />
                   יוקצו אוטומטית {newGroupSeats} {newGroupSeats === 1 ? 'שטיח' : 'שטיחים'} לקבוצה זו
                 </p>
+
+                {/* Auto-allocation preview */}
+                {(() => {
+                  const rugsAfter = remainingRugs - newGroupSeats;
+                  const childrenAfter = remainingChildren - newGroupChildren;
+                  if (rugsAfter === 0 && childrenAfter > 0 && maxChildren > 0) {
+                    return (
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-[13px] text-orange-700">
+                        <p className="font-semibold flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          הקצאת ילדים אוטומטית
+                        </p>
+                        <p className="mt-1">
+                          נותרו {childrenAfter} {childrenAfter === 1 ? 'ילד' : 'ילדים'} שלא הוקצו.
+                          בשמירה, הם יחולקו אוטומטית בין הקבוצות לפי מספר המבוגרים.
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 {createError && (
                   <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-[13px] text-red-700">

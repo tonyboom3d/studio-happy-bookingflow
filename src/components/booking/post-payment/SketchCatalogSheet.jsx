@@ -102,6 +102,7 @@ export default function SketchCatalogSheet({
   onPick,
   slotLabel,
   readOnly = false,
+  keepOpenOnPick = false,
 }) {
   const [enlargedImage, setEnlargedImage] = useState(null);
   const [searchText, setSearchText] = useState('');
@@ -233,7 +234,7 @@ export default function SketchCatalogSheet({
                     onPick={(p) => {
                       if (!readOnly) {
                         onPick(p);
-                        onClose();
+                        if (!keepOpenOnPick) onClose();
                       }
                     }}
                     onZoom={setEnlargedImage}
@@ -248,6 +249,19 @@ export default function SketchCatalogSheet({
         {readOnly && (
           <div className="shrink-0 border-t border-[#5E2F88]/20 bg-[#E4C1F9] px-4 py-3 text-center text-xs text-[#464646]/70">
             צפייה בלבד — הבחירה נעולה
+          </div>
+        )}
+
+        {keepOpenOnPick && !readOnly && (
+          <div className="shrink-0 border-t border-[#5E2F88]/20 bg-white px-4 py-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full flex items-center justify-center gap-2 bg-[#5E2F88] hover:bg-[#7B3DB0] text-white font-semibold py-3 rounded-xl text-[15px] transition-colors"
+            >
+              <Check className="w-4 h-4" />
+              זהו, סיימתי לבחור
+            </button>
           </div>
         )}
       </SheetContent>
