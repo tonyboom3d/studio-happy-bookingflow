@@ -19,7 +19,7 @@ function isHardDifficulty(label) {
   return l === 'קשה' || l === 'hard' || l === 'מאתגר';
 }
 
-function ProductCard({ product, isSelected, selectedCount = 0, onPick, onRemove, onZoom, disabled, showQuantity = false }) {
+function ProductCard({ product, isSelected, selectedCount = 0, onPick, onRemove, onZoom, disabled, plusDisabled = false, showQuantity = false }) {
   const difficultyLabel = getDifficultyLabel(product);
   const hard = isHardDifficulty(difficultyLabel);
 
@@ -94,8 +94,8 @@ function ProductCard({ product, isSelected, selectedCount = 0, onPick, onRemove,
               <span className="text-sm font-bold text-[#581E83] tabular-nums w-6 text-center">{selectedCount}</span>
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); if (!disabled) onPick(product); }}
-                disabled={disabled}
+                onClick={(e) => { e.stopPropagation(); if (!disabled && !plusDisabled) onPick(product); }}
+                disabled={disabled || plusDisabled}
                 className="w-7 h-7 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -265,7 +265,7 @@ export default function SketchCatalogSheet({
                     selectedCount={count}
                     showQuantity={keepOpenOnPick}
                     onPick={(p) => {
-                      if (!readOnly && !(quotaReached && !isSelected)) {
+                      if (!readOnly && !quotaReached) {
                         onPick(p);
                         if (!keepOpenOnPick) onClose();
                       }
@@ -273,6 +273,7 @@ export default function SketchCatalogSheet({
                     onRemove={onRemovePick}
                     onZoom={setEnlargedImage}
                     disabled={readOnly || (quotaReached && count === 0)}
+                    plusDisabled={quotaReached}
                   />
                 );
               })}
