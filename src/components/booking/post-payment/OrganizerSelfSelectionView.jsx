@@ -1,10 +1,27 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   Check, Plus, Minus, Baby, Users, LayoutGrid, ChevronDown, ChevronUp,
-  Sparkles, Image as ImageIcon, X, AlertCircle, CreditCard, Trash2, Pencil,
+  Sparkles, Image as ImageIcon, X, AlertCircle, CreditCard, Trash2, Pencil, Lock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SketchCatalogSheet from './SketchCatalogSheet';
+
+function getSketchStatusBadge(sketch, editingWindowClosed) {
+  const status = sketch.sketchStatus || '';
+  const upgrade = sketch.upgradePaymentStatus || null;
+
+  if (status === 'סקיצה מוכנה' || status === 'Ready')
+    return { label: 'סקיצה מוכנה', bg: 'bg-green-100', text: 'text-green-700' };
+  if (status === 'In preparation' || status === 'סקיצה בהכנה')
+    return { label: 'סקיצה בהכנה', bg: 'bg-blue-100', text: 'text-blue-700' };
+  if (editingWindowClosed)
+    return { label: 'לא ניתן לשינוי', bg: 'bg-gray-100', text: 'text-gray-600' };
+  if (upgrade === 'pending-payment-approval')
+    return { label: 'ממתין לאישור תשלום', bg: 'bg-orange-100', text: 'text-orange-700' };
+  if (sketch.size === '90x90' && upgrade !== 'paid')
+    return { label: 'לא שולמה', bg: 'bg-red-100', text: 'text-red-700' };
+  return { label: 'הושלמה', bg: 'bg-green-100', text: 'text-green-700' };
+}
 
 export default function OrganizerSelfSelectionView({
   order,
@@ -13,6 +30,7 @@ export default function OrganizerSelfSelectionView({
   onSelectSketch,
   onRequestUpgrade,
   onFetchCatalog,
+  editingWindowClosed = false,
 }) {
   const [cards, setCards] = useState(() => buildInitialCards(order, selections));
   const [setupOpen, setSetupOpen] = useState(false);
@@ -489,30 +507,37 @@ export default function OrganizerSelfSelectionView({
                   className="overflow-hidden"
                 >
                   <div className="space-y-1.5 mt-2.5 pt-2.5 border-t border-[#e8e8e8]">
-                    {card.sketches.map((sketch, si) => (
-                      <div key={si} className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2">
-                        {sketch.image ? (
-                          <img src={sketch.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg bg-[#f5f0fa] flex items-center justify-center shrink-0">
-                            {sketch.source === 'ai' ? <Sparkles className="w-4 h-4 text-[#5E2F88]" /> : <ImageIcon className="w-4 h-4 text-[#5E2F88]" />}
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-[#581E83] truncate">{sketch.title}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                              sketch.source === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                            }`}>
-                              {sketch.source === 'ai' ? 'AI' : 'קטלוג'}
-                            </span>
-                            <span className="text-[11px] text-[#464646]/50">
-                              {sketch.size === '90x90' ? '90×90 ס"מ' : '60×60 ס"מ'}
-                            </span>
+                    {card.sketches.map((sketch, si) => {
+                      const badge = getSketchStatusBadge(sketch, editingWindowClosed);
+                      return (
+                        <div key={si} className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2">
+                          {sketch.image ? (
+                            <img src={sketch.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-[#f5f0fa] flex items-center justify-center shrink-0">
+                              {sketch.source === 'ai' ? <Sparkles className="w-4 h-4 text-[#5E2F88]" /> : <ImageIcon className="w-4 h-4 text-[#5E2F88]" />}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-[#581E83] truncate">{sketch.title}</p>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                sketch.source === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                              }`}>
+                                {sketch.source === 'ai' ? 'AI' : 'קטלוג'}
+                              </span>
+                              <span className="text-[11px] text-[#464646]/50">
+                                {sketch.size === '90x90' ? '90×90 ס"מ' : '60×60 ס"מ'}
+                              </span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${badge.bg} ${badge.text}`}>
+                                {(badge.label === 'לא ניתן לשינוי' || badge.label === 'סקיצה מוכנה') && <Lock className="w-2.5 h-2.5" />}
+                                {badge.label}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </motion.div>
               )}

@@ -14,6 +14,23 @@ import ParticipantSetupForm from './ParticipantSetupForm';
 import SketchSelectionView from './SketchSelectionView';
 import OrganizerSelfSelectionView from './OrganizerSelfSelectionView';
 
+function getSelectionStatusBadge(sel, editingWindowClosed) {
+  const status = sel.sketchStatus || '';
+  const upgrade = sel.upgradePaymentStatus || null;
+
+  if (status === 'סקיצה מוכנה' || status === 'Ready')
+    return { label: 'סקיצה מוכנה', bg: 'bg-green-100', text: 'text-green-700', icon: true };
+  if (status === 'In preparation' || status === 'סקיצה בהכנה')
+    return { label: 'סקיצה בהכנה', bg: 'bg-blue-100', text: 'text-blue-700', icon: false };
+  if (editingWindowClosed)
+    return { label: 'לא ניתן לשינוי', bg: 'bg-gray-100', text: 'text-gray-600', icon: true };
+  if (upgrade === 'pending-payment-approval')
+    return { label: 'ממתין לאישור תשלום', bg: 'bg-orange-100', text: 'text-orange-700', icon: false };
+  if (sel.canvasSize === '90x90' && upgrade !== 'paid')
+    return { label: 'לא שולמה', bg: 'bg-red-100', text: 'text-red-700', icon: false };
+  return { label: 'הושלמה', bg: 'bg-green-100', text: 'text-green-700', icon: false };
+}
+
 export default function OrganizerOrderHub({
   order,
   ecomSummary,
@@ -38,8 +55,8 @@ export default function OrganizerOrderHub({
   const [copiedLink, setCopiedLink] = useState(null);
   const [contactOpen, setContactOpen] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
-  const [modeChosen, setModeChosen] = useState(false);
-  const [orderDetailsCollapsed, setOrderDetailsCollapsed] = useState(false);
+  const [modeChosen, setModeChosen] = useState(!!order.selectionMode);
+  const [orderDetailsCollapsed, setOrderDetailsCollapsed] = useState(!!order.selectionMode);
   const [participantsExpanded, setParticipantsExpanded] = useState(false);
   const [shareFor, setShareFor] = useState(null); // participant currently being shared
 
@@ -239,6 +256,23 @@ export default function OrganizerOrderHub({
   const within48h = order.workshopStart
     ? (new Date(order.workshopStart).getTime() - Date.now() <= 48 * 60 * 60 * 1000)
     : false;
+
+  const editingWindowClosed = useMemo(() => {
+    if (!order?.workshopStart || !order?._createdDate) return false;
+    const now = Date.now();
+    const ws = new Date(order.workshopStart).getTime();
+    const oc = new Date(order._createdDate).getTime();
+    const SIX_DAYS = 6 * 24 * 60 * 60 * 1000;
+    const FORTY_EIGHT_H = 48 * 60 * 60 * 1000;
+    const TEN_H = 10 * 60 * 60 * 1000;
+    const SIX_H = 6 * 60 * 60 * 1000;
+    const gap = ws - oc;
+    let deadline;
+    if (gap > SIX_DAYS) deadline = ws - SIX_DAYS;
+    else if (gap > FORTY_EIGHT_H) deadline = oc + TEN_H;
+    else deadline = oc + SIX_H;
+    return now >= deadline;
+  }, [order?.workshopStart, order?._createdDate]);
 
   const openCreate = () => {
     if (remainingRugs <= 0) return;
@@ -592,6 +626,7 @@ export default function OrganizerOrderHub({
           onSelectSketch={onSelectSketch}
           onRequestUpgrade={onRequestUpgrade}
           onFetchCatalog={onFetchCatalog}
+          editingWindowClosed={editingWindowClosed}
         />
       )}
 
@@ -788,7 +823,7 @@ export default function OrganizerOrderHub({
                       {groupSelections.length > 0 && (
                         <div className="space-y-1.5 mt-1.5">
                           {groupSelections.map((sel, si) => {
-                            const sStatus = sel.sketchStatus || 'Changeable';
+                            const badge = getSelectionStatusBadge(sel, editingWindowClosed);
                             return (
                               <div key={sel._id || si} className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2">
                                 {sel.productSnapshot?.image && (
@@ -796,12 +831,16 @@ export default function OrganizerOrderHub({
                                 )}
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs font-medium text-[#581E83] truncate">{sel.productSnapshot?.title || 'סקיצה'}</p>
-                                  <p className="text-[14px] text-[#464646]/50">
-                                    {sel.canvasSize === '90x90' ? '90*90 ס"מ · ₪299' : '60*60 ס"מ'}
-                                    {' · '}{sStatus === 'In preparation' ? 'בהכנה' : sStatus === 'Ready' ? 'מוכנה' : 'ניתן לשינוי'}
-                                  </p>
+                                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                    <span className="text-[11px] text-[#464646]/50">
+                                      {sel.canvasSize === '90x90' ? '90×90 ס"מ' : '60×60 ס"מ'}
+                                    </span>
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${badge.bg} ${badge.text}`}>
+                                      {badge.icon && <Lock className="w-2.5 h-2.5" />}
+                                      {badge.label}
+                                    </span>
+                                  </div>
                                 </div>
-                                <ImageIcon className="w-3.5 h-3.5 text-[#5E2F88]/40 shrink-0" />
                               </div>
                             );
                           })}
