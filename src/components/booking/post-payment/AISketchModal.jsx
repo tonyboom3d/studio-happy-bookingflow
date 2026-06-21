@@ -48,6 +48,12 @@ const LOADING_SUBTITLES_GENERATE = [
   'מכין קובץ סופי...',
 ];
 
+const LOADING_SUBTITLES_SAVE = [
+  'מעלה את התמונות לשרת...',
+  'שומר את הסקיצה...',
+  'מכין לקישור להזמנה...',
+];
+
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -55,6 +61,31 @@ function fileToBase64(file) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+function getImageDimensionsFromFile(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: 1, height: 1 });
+    };
+    img.src = url;
+  });
+}
+
+function getImageFrameStyle(aspectRatio, maxHeight = 360) {
+  const ratio = aspectRatio && aspectRatio > 0 ? aspectRatio : 1;
+  return {
+    aspectRatio: String(ratio),
+    width: '100%',
+    maxHeight: `${maxHeight}px`,
+  };
 }
 
 function Stepper({ step }) {
@@ -125,11 +156,12 @@ function LoadingView({ title, subtitles, progress }) {
   );
 }
 
-function CompareSlider({ originalUrl, sketchUrl }) {
+function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1 }) {
   const containerRef = useRef(null);
   const [pct, setPct] = useState(50);
   const dragging = useRef(false);
   const [animated, setAnimated] = useState(false);
+  const frameStyle = getImageFrameStyle(aspectRatio, 360);
 
   const update = useCallback((clientX) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -178,7 +210,8 @@ function CompareSlider({ originalUrl, sketchUrl }) {
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[280px] rounded-2xl shadow-xl border-4 border-white select-none overflow-hidden touch-none bg-[#fafafa]"
+      className="relative w-full rounded-2xl shadow-xl border-4 border-white select-none overflow-hidden touch-none bg-white mx-auto"
+      style={frameStyle}
       onMouseDown={startDrag}
       onTouchStart={startDrag}
     >
@@ -220,6 +253,7 @@ export default function AISketchModal({
   const [imageFile, setImageFile] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+  const [imageDimensions, setImageDimensions] = useState({ width: 1, height: 1 });
 
   // Loading
   const [loadingTitle, setLoadingTitle] = useState('');
@@ -285,6 +319,7 @@ export default function AISketchModal({
       setImageFile(null);
       setImageBase64(null);
       setImagePreviewUrl(null);
+      setImageDimensions({ width: 1, height: 1 });
       setColorMode('auto');
       setManualColors(['#000000', '#ffffff', '#ff0000']);
       setSketchUrl(null);
@@ -340,11 +375,15 @@ export default function AISketchModal({
         } catch (_) { /* proceed if check fails */ }
       }
 
-      const base64 = await fileToBase64(file);
+      const [base64, dimensions] = await Promise.all([
+        fileToBase64(file),
+        getImageDimensionsFromFile(file),
+      ]);
       const previewUrl = URL.createObjectURL(file);
 
       setImageFile(file);
       setImageBase64(base64);
+      setImageDimensions(dimensions);
       setImagePreviewUrl(previewUrl);
       setAttempts(prev => prev + 1);
 
@@ -384,7 +423,7 @@ export default function AISketchModal({
     const clearProgress = animateProgress(8000);
 
     try {
-      const result = await onGenerateSketch(imageBase64, palette);
+      const result = await onGenerateSketch(imageBase64, palette, imageDimensions);
       clearProgress();
       setLoadingProgress(100);
 
@@ -406,9 +445,19 @@ export default function AISketchModal({
       setView('config');
       setStep(1);
     }
-  }, [colorMode, manualColors, imageBase64, onGenerateSketch, animateProgress]);
+  }, [colorMode, manualColors, imageBase64, imageDimensions, onGenerateSketch, animateProgress]);
+
+  const imageAspectRatio = imageDimensions.width / imageDimensions.height;
 
   const handleApprove = useCallback(async () => {
+    setError(null);
+    setView('loading');
+    setStep(2);
+    setLoadingTitle('שומר את הסקיצה...');
+    setLoadingSubs(LOADING_SUBTITLES_SAVE);
+    setLoadingProgress(0);
+    const clearProgress = animateProgress(5000);
+
     try {
       let finalImage = sketchUrl;
       let aiOriginalImage = null;
@@ -436,11 +485,17 @@ export default function AISketchModal({
         canvasSize: '60x60',
       });
 
+      clearProgress();
+      setLoadingProgress(100);
       onClose();
     } catch (err) {
-      setError(err?.message || 'שגיאה בשמירת הסקיצה');
+      clearProgress();
+      console.error('[AISketchModal] save approved sketch failed:', err);
+      setError('שגיאה בשמירת הסקיצה. נסו שוב.');
+      setView('result');
+      setStep(2);
     }
-  }, [imageBase64, originalMediaUrl, sketchUrl, colorMode, manualColors, onApprove, onClose, onSaveApprovedSketch]);
+  }, [imageBase64, originalMediaUrl, sketchUrl, colorMode, manualColors, onApprove, onClose, onSaveApprovedSketch, animateProgress]);
 
   const handleRetrySubmit = useCallback(async () => {
     if (!retryReason) return;
@@ -653,9 +708,12 @@ export default function AISketchModal({
                 <div className="flex flex-col md:flex-row gap-5 items-start">
                   {/* Image preview */}
                   <div className="w-full md:w-1/2 flex flex-col items-center">
-                    <div className="w-full rounded-xl overflow-hidden shadow-sm border border-[#e8e8e8] bg-[#fafafa] flex items-center justify-center min-h-[180px]">
+                    <div
+                      className="w-full rounded-xl overflow-hidden shadow-sm border border-[#e8e8e8] bg-white flex items-center justify-center mx-auto"
+                      style={getImageFrameStyle(imageAspectRatio, 240)}
+                    >
                       {imagePreviewUrl && (
-                        <img src={imagePreviewUrl} alt="Preview" className="max-w-full max-h-[220px] object-contain" />
+                        <img src={imagePreviewUrl} alt="Preview" className="w-full h-full object-contain" />
                       )}
                     </div>
                     <button
@@ -782,8 +840,12 @@ export default function AISketchModal({
                 </div>
 
                 {/* Compare slider */}
-                <div className="relative inline-block w-full max-w-[300px] mx-auto">
-                  <CompareSlider originalUrl={imagePreviewUrl} sketchUrl={sketchUrl} />
+                <div className="relative w-full max-w-md mx-auto">
+                  <CompareSlider
+                    originalUrl={imagePreviewUrl}
+                    sketchUrl={sketchUrl}
+                    aspectRatio={imageAspectRatio}
+                  />
                 </div>
 
                 {/* Action buttons */}

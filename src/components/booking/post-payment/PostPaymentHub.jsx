@@ -92,8 +92,14 @@ export default function PostPaymentHub({
     return result;
   }, [sendAndWait, orderId]);
 
-  const handleGenerateSketch = useCallback(async (imageBase64, colorPalette) => {
-    const start = await sendAndWait('GENERATE_SKETCH', { imageBase64, colorPalette, orderId });
+  const handleGenerateSketch = useCallback(async (imageBase64, colorPalette, imageDimensions) => {
+    const start = await sendAndWait('GENERATE_SKETCH', {
+      imageBase64,
+      colorPalette,
+      orderId,
+      imageWidth: imageDimensions?.width,
+      imageHeight: imageDimensions?.height,
+    });
     if (start?.error) {
       console.error('[PostPaymentHub] GENERATE_SKETCH start error:', start.error);
       throw new Error('שגיאה ביצירת הסקיצה. נסו שוב.');
