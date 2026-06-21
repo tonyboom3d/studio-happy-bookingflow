@@ -102,6 +102,8 @@ export default function PostPaymentHub({
     });
     if (start?.error) {
       console.error('[PostPaymentHub] GENERATE_SKETCH start error:', start.error);
+      const rateLimitMsg = 'הגעתם למגבלת הניסיונות. נסו שוב מאוחר יותר.';
+      if (start.error === rateLimitMsg) throw new Error(rateLimitMsg);
       throw new Error('שגיאה ביצירת הסקיצה. נסו שוב.');
     }
     if (!start?.jobId) {

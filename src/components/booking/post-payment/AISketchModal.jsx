@@ -162,7 +162,23 @@ function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1 }) {
   const dragging = useRef(false);
   const [animated, setAnimated] = useState(false);
   const [lightbox, setLightbox] = useState(null);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
   const frameStyle = getImageFrameStyle(aspectRatio, 360);
+
+  useEffect(() => {
+    if (!sketchUrl || !originalUrl) return;
+    setImagesLoaded(false);
+    let loaded = 0;
+    const check = () => { loaded++; if (loaded >= 2) setImagesLoaded(true); };
+    const img1 = new Image();
+    img1.onload = check;
+    img1.onerror = check;
+    img1.src = sketchUrl;
+    const img2 = new Image();
+    img2.onload = check;
+    img2.onerror = check;
+    img2.src = originalUrl;
+  }, [sketchUrl, originalUrl]);
 
   const update = useCallback((clientX) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -199,14 +215,25 @@ function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1 }) {
   }, [onMove, stopDrag]);
 
   useEffect(() => {
-    if (animated) return;
+    if (animated || !imagesLoaded) return;
     setAnimated(true);
     setPct(50);
-    const t1 = setTimeout(() => setPct(90), 300);
-    const t2 = setTimeout(() => setPct(15), 1000);
-    const t3 = setTimeout(() => setPct(50), 2200);
+    const t1 = setTimeout(() => setPct(90), 600);
+    const t2 = setTimeout(() => setPct(15), 1800);
+    const t3 = setTimeout(() => setPct(50), 3200);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, []);
+  }, [imagesLoaded]);
+
+  if (!imagesLoaded) {
+    return (
+      <div
+        className="relative w-full rounded-2xl shadow-xl border-4 border-white bg-white mx-auto flex items-center justify-center"
+        style={frameStyle}
+      >
+        <Loader2 className="w-10 h-10 text-[#5E2F88] animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -475,7 +502,7 @@ export default function AISketchModal({
     setStep(2);
     setLoadingTitle('הופך לסקיצה...');
     setLoadingSubs(LOADING_SUBTITLES_GENERATE);
-    const clearProgress = animateProgress(8000);
+    const clearProgress = animateProgress(60000);
 
     try {
       const result = await onGenerateSketch(imageBase64, palette, imageDimensions);
@@ -496,7 +523,12 @@ export default function AISketchModal({
     } catch (err) {
       clearProgress();
       console.error('[AISketchModal] generateSketch failed:', err);
-      setError('שגיאה ביצירת הסקיצה. נסו שוב.');
+      const msg = err?.message || '';
+      if (msg.includes('מגבלת') || msg.includes('ניסיונות')) {
+        setError(msg);
+      } else {
+        setError('שגיאה ביצירת הסקיצה. נסו שוב.');
+      }
       setView('config');
       setStep(1);
     }
@@ -889,7 +921,19 @@ export default function AISketchModal({
                 animate={{ opacity: 1, y: 0 }}
                 className="text-center space-y-5"
               >
-                <div>
+                <div className="relative">
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 flex gap-1 pointer-events-none">
+                    {[...Array(5)].map((_, i) => (
+                      <motion.span
+                        key={i}
+                        initial={{ opacity: 0, y: 8, scale: 0.5 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ delay: 0.15 * i, type: 'spring', stiffness: 200 }}
+                      >
+                        <Sparkles className="w-4 h-4 text-[#5E2F88]" />
+                      </motion.span>
+                    ))}
+                  </div>
                   <h2 className="text-xl font-bold text-[#581E83] mb-1">הסקיצה שלך מוכנה!</h2>
                   <p className="text-[#464646]/60 text-sm">ככה בערך יראה השטיח שלכם. מוכנים להתחיל לתפור?</p>
                 </div>
