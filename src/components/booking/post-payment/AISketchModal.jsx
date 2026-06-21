@@ -507,7 +507,6 @@ export default function AISketchModal({
           {/* Header */}
           <div className="bg-[#f5f0fa] pt-12 pb-5 px-6 text-center border-b border-[#5E2F88]/10">
             <h1 className="text-xl md:text-2xl font-bold text-[#581E83] mb-1">עיצוב מותאם אישית בעזרת AI</h1>
-            <p className="text-[#464646]/70 text-sm">הפכו כל תמונה לסקיצה מושלמת לשטיח שלכם!</p>
           </div>
 
           {/* Stepper */}
