@@ -92,17 +92,20 @@ export default function PostPaymentHub({
     return result;
   }, [sendAndWait, orderId]);
 
-  const handleGenerateSketch = useCallback(async (imageBase64, colorPalette, imageUrl) => {
-    const result = await sendAndWait('GENERATE_SKETCH', { imageBase64, colorPalette, imageUrl, orderId });
-    if (result?.error) throw new Error(result.error);
+  const handleGenerateSketch = useCallback(async (imageBase64, colorPalette) => {
+    const result = await sendAndWait('GENERATE_SKETCH', { imageBase64, colorPalette, orderId });
+    if (result?.error) {
+      console.error('[PostPaymentHub] GENERATE_SKETCH error:', result.error);
+      throw new Error('שגיאה ביצירת הסקיצה. נסו שוב.');
+    }
     return result;
   }, [sendAndWait, orderId]);
 
-  const handleSaveApprovedSketch = useCallback(async (originalBase64, sketchBase64, colors, originalUrl) => {
-    const result = await sendAndWait('SAVE_APPROVED_SKETCH', { originalBase64, sketchBase64, colors, originalUrl });
+  const handleSaveApprovedSketch = useCallback(async (originalInput, sketchUrl, colors) => {
+    const result = await sendAndWait('SAVE_APPROVED_SKETCH', { originalInput, sketchUrl, colors, orderId });
     if (result?.error) throw new Error(result.error);
     return result;
-  }, [sendAndWait]);
+  }, [sendAndWait, orderId]);
 
   const handleSubmitFeedback = useCallback(async (feedbackText, type) => {
     const result = await sendAndWait('SUBMIT_FEEDBACK', { feedbackText, type, orderId });

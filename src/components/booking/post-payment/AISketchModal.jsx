@@ -220,7 +220,6 @@ export default function AISketchModal({
   const [imageFile, setImageFile] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
-  const [originalUrl, setOriginalUrl] = useState(null);
 
   // Loading
   const [loadingTitle, setLoadingTitle] = useState('');
@@ -233,6 +232,7 @@ export default function AISketchModal({
 
   // Result
   const [sketchUrl, setSketchUrl] = useState(null);
+  const [originalMediaUrl, setOriginalMediaUrl] = useState(null);
 
   // Error
   const [error, setError] = useState(null);
@@ -263,10 +263,10 @@ export default function AISketchModal({
       setImageFile(null);
       setImageBase64(null);
       setImagePreviewUrl(null);
-      setOriginalUrl(null);
       setColorMode('auto');
       setManualColors(['#000000', '#ffffff', '#ff0000']);
       setSketchUrl(null);
+      setOriginalMediaUrl(null);
       setError(null);
       setAttempts(0);
       setRetryReason('');
@@ -338,10 +338,6 @@ export default function AISketchModal({
         return;
       }
 
-      if (result?.originalUrl) {
-        setOriginalUrl(result.originalUrl);
-      }
-
       setTimeout(() => {
         setView('config');
         setStep(1);
@@ -366,7 +362,7 @@ export default function AISketchModal({
     const clearProgress = animateProgress(8000);
 
     try {
-      const result = await onGenerateSketch(imageBase64, palette, originalUrl);
+      const result = await onGenerateSketch(imageBase64, palette);
       clearProgress();
       setLoadingProgress(100);
 
@@ -375,7 +371,7 @@ export default function AISketchModal({
       }
 
       setSketchUrl(result.sketchUrl);
-      if (result?.originalUrl) setOriginalUrl(result.originalUrl);
+      if (result.originalUrl) setOriginalMediaUrl(result.originalUrl);
 
       setTimeout(() => {
         setView('result');
@@ -383,11 +379,12 @@ export default function AISketchModal({
       }, 400);
     } catch (err) {
       clearProgress();
-      setError(err?.message || 'שגיאה ביצירת הסקיצה. נסו שוב.');
+      console.error('[AISketchModal] generateSketch failed:', err);
+      setError('שגיאה ביצירת הסקיצה. נסו שוב.');
       setView('config');
       setStep(1);
     }
-  }, [colorMode, manualColors, imageBase64, originalUrl, onGenerateSketch, animateProgress]);
+  }, [colorMode, manualColors, imageBase64, onGenerateSketch, animateProgress]);
 
   const handleApprove = useCallback(async () => {
     try {
@@ -397,7 +394,9 @@ export default function AISketchModal({
       let aiTaskId = null;
 
       if (onSaveApprovedSketch) {
-        const saved = await onSaveApprovedSketch(imageBase64, sketchUrl, manualColors, originalUrl);
+        const originalInput = originalMediaUrl || imageBase64;
+        const colors = colorMode === 'auto' ? 'AUTO' : manualColors;
+        const saved = await onSaveApprovedSketch(originalInput, sketchUrl, colors);
         if (saved?.sketchUrl) finalImage = saved.sketchUrl;
         if (saved?.originalUrl) aiOriginalImage = saved.originalUrl;
         if (saved?.colors) aiColors = saved.colors;
@@ -419,7 +418,7 @@ export default function AISketchModal({
     } catch (err) {
       setError(err?.message || 'שגיאה בשמירת הסקיצה');
     }
-  }, [imageBase64, sketchUrl, originalUrl, colorMode, manualColors, onApprove, onClose, onSaveApprovedSketch]);
+  }, [imageBase64, originalMediaUrl, sketchUrl, colorMode, manualColors, onApprove, onClose, onSaveApprovedSketch]);
 
   const handleRetrySubmit = useCallback(async () => {
     if (!retryReason) return;
