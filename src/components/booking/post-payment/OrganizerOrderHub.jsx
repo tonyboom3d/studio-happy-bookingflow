@@ -51,6 +51,11 @@ export default function OrganizerOrderHub({
   onFetchCatalog,
   onSwitchModeWithClear,
   isSaving,
+  onValidateImage,
+  onGenerateSketch,
+  onSaveApprovedSketch,
+  onSubmitFeedback,
+  onCheckRateLimit,
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(null);
@@ -628,6 +633,11 @@ export default function OrganizerOrderHub({
           onRequestUpgrade={onRequestUpgrade}
           onFetchCatalog={onFetchCatalog}
           editingWindowClosed={editingWindowClosed}
+          onValidateImage={onValidateImage}
+          onGenerateSketch={onGenerateSketch}
+          onSaveApprovedSketch={onSaveApprovedSketch}
+          onSubmitFeedback={onSubmitFeedback}
+          onCheckRateLimit={onCheckRateLimit}
         />
       )}
 

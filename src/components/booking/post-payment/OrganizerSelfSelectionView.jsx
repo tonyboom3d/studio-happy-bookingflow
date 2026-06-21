@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SketchCatalogSheet from './SketchCatalogSheet';
+import AISketchModal from './AISketchModal';
 
 function getSketchStatusBadge(sketch, editingWindowClosed) {
   const status = sketch.sketchStatus || '';
@@ -32,6 +33,11 @@ export default function OrganizerSelfSelectionView({
   onRequestUpgrade,
   onFetchCatalog,
   editingWindowClosed = false,
+  onValidateImage,
+  onGenerateSketch,
+  onSaveApprovedSketch,
+  onSubmitFeedback,
+  onCheckRateLimit,
 }) {
   const [cards, setCards] = useState(() => buildInitialCards(order, selections));
   const [setupOpen, setSetupOpen] = useState(false);
@@ -64,6 +70,10 @@ export default function OrganizerSelfSelectionView({
   // Group name editing
   const [editingNameIdx, setEditingNameIdx] = useState(null);
   const [editNameValue, setEditNameValue] = useState('');
+
+  // AI sketch modal
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiModalCardIdx, setAiModalCardIdx] = useState(null);
 
   const totalRugs = order.rugCount || 0;
   const maxChildren = order.children || 0;
@@ -176,23 +186,8 @@ export default function OrganizerSelfSelectionView({
       }
       setCatalogOpen(true);
     } else {
-      setCards(prev => {
-        const rugIndex = getNextRugIndex(prev);
-        return prev.map((c, i) => {
-          if (i !== sourceCardIdx) return c;
-          return {
-            ...c,
-            sketches: [...c.sketches, {
-              productId: null,
-              title: 'עיצוב מותאם אישית (AI)',
-              image: null,
-              size: '60x60',
-              source: 'ai',
-              rugIndex,
-            }],
-          };
-        });
-      });
+      setAiModalCardIdx(sourceCardIdx);
+      setAiModalOpen(true);
     }
   };
 
@@ -205,6 +200,31 @@ export default function OrganizerSelfSelectionView({
     while (used.has(idx)) idx++;
     return idx;
   }, [cards, selections]);
+
+  const handleAISketchApproved = useCallback((sketch) => {
+    if (aiModalCardIdx == null) return;
+    setCards(prev => {
+      const rugIndex = getNextRugIndex(prev);
+      return prev.map((c, i) => {
+        if (i !== aiModalCardIdx) return c;
+        return {
+          ...c,
+          sketches: [...c.sketches, {
+            productId: null,
+            title: sketch.title || 'עיצוב מותאם אישית (AI)',
+            image: sketch.image || null,
+            size: sketch.canvasSize || '60x60',
+            source: 'ai',
+            rugIndex,
+            aiOriginalImage: sketch.aiOriginalImage || null,
+            aiColors: sketch.aiColors || null,
+            aiTaskId: sketch.aiTaskId || null,
+          }],
+        };
+      });
+    });
+    setAiModalOpen(false);
+  }, [aiModalCardIdx, getNextRugIndex]);
 
   const handleCatalogPick = (product) => {
     if (catalogCardIdx == null) return;
@@ -294,13 +314,18 @@ export default function OrganizerSelfSelectionView({
     setReviewError('');
 
     for (const sketch of card.sketches) {
-      if (sketch.source === 'ai') continue;
       const selData = {
         rugIndex: sketch.rugIndex,
         productId: sketch.productId,
         productSnapshot: { title: sketch.title, image: sketch.image },
-        canvasSize: '60x60',
+        canvasSize: sketch.size || '60x60',
         participantName: card.name,
+        ...(sketch.source === 'ai' ? {
+          source: 'ai',
+          aiOriginalImage: sketch.aiOriginalImage,
+          aiColors: sketch.aiColors,
+          aiTaskId: sketch.aiTaskId,
+        } : {}),
       };
       await onSelectSketch(selData);
     }
@@ -998,6 +1023,17 @@ export default function OrganizerSelfSelectionView({
           טוען קטלוג...
         </div>
       )}
+
+      <AISketchModal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        onApprove={handleAISketchApproved}
+        onValidateImage={onValidateImage}
+        onGenerateSketch={onGenerateSketch}
+        onSaveApprovedSketch={onSaveApprovedSketch}
+        onSubmitFeedback={onSubmitFeedback}
+        onCheckRateLimit={onCheckRateLimit}
+      />
     </div>
   );
 }

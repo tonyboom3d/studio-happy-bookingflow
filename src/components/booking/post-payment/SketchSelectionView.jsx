@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Check, LayoutGrid, Loader2, Pencil, ChevronDown, Clock, CreditCard, AlertCircle, Image, Ruler, UserPen, MessageCircle, ExternalLink, X } from 'lucide-react';
+import { Check, LayoutGrid, Loader2, Pencil, ChevronDown, Clock, CreditCard, AlertCircle, Image, Ruler, UserPen, MessageCircle, ExternalLink, X, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from './ConfirmationModal';
 import SketchCatalogSheet from './SketchCatalogSheet';
+import AISketchModal from './AISketchModal';
 
 export default function SketchSelectionView({
   rugSlots,
@@ -18,6 +19,11 @@ export default function SketchSelectionView({
   onFetchCatalog,
   existingSelections = [],
   isReadOnly = false,
+  onValidateImage,
+  onGenerateSketch,
+  onSaveApprovedSketch,
+  onSubmitFeedback,
+  onCheckRateLimit,
 }) {
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [catalogForSlot, setCatalogForSlot] = useState(null);
@@ -31,6 +37,12 @@ export default function SketchSelectionView({
   const [editSlot, setEditSlot] = useState(null);
   const [editNameSlot, setEditNameSlot] = useState(null);
   const [editNameValue, setEditNameValue] = useState('');
+
+  // Source choice + AI modal
+  const [sourceChoiceOpen, setSourceChoiceOpen] = useState(false);
+  const [sourceChoiceSlot, setSourceChoiceSlot] = useState(null);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiModalSlot, setAiModalSlot] = useState(null);
   const [incompleteWarning, setIncompleteWarning] = useState(null);
   const [statusError, setStatusError] = useState(null);
   const [editOnlyMode, setEditOnlyMode] = useState(null);
@@ -67,13 +79,45 @@ export default function SketchSelectionView({
   const openCatalogForSlot = useCallback(async (slotIndex) => {
     if (isReadOnly) return;
     if (isExpired) { setDeadlineError(true); return; }
-    setCatalogForSlot(slotIndex);
-    if (!catalog?.length && onFetchCatalog) {
-      setCatalogLoading(true);
-      try { await onFetchCatalog(); } finally { setCatalogLoading(false); }
+    setSourceChoiceSlot(slotIndex);
+    setSourceChoiceOpen(true);
+  }, [isReadOnly, isExpired]);
+
+  const handleSourceChoice = useCallback(async (source) => {
+    setSourceChoiceOpen(false);
+    const slotIndex = sourceChoiceSlot;
+    if (source === 'catalog') {
+      setCatalogForSlot(slotIndex);
+      if (!catalog?.length && onFetchCatalog) {
+        setCatalogLoading(true);
+        try { await onFetchCatalog(); } finally { setCatalogLoading(false); }
+      }
+      setCatalogOpen(true);
+    } else {
+      setAiModalSlot(slotIndex);
+      setAiModalOpen(true);
     }
-    setCatalogOpen(true);
-  }, [catalog, onFetchCatalog, isReadOnly, isExpired]);
+  }, [sourceChoiceSlot, catalog, onFetchCatalog]);
+
+  const handleAISketchApproved = useCallback((sketch) => {
+    if (aiModalSlot == null) return;
+    if (isExpired) { setDeadlineError(true); return; }
+
+    const selection = {
+      rugIndex: aiModalSlot,
+      productId: null,
+      productSnapshot: { title: sketch.title, image: sketch.image },
+      canvasSize: sketch.canvasSize || '60x60',
+      title: sketch.title,
+      source: 'ai',
+      aiOriginalImage: sketch.aiOriginalImage,
+      aiColors: sketch.aiColors,
+      aiTaskId: sketch.aiTaskId,
+    };
+
+    onSelectSketch(selection);
+    setAiModalOpen(false);
+  }, [aiModalSlot, isExpired, onSelectSketch]);
 
   const handleSketchPick = useCallback((product) => {
     if (isExpired) { setDeadlineError(true); return; }
@@ -655,6 +699,82 @@ export default function SketchSelectionView({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Source choice modal (catalog vs AI) */}
+      <AnimatePresence>
+        {sourceChoiceOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setSourceChoiceOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 relative"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button type="button" onClick={() => setSourceChoiceOpen(false)} className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646]">
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="text-center">
+                <h3 className="text-[19px] font-bold text-[#581E83]">מאיפה תרצו לבחור?</h3>
+                <p className="text-[14px] text-[#464646]/70 mt-1">בחרו את מקור הסקיצה</p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => handleSourceChoice('catalog')}
+                  className="w-full flex items-center gap-3 p-3.5 rounded-xl border-2 border-[#5E2F88] bg-[#f5f0fa] hover:bg-[#ebe0f5] transition-all text-right relative"
+                >
+                  <div className="w-10 h-10 rounded-full bg-[#5E2F88] flex items-center justify-center shrink-0">
+                    <Image className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[16px] font-semibold text-[#581E83]">בחירת סקיצה מקטלוג</span>
+                      <span className="text-[10px] font-bold bg-[#5E2F88] text-white px-2 py-0.5 rounded-full">מומלץ</span>
+                    </div>
+                    <p className="text-[13px] text-[#464646]/60 mt-0.5">בחרו מתוך מגוון עיצובים מוכנים</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSourceChoice('ai')}
+                  className="w-full flex items-center gap-3 p-3.5 rounded-xl border-2 border-[#e8e8e8] bg-white hover:border-purple-300 hover:bg-purple-50 transition-all text-right"
+                >
+                  <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[16px] font-semibold text-[#464646]">רוצה לתפור משהו משלי</span>
+                    <p className="text-[13px] text-[#464646]/60 mt-0.5">עיצוב מותאם אישית בעזרת AI</p>
+                  </div>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AISketchModal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        onApprove={handleAISketchApproved}
+        onValidateImage={onValidateImage}
+        onGenerateSketch={onGenerateSketch}
+        onSaveApprovedSketch={onSaveApprovedSketch}
+        onSubmitFeedback={onSubmitFeedback}
+        onCheckRateLimit={onCheckRateLimit}
+      />
     </div>
   );
 }

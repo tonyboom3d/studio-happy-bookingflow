@@ -83,6 +83,35 @@ export default function PostPaymentHub({
     return catalog;
   }, [catalog, sendAndWait]);
 
+  // --- AI Sketch handlers ---
+  const handleValidateImage = useCallback(async (imageBase64) => {
+    const result = await sendAndWait('VALIDATE_IMAGE', { imageBase64, orderId: localOrder._id });
+    if (result?.error) throw new Error(result.error);
+    return result;
+  }, [sendAndWait, localOrder._id]);
+
+  const handleGenerateSketch = useCallback(async (imageBase64, colorPalette) => {
+    const result = await sendAndWait('GENERATE_SKETCH', { imageBase64, colorPalette, orderId: localOrder._id });
+    if (result?.error) throw new Error(result.error);
+    return result;
+  }, [sendAndWait, localOrder._id]);
+
+  const handleSaveApprovedSketch = useCallback(async (originalBase64, sketchBase64, colors) => {
+    const result = await sendAndWait('SAVE_APPROVED_SKETCH', { originalBase64, sketchBase64, colors });
+    if (result?.error) throw new Error(result.error);
+    return result;
+  }, [sendAndWait]);
+
+  const handleSubmitFeedback = useCallback(async (feedbackText, type) => {
+    const result = await sendAndWait('SUBMIT_FEEDBACK', { feedbackText, type, orderId: localOrder._id });
+    return result;
+  }, [sendAndWait, localOrder._id]);
+
+  const handleCheckRateLimit = useCallback(async () => {
+    const result = await sendAndWait('CHECK_RATE_LIMIT', { orderId: localOrder._id });
+    return result;
+  }, [sendAndWait, localOrder._id]);
+
   const handleChooseMode = useCallback(async (mode) => {
     // Groups are now created explicitly by the organizer (no auto-generation).
     setLocalOrder(prev => ({ ...prev, selectionMode: mode }));
@@ -422,6 +451,11 @@ export default function PostPaymentHub({
           onFetchCatalog={handleFetchCatalog}
           onSwitchModeWithClear={handleSwitchModeWithClear}
           isSaving={isSaving}
+          onValidateImage={handleValidateImage}
+          onGenerateSketch={handleGenerateSketch}
+          onSaveApprovedSketch={handleSaveApprovedSketch}
+          onSubmitFeedback={handleSubmitFeedback}
+          onCheckRateLimit={handleCheckRateLimit}
         />
       </div>
     );
@@ -506,6 +540,11 @@ export default function PostPaymentHub({
           onRequestUpgrade={handleRequestUpgrade}
           onFetchCatalog={handleFetchCatalog}
           existingSelections={mySelections}
+          onValidateImage={handleValidateImage}
+          onGenerateSketch={handleGenerateSketch}
+          onSaveApprovedSketch={handleSaveApprovedSketch}
+          onSubmitFeedback={handleSubmitFeedback}
+          onCheckRateLimit={handleCheckRateLimit}
         />
       </div>
     );
