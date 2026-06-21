@@ -236,6 +236,28 @@ export default function AISketchModal({
 
   // Error
   const [error, setError] = useState(null);
+  const [errorCountdown, setErrorCountdown] = useState(0);
+
+  const isBlockingClose = view === 'loading';
+
+  useEffect(() => {
+    if (!error) {
+      setErrorCountdown(0);
+      return undefined;
+    }
+    setErrorCountdown(6);
+    const iv = setInterval(() => {
+      setErrorCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(iv);
+          setError(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [error]);
 
   // Sub-modals
   const [examplesOpen, setExamplesOpen] = useState(false);
@@ -473,6 +495,8 @@ export default function AISketchModal({
 
   if (!isOpen) return null;
 
+  const handleBackdropClick = isBlockingClose ? undefined : onClose;
+
   return (
     <AnimatePresence>
       <motion.div
@@ -480,7 +504,7 @@ export default function AISketchModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3"
-        onClick={onClose}
+        onClick={handleBackdropClick}
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.92, y: 24 }}
@@ -493,14 +517,17 @@ export default function AISketchModal({
         >
           {/* Close + Feedback buttons */}
           <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-[#f5f5f5] flex items-center justify-center text-[#464646] hover:bg-[#e8e8e8] transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            {!isBlockingClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-8 h-8 rounded-full bg-[#f5f5f5] flex items-center justify-center text-[#464646] hover:bg-[#e8e8e8] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
+          {!isBlockingClose && (
           <button
             type="button"
             onClick={() => setFeedbackOpen(true)}
@@ -509,6 +536,7 @@ export default function AISketchModal({
             <MessageSquare className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">פידבק</span>
           </button>
+          )}
 
           {/* Header */}
           <div className="bg-[#f5f0fa] pt-12 pb-5 px-6 text-center border-b border-[#5E2F88]/10">
@@ -539,9 +567,11 @@ export default function AISketchModal({
                 <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                   <p className="text-sm text-red-700 flex-1">{error}</p>
-                  <button type="button" onClick={() => setError(null)} className="text-red-400 hover:text-red-600 shrink-0">
-                    <X className="w-4 h-4" />
-                  </button>
+                  {errorCountdown > 0 && (
+                    <span className="text-xs text-red-500 font-medium tabular-nums shrink-0 mt-0.5">
+                      {errorCountdown}s
+                    </span>
+                  )}
                 </div>
               </motion.div>
             )}

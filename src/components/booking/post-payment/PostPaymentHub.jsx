@@ -93,12 +93,42 @@ export default function PostPaymentHub({
   }, [sendAndWait, orderId]);
 
   const handleGenerateSketch = useCallback(async (imageBase64, colorPalette) => {
-    const result = await sendAndWait('GENERATE_SKETCH', { imageBase64, colorPalette, orderId });
-    if (result?.error) {
-      console.error('[PostPaymentHub] GENERATE_SKETCH error:', result.error);
+    const start = await sendAndWait('GENERATE_SKETCH', { imageBase64, colorPalette, orderId });
+    if (start?.error) {
+      console.error('[PostPaymentHub] GENERATE_SKETCH start error:', start.error);
       throw new Error('שגיאה ביצירת הסקיצה. נסו שוב.');
     }
-    return result;
+    if (!start?.jobId) {
+      console.error('[PostPaymentHub] GENERATE_SKETCH missing jobId:', start);
+      throw new Error('שגיאה ביצירת הסקיצה. נסו שוב.');
+    }
+
+    const jobId = start.jobId;
+    const maxAttempts = 60;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (attempt > 0) {
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      const status = await sendAndWait('GET_SKETCH_JOB', { jobId });
+      if (status?.error) {
+        console.error('[PostPaymentHub] GET_SKETCH_JOB error:', status.error);
+        throw new Error('שגיאה ביצירת הסקיצה. נסו שוב.');
+      }
+      if (status?.status === 'done') {
+        return {
+          sketchUrl: status.sketchUrl,
+          originalUrl: status.originalUrl,
+          taskId: status.taskId,
+        };
+      }
+      if (status?.status === 'failed') {
+        console.error('[PostPaymentHub] Sketch job failed:', jobId);
+        throw new Error('שגיאה ביצירת הסקיצה. נסו שוב.');
+      }
+    }
+
+    console.error('[PostPaymentHub] Sketch job timed out:', jobId);
+    throw new Error('שגיאה ביצירת הסקיצה. נסו שוב.');
   }, [sendAndWait, orderId]);
 
   const handleSaveApprovedSketch = useCallback(async (originalInput, sketchUrl, colors) => {
