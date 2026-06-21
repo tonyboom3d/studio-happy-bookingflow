@@ -84,17 +84,19 @@ export default function PostPaymentHub({
   }, [catalog, sendAndWait]);
 
   // --- AI Sketch handlers ---
+  const orderId = localOrder?._id;
+
   const handleValidateImage = useCallback(async (imageBase64) => {
-    const result = await sendAndWait('VALIDATE_IMAGE', { imageBase64, orderId: localOrder._id });
+    const result = await sendAndWait('VALIDATE_IMAGE', { imageBase64, orderId });
     if (result?.error) throw new Error(result.error);
     return result;
-  }, [sendAndWait, localOrder._id]);
+  }, [sendAndWait, orderId]);
 
   const handleGenerateSketch = useCallback(async (imageBase64, colorPalette) => {
-    const result = await sendAndWait('GENERATE_SKETCH', { imageBase64, colorPalette, orderId: localOrder._id });
+    const result = await sendAndWait('GENERATE_SKETCH', { imageBase64, colorPalette, orderId });
     if (result?.error) throw new Error(result.error);
     return result;
-  }, [sendAndWait, localOrder._id]);
+  }, [sendAndWait, orderId]);
 
   const handleSaveApprovedSketch = useCallback(async (originalBase64, sketchBase64, colors) => {
     const result = await sendAndWait('SAVE_APPROVED_SKETCH', { originalBase64, sketchBase64, colors });
@@ -103,14 +105,14 @@ export default function PostPaymentHub({
   }, [sendAndWait]);
 
   const handleSubmitFeedback = useCallback(async (feedbackText, type) => {
-    const result = await sendAndWait('SUBMIT_FEEDBACK', { feedbackText, type, orderId: localOrder._id });
+    const result = await sendAndWait('SUBMIT_FEEDBACK', { feedbackText, type, orderId });
     return result;
-  }, [sendAndWait, localOrder._id]);
+  }, [sendAndWait, orderId]);
 
   const handleCheckRateLimit = useCallback(async () => {
-    const result = await sendAndWait('CHECK_RATE_LIMIT', { orderId: localOrder._id });
+    const result = await sendAndWait('CHECK_RATE_LIMIT', { orderId });
     return result;
-  }, [sendAndWait, localOrder._id]);
+  }, [sendAndWait, orderId]);
 
   const handleChooseMode = useCallback(async (mode) => {
     // Groups are now created explicitly by the organizer (no auto-generation).
