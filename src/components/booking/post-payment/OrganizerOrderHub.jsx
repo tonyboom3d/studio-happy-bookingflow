@@ -13,6 +13,7 @@ import DeadlineCountdown from './DeadlineCountdown';
 import ParticipantSetupForm from './ParticipantSetupForm';
 import SketchSelectionView from './SketchSelectionView';
 import OrganizerSelfSelectionView from './OrganizerSelfSelectionView';
+import EnlargeableSketchImage from './EnlargeableSketchImage';
 
 function getSelectionStatusBadge(sel, editingWindowClosed) {
   const status = sel.sketchStatus || '';
@@ -831,7 +832,11 @@ export default function OrganizerOrderHub({
                             return (
                               <div key={sel._id || si} className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2">
                                 {sel.productSnapshot?.image && (
-                                  <img src={sel.productSnapshot.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                                  <EnlargeableSketchImage
+                                    src={sel.productSnapshot.image}
+                                    alt={sel.productSnapshot?.title || 'סקיצה'}
+                                    thumbClassName="w-10 h-10"
+                                  />
                                 )}
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs font-medium text-[#581E83] truncate">

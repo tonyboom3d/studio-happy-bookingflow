@@ -6,6 +6,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import SketchCatalogSheet from './SketchCatalogSheet';
 import AISketchModal from './AISketchModal';
+import EnlargeableSketchImage from './EnlargeableSketchImage';
 
 function getSketchStatusBadge(sketch, editingWindowClosed) {
   const status = sketch.sketchStatus || '';
@@ -559,7 +560,11 @@ export default function OrganizerSelfSelectionView({
                       return (
                         <div key={si} className="flex items-center gap-2.5 bg-[#fafafa] rounded-lg p-2">
                           {sketch.image ? (
-                            <img src={sketch.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                            <EnlargeableSketchImage
+                              src={sketch.image}
+                              alt={sketch.title}
+                              thumbClassName="w-10 h-10"
+                            />
                           ) : (
                             <div className="w-10 h-10 rounded-lg bg-[#f5f0fa] flex items-center justify-center shrink-0">
                               {sketch.source === 'ai' ? <Sparkles className="w-4 h-4 text-[#5E2F88]" /> : <ImageIcon className="w-4 h-4 text-[#5E2F88]" />}
@@ -851,7 +856,12 @@ export default function OrganizerSelfSelectionView({
                     {card.sketches.map((sketch, si) => (
                       <div key={si} className="flex items-center gap-2.5 bg-[#fafafa] rounded-xl p-3">
                         {sketch.image ? (
-                          <img src={sketch.image} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                          <EnlargeableSketchImage
+                            src={sketch.image}
+                            alt={sketch.title}
+                            thumbClassName="w-12 h-12"
+                            title={sketch.title}
+                          />
                         ) : (
                           <div className="w-12 h-12 rounded-lg bg-[#f5f0fa] flex items-center justify-center shrink-0">
                             {sketch.source === 'ai' ? <Sparkles className="w-5 h-5 text-purple-600" /> : <ImageIcon className="w-5 h-5 text-[#5E2F88]" />}

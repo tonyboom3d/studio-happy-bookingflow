@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Upload, Loader2, Check, ChevronLeft, ChevronRight,
   RotateCcw, Image as ImageIcon, Info, AlertTriangle, MessageSquare,
-  Sparkles, Star, GripHorizontal, Plus, Trash2,
+  Sparkles, Star, GripHorizontal, Plus, Trash2, ZoomIn,
 } from 'lucide-react';
 
 const STEPS = ['העלאה', 'הגדרות', 'סקיצה'];
@@ -161,6 +161,7 @@ function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1 }) {
   const [pct, setPct] = useState(50);
   const dragging = useRef(false);
   const [animated, setAnimated] = useState(false);
+  const [lightbox, setLightbox] = useState(null);
   const frameStyle = getImageFrameStyle(aspectRatio, 360);
 
   const update = useCallback((clientX) => {
@@ -231,6 +232,60 @@ function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1 }) {
           <GripHorizontal className="w-3.5 h-3.5" />
         </div>
       </div>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setLightbox('sketch'); }}
+        className="absolute bottom-2 left-2 z-30 rounded-full bg-white/90 p-1.5 shadow-md transition-colors hover:bg-white"
+        aria-label="הגדלת סקיצה"
+      >
+        <ZoomIn className="h-4 w-4 text-[#581E83]" />
+      </button>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setLightbox('original'); }}
+        className="absolute bottom-2 right-2 z-30 rounded-full bg-white/90 px-2 py-1 text-[11px] font-semibold text-[#581E83] shadow-md transition-colors hover:bg-white"
+      >
+        מקור
+      </button>
+
+      <AnimatePresence>
+        {lightbox && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4"
+            onClick={() => setLightbox(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setLightbox(null)}
+                className="absolute -top-2 -left-2 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                aria-label="סגור"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <p className="mb-2 text-center text-sm font-semibold text-white">
+                {lightbox === 'sketch' ? 'הסקיצה' : 'התמונה המקורית'}
+              </p>
+              <div className="overflow-hidden rounded-xl bg-white p-3 shadow-2xl sm:p-5">
+                <img
+                  src={lightbox === 'sketch' ? sketchUrl : originalUrl}
+                  alt={lightbox === 'sketch' ? 'Sketch' : 'Original'}
+                  className="mx-auto max-h-[80dvh] w-full object-contain"
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

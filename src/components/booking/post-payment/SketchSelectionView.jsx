@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from './ConfirmationModal';
 import SketchCatalogSheet from './SketchCatalogSheet';
 import AISketchModal from './AISketchModal';
+import EnlargeableSketchImage from './EnlargeableSketchImage';
 
 export default function SketchSelectionView({
   rugSlots,
@@ -333,7 +334,12 @@ export default function SketchSelectionView({
               {display && (
                 <div className="flex items-center gap-3 bg-[#fafafa] rounded-lg p-2.5 mt-1.5">
                   {(display.productSnapshot?.image) && (
-                    <img src={display.productSnapshot.image} alt="" className="w-14 h-14 rounded-lg object-cover shrink-0" />
+                    <EnlargeableSketchImage
+                      src={display.productSnapshot.image}
+                      alt={display.productSnapshot?.title || 'סקיצה'}
+                      thumbClassName="w-14 h-14"
+                      title={display.productSnapshot?.title || 'סקיצה'}
+                    />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-[#581E83] truncate">
