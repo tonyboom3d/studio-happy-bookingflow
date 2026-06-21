@@ -92,14 +92,14 @@ export default function PostPaymentHub({
     return result;
   }, [sendAndWait, orderId]);
 
-  const handleGenerateSketch = useCallback(async (imageBase64, colorPalette) => {
-    const result = await sendAndWait('GENERATE_SKETCH', { imageBase64, colorPalette, orderId });
+  const handleGenerateSketch = useCallback(async (imageBase64, colorPalette, imageUrl) => {
+    const result = await sendAndWait('GENERATE_SKETCH', { imageBase64, colorPalette, imageUrl, orderId });
     if (result?.error) throw new Error(result.error);
     return result;
   }, [sendAndWait, orderId]);
 
-  const handleSaveApprovedSketch = useCallback(async (originalBase64, sketchBase64, colors) => {
-    const result = await sendAndWait('SAVE_APPROVED_SKETCH', { originalBase64, sketchBase64, colors });
+  const handleSaveApprovedSketch = useCallback(async (originalBase64, sketchBase64, colors, originalUrl) => {
+    const result = await sendAndWait('SAVE_APPROVED_SKETCH', { originalBase64, sketchBase64, colors, originalUrl });
     if (result?.error) throw new Error(result.error);
     return result;
   }, [sendAndWait]);
