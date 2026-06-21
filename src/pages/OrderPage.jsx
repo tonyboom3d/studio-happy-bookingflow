@@ -101,7 +101,9 @@ export default function OrderPage() {
 
   const handleSendMessage = useCallback((type, data, callback) => {
     if (callback) {
-      sendWithCallback(type, data, callback);
+      const longRunning = type === 'GENERATE_SKETCH' || type === 'VALIDATE_IMAGE';
+      const timeoutMs = longRunning ? 120000 : 30000;
+      sendWithCallback(type, data, callback, timeoutMs);
     } else {
       try {
         window.parent.postMessage({ type, data }, '*');

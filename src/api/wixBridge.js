@@ -327,7 +327,7 @@ export function sendSummaryUpdate(summaryData) {
  * Send a message to Wix with a callback for the response (request-reply pattern).
  * The Wix page script sends back { type: 'RESPONSE', callbackId, result }.
  */
-export function sendWithCallback(type, data, callback) {
+export function sendWithCallback(type, data, callback, timeoutMs = 30000) {
     const callbackId = ++callbackIdCounter;
     pendingCallbacks.set(callbackId, callback);
     sendToWix(type, { ...data, _callbackId: callbackId });
@@ -336,7 +336,7 @@ export function sendWithCallback(type, data, callback) {
             pendingCallbacks.delete(callbackId);
             callback({ error: 'timeout' });
         }
-    }, 30000);
+    }, timeoutMs);
 }
 
 /**
