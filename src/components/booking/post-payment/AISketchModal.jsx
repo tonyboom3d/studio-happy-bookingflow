@@ -9,6 +9,30 @@ import {
 const STEPS = ['העלאה', 'הגדרות', 'סקיצה'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_ATTEMPTS = 7;
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const ALLOWED_IMAGE_EXT = /\.(jpe?g|png|webp)$/i;
+
+function validateImageFile(file) {
+  if (!file) return 'לא נבחר קובץ';
+  if (file.size > MAX_FILE_SIZE) return 'הקובץ גדול מדי. גודל מקסימלי: 5MB';
+
+  const extOk = ALLOWED_IMAGE_EXT.test(file.name || '');
+  const typeOk = ALLOWED_IMAGE_TYPES.has(file.type) || (!file.type && extOk);
+
+  if (!typeOk) {
+    if (file.type === 'image/heic' || file.type === 'image/heif' || /\.heic$/i.test(file.name)) {
+      return 'פורמט HEIC לא נתמך. יש להמיר את התמונה ל-JPG או PNG';
+    }
+    if (file.type === 'image/gif' || /\.gif$/i.test(file.name)) {
+      return 'GIF לא נתמך. יש להעלות JPG, PNG או WEBP';
+    }
+    if (file.type.startsWith('image/')) {
+      return `פורמט ${file.type.replace('image/', '').toUpperCase()} לא נתמך. יש להעלות JPG, PNG או WEBP`;
+    }
+    return 'פורמט לא נתמך. יש להעלות קובץ JPG, PNG או WEBP בלבד';
+  }
+  return null;
+}
 
 const LOADING_SUBTITLES_VALIDATE = [
   'בודק איכות וחדות...',
@@ -264,45 +288,43 @@ export default function AISketchModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > MAX_FILE_SIZE) {
-      setError('הקובץ גדול מדי. גודל מקסימלי: 5MB');
-      return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-      setError('יש להעלות קובץ תמונה (PNG, JPG)');
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setError(validationError);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     setError(null);
-
-    // Check rate limit
-    if (onCheckRateLimit) {
-      try {
-        const rl = await onCheckRateLimit();
-        if (!rl?.isAllowed) {
-          setBlockedOpen(true);
-          return;
-        }
-      } catch (_) { /* proceed if check fails */ }
-    }
-
-    const base64 = await fileToBase64(file);
-    const previewUrl = URL.createObjectURL(file);
-
-    setImageFile(file);
-    setImageBase64(base64);
-    setImagePreviewUrl(previewUrl);
-    setAttempts(prev => prev + 1);
-
-    // Start validation
     setView('loading');
     setStep(1);
-    setLoadingTitle('ה-AI מוודא את התמונה שלך...');
+    setLoadingTitle('מעלה ובודק את התמונה...');
     setLoadingSubs(LOADING_SUBTITLES_VALIDATE);
-    const clearProgress = animateProgress(6000);
+    const clearProgress = animateProgress(8000);
 
     try {
+      if (onCheckRateLimit) {
+        try {
+          const rl = await onCheckRateLimit();
+          if (!rl?.isAllowed) {
+            clearProgress();
+            setView('intro');
+            setStep(0);
+            setBlockedOpen(true);
+            return;
+          }
+        } catch (_) { /* proceed if check fails */ }
+      }
+
+      const base64 = await fileToBase64(file);
+      const previewUrl = URL.createObjectURL(file);
+
+      setImageFile(file);
+      setImageBase64(base64);
+      setImagePreviewUrl(previewUrl);
+      setAttempts(prev => prev + 1);
+
+      setLoadingTitle('ה-AI מוודא את התמונה שלך...');
       const result = await onValidateImage(base64);
       clearProgress();
       setLoadingProgress(100);
@@ -314,7 +336,6 @@ export default function AISketchModal({
         return;
       }
 
-      // Move to config
       setTimeout(() => {
         setView('config');
         setStep(1);
@@ -326,7 +347,6 @@ export default function AISketchModal({
       setStep(0);
     }
 
-    // Reset file input so the same file can be re-selected
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [onValidateImage, onCheckRateLimit, animateProgress]);
 
@@ -498,7 +518,7 @@ export default function AISketchModal({
             ref={fileInputRef}
             type="file"
             className="hidden"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
             onChange={handleFileUpload}
           />
 
@@ -564,7 +584,7 @@ export default function AISketchModal({
                 >
                   <Upload className="w-10 h-10 text-[#5E2F88] mx-auto mb-2 group-hover:scale-110 transition-transform" />
                   <h3 className="text-[15px] font-bold text-[#464646]">לחצו כאן להעלאת תמונה</h3>
-                  <p className="text-[13px] text-[#464646]/50 mt-1">PNG, JPG (עד 5MB)</p>
+                  <p className="text-[13px] text-[#464646]/50 mt-1">JPG, PNG, WEBP (עד 5MB)</p>
                 </button>
               </motion.div>
             )}
