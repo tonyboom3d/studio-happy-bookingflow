@@ -144,14 +144,31 @@ export default function PostPaymentHub({
     }
   }, [localOrder?._id, sendAndWait]);
 
-  // Delete a group (cascades sketch selections + invalidates link server-side).
+  // Delete a participant group (cascades sketch selections + invalidates link server-side).
   const handleDeleteGroup = useCallback(async (participantId) => {
     const result = await sendAndWait('DELETE_PARTICIPANT_GROUP', { participantId });
     if (result?.error) throw new Error(result.error);
+    if (!result?.success) throw new Error('Delete failed');
     setLocalParticipants(prev => prev.filter(p => p._id !== participantId));
     setLocalSelections(prev => prev.filter(s => s.participantId !== participantId));
     return result;
   }, [sendAndWait]);
+
+  // Delete an organizer self-selection card + its saved sketch selections in CMS.
+  const handleDeleteOrganizerGroup = useCallback(async ({ participantName, rugIndexes }) => {
+    const orderId = localOrder?._id;
+    if (!orderId) throw new Error('Order not loaded');
+    const result = await sendAndWait('DELETE_ORGANIZER_GROUP', { orderId, participantName, rugIndexes });
+    if (result?.error) throw new Error(result.error);
+    if (!result?.success) throw new Error('Delete failed');
+    const rugSet = new Set(rugIndexes || []);
+    setLocalSelections(prev => prev.filter(s => {
+      if (participantName && s.participantName === participantName) return false;
+      if (rugSet.size > 0 && rugSet.has(s.rugIndex)) return false;
+      return true;
+    }));
+    return result;
+  }, [localOrder?._id, sendAndWait]);
 
   // Legacy fallback: backfill share tokens for any groups created before tokens
   // were stored on the record (so their links can be rebuilt).
@@ -445,6 +462,7 @@ export default function PostPaymentHub({
           onSaveParticipants={handleSaveParticipants}
           onCreateGroup={handleCreateGroup}
           onDeleteGroup={handleDeleteGroup}
+          onDeleteOrganizerGroup={handleDeleteOrganizerGroup}
           onSelectSketch={handleSelectSketch}
           onRequestUpgrade={handleRequestUpgrade}
           onUpdateSettings={handleUpdateSettings}

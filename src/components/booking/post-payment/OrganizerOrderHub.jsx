@@ -43,6 +43,7 @@ export default function OrganizerOrderHub({
   onSaveParticipants,
   onCreateGroup,
   onDeleteGroup,
+  onDeleteOrganizerGroup,
   onSelectSketch,
   onRequestUpgrade,
   onUpdateSettings,
@@ -638,6 +639,7 @@ export default function OrganizerOrderHub({
           onSaveApprovedSketch={onSaveApprovedSketch}
           onSubmitFeedback={onSubmitFeedback}
           onCheckRateLimit={onCheckRateLimit}
+          onDeleteOrganizerGroup={onDeleteOrganizerGroup}
         />
       )}
 

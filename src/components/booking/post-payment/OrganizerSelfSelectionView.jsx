@@ -38,6 +38,7 @@ export default function OrganizerSelfSelectionView({
   onSaveApprovedSketch,
   onSubmitFeedback,
   onCheckRateLimit,
+  onDeleteOrganizerGroup,
 }) {
   const [cards, setCards] = useState(() => buildInitialCards(order, selections));
   const [setupOpen, setSetupOpen] = useState(false);
@@ -66,6 +67,8 @@ export default function OrganizerSelfSelectionView({
 
   // Group deletion confirmation
   const [deleteConfirmIdx, setDeleteConfirmIdx] = useState(null);
+  const [deletingCard, setDeletingCard] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   // Group name editing
   const [editingNameIdx, setEditingNameIdx] = useState(null);
@@ -338,9 +341,27 @@ export default function OrganizerSelfSelectionView({
     setExpandedCards(prev => ({ ...prev, [idx]: !prev[idx] }));
   };
 
-  const deleteCard = (idx) => {
-    setCards(prev => prev.filter((_, i) => i !== idx));
-    setDeleteConfirmIdx(null);
+  const deleteCard = async (idx) => {
+    const card = cards[idx];
+    if (!card) return;
+
+    setDeletingCard(true);
+    setDeleteError('');
+    try {
+      if (onDeleteOrganizerGroup) {
+        const rugIndexes = card.sketches.map(s => s.rugIndex).filter(i => i != null);
+        await onDeleteOrganizerGroup({
+          participantName: card.name,
+          rugIndexes,
+        });
+      }
+      setCards(prev => prev.filter((_, i) => i !== idx));
+      setDeleteConfirmIdx(null);
+    } catch (e) {
+      setDeleteError('מחיקת הקבוצה נכשלה, נסו שוב');
+    } finally {
+      setDeletingCard(false);
+    }
   };
 
   const startEditName = (idx) => {
@@ -944,21 +965,26 @@ export default function OrganizerSelfSelectionView({
                       {card.sketches.length} סקיצות שנבחרו יימחקו לצמיתות
                     </p>
                   )}
+                  {deleteError && (
+                    <p className="text-[13px] text-red-600 text-center">{deleteError}</p>
+                  )}
                 </div>
                 <div className="flex gap-3">
                   <button
                     type="button"
                     onClick={() => setDeleteConfirmIdx(null)}
-                    className="flex-1 py-2.5 rounded-xl border-2 border-[#e8e8e8] text-[14px] font-medium text-[#464646] hover:bg-[#fafafa] transition-colors"
+                    disabled={deletingCard}
+                    className="flex-1 py-2.5 rounded-xl border-2 border-[#e8e8e8] text-[14px] font-medium text-[#464646] hover:bg-[#fafafa] transition-colors disabled:opacity-50"
                   >
                     ביטול
                   </button>
                   <button
                     type="button"
                     onClick={() => deleteCard(deleteConfirmIdx)}
-                    className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[14px] font-medium transition-colors"
+                    disabled={deletingCard}
+                    className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-[14px] font-medium transition-colors"
                   >
-                    מחיקה
+                    {deletingCard ? 'מוחק...' : 'מחיקה'}
                   </button>
                 </div>
               </motion.div>
