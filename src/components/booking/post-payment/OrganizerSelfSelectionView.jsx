@@ -137,9 +137,14 @@ export default function OrganizerSelfSelectionView({
         title: s.productSnapshot?.title || s.title || 'סקיצה',
         image: s.productSnapshot?.image || null,
         size: s.canvasSize || '60x60',
-        source: 'catalog',
+        source: s.source || 'catalog',
         rugIndex: s.rugIndex,
         upgradePaymentStatus: s.upgradePaymentStatus || null,
+        ...(s.source === 'ai' ? {
+          aiOriginalImage: s.aiOriginalImage || null,
+          aiColors: s.aiColors || null,
+          aiTaskId: s.aiTaskId || null,
+        } : {}),
       })),
     }));
   }
@@ -228,6 +233,9 @@ export default function OrganizerSelfSelectionView({
       });
     });
     setAiModalOpen(false);
+    setReviewCardIdx(aiModalCardIdx);
+    setReviewError('');
+    setReviewOpen(true);
   }, [aiModalCardIdx, getNextRugIndex]);
 
   const handleCatalogPick = (product) => {
