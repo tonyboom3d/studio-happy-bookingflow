@@ -266,14 +266,24 @@ function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1 }) {
       onMouseDown={startDrag}
       onTouchStart={startDrag}
     >
-      <img src={sketchUrl} alt="Sketch" draggable={false} className="absolute inset-0 w-full h-full object-contain bg-white" />
       <img
         src={originalUrl}
         alt="Original"
         draggable={false}
-        className="absolute inset-0 w-full h-full object-contain bg-white"
-        style={{ clipPath: `polygon(0 0, ${pct}% 0, ${pct}% 100%, 0 100%)` }}
+        className="absolute inset-0 z-0 w-full h-full object-contain bg-white"
       />
+      <div
+        className="absolute inset-0 z-10 bg-white"
+        style={{ clipPath: `polygon(${pct}% 0, 100% 0, 100% 100%, ${pct}% 100%)` }}
+      >
+        <img
+          src={sketchUrl}
+          alt="Sketch"
+          draggable={false}
+          className="h-full w-full object-contain bg-white"
+          style={{ backgroundColor: '#ffffff' }}
+        />
+      </div>
       <div
         className="absolute top-0 bottom-0 w-0.5 bg-[#5E2F88]/60 flex justify-center items-center -translate-x-1/2 z-20 cursor-ew-resize"
         style={{ left: `${pct}%` }}
@@ -329,7 +339,8 @@ function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1 }) {
                 <img
                   src={lightbox === 'sketch' ? sketchUrl : originalUrl}
                   alt={lightbox === 'sketch' ? 'Sketch' : 'Original'}
-                  className="mx-auto max-h-[80dvh] w-full object-contain"
+                  className="mx-auto max-h-[80dvh] w-full object-contain bg-white"
+                  style={lightbox === 'sketch' ? { backgroundColor: '#ffffff' } : undefined}
                 />
               </div>
             </motion.div>
