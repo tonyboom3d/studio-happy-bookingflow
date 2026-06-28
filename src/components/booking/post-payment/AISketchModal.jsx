@@ -50,7 +50,7 @@ const LOADING_SUBTITLES_GENERATE = [
 
 const MOBILE_KEEP_OPEN_HINT = 'אל תסגרו את החלונית עד לסיום התהליך';
 const AI_RATE_LIMIT_MESSAGE = 'הגעתם למגבלת הניסיונות. אנא המתינו כ-30 דקות לפני שתוכלו לנסות שוב.';
-const SKETCH_PROGRESS_DURATION_MS = 62000;
+const SKETCH_PROGRESS_DURATION_MS = 49000;
 
 function isRateLimitResponse(result) {
   if (!result) return false;
