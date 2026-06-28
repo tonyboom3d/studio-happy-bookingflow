@@ -6,7 +6,7 @@ import {
   Sparkles, Star, GripHorizontal, Plus, Trash2, ZoomIn,
 } from 'lucide-react';
 
-const STEPS = ['העלאה', 'הגדרות', 'סקיצה'];
+const STEPS = ['העלאה', 'אישור', 'סקיצה'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_ATTEMPTS = 7;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -44,9 +44,16 @@ const LOADING_SUBTITLES_VALIDATE = [
 const LOADING_SUBTITLES_GENERATE = [
   'מפעיל קסמי AI...',
   'מפשט קווים וצורות...',
-  'מתאים את הפלטה שבחרת...',
+  'מסיר רקע ומבודד את האובייקט...',
   'מכין קובץ סופי...',
 ];
+
+const MOBILE_KEEP_OPEN_HINT = 'אל תסגרו את החלונית עד לסיום התהליך';
+
+function isMobileDevice() {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
 
 const LOADING_SUBTITLES_SAVE = [
   'מעלה את התמונות לשרת...',
@@ -121,9 +128,10 @@ function Stepper({ step }) {
   );
 }
 
-function LoadingView({ title, subtitles, progress }) {
+function LoadingView({ title, subtitles, progress, showMobileKeepOpenHint = false }) {
   const [subIdx, setSubIdx] = useState(0);
   const [fade, setFade] = useState(true);
+  const showMobileHint = showMobileKeepOpenHint && isMobileDevice();
 
   useEffect(() => {
     const iv = setInterval(() => {
@@ -146,6 +154,12 @@ function LoadingView({ title, subtitles, progress }) {
       <p className={`text-sm text-[#464646]/70 h-5 transition-opacity duration-250 ${fade ? 'opacity-100' : 'opacity-0'}`}>
         {subtitles[subIdx]}
       </p>
+      {showMobileHint && (
+        <div className="mt-4 w-full max-w-sm bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-800 text-center flex-1">{MOBILE_KEEP_OPEN_HINT}</p>
+        </div>
+      )}
       <div className="w-full max-w-[240px] bg-[#e8e8e8] rounded-full h-2 mt-5">
         <div
           className="bg-[#5E2F88] h-2 rounded-full transition-all duration-300"
@@ -496,8 +510,6 @@ export default function AISketchModal({
   }, [onValidateImage, onCheckRateLimit, animateProgress]);
 
   const handleStartConversion = useCallback(async () => {
-    const palette = colorMode === 'auto' ? 'AUTO' : manualColors;
-
     setView('loading');
     setStep(2);
     setLoadingTitle('הופך לסקיצה...');
@@ -505,7 +517,7 @@ export default function AISketchModal({
     const clearProgress = animateProgress(60000);
 
     try {
-      const result = await onGenerateSketch(imageBase64, palette, imageDimensions);
+      const result = await onGenerateSketch(imageBase64, 'AUTO', imageDimensions);
       clearProgress();
       setLoadingProgress(100);
 
@@ -532,7 +544,7 @@ export default function AISketchModal({
       setView('config');
       setStep(1);
     }
-  }, [colorMode, manualColors, imageBase64, imageDimensions, onGenerateSketch, animateProgress]);
+  }, [imageBase64, imageDimensions, onGenerateSketch, animateProgress]);
 
   const imageAspectRatio = imageDimensions.width / imageDimensions.height;
 
@@ -548,12 +560,12 @@ export default function AISketchModal({
     try {
       let finalImage = sketchUrl;
       let aiOriginalImage = null;
-      let aiColors = colorMode === 'auto' ? 'AUTO' : manualColors;
+      let aiColors = 'AUTO';
       let aiTaskId = null;
 
       if (onSaveApprovedSketch) {
         const originalInput = originalMediaUrl || imageBase64;
-        const colors = colorMode === 'auto' ? 'AUTO' : manualColors;
+        const colors = 'AUTO';
         const saved = await onSaveApprovedSketch(originalInput, sketchUrl, colors);
         if (saved?.sketchUrl) finalImage = saved.sketchUrl;
         if (saved?.originalUrl) aiOriginalImage = saved.originalUrl;
@@ -582,7 +594,7 @@ export default function AISketchModal({
       setView('result');
       setStep(2);
     }
-  }, [imageBase64, originalMediaUrl, sketchUrl, colorMode, manualColors, onApprove, onClose, onSaveApprovedSketch, animateProgress]);
+  }, [imageBase64, originalMediaUrl, sketchUrl, onApprove, onClose, onSaveApprovedSketch, animateProgress]);
 
   const handleRetrySubmit = useCallback(async () => {
     if (!retryReason) return;
@@ -734,7 +746,7 @@ export default function AISketchModal({
                   {[
                     { n: 1, title: 'מעלים תמונה', desc: 'בחרו תמונה ברורה, באיכות טובה, שאינה עמוסה בפרטים קטנים או צלליות מורכבות.' },
                     { n: 2, title: 'ה-AI שלנו בודק', desc: 'המערכת תוודא שהתמונה מתאימה לתפירה בטאפטינג ותתאים אותה.' },
-                    { n: 3, title: 'בחירת צבעים והמרה', desc: 'מאשרים את התמונה, בוחרים צבעים — ומקבלים סקיצה מוכנה!' },
+                    { n: 3, title: 'המרה לסקיצה', desc: 'מאשרים את התמונה ומקבלים סקיצה בשחור-לבן מוכנה לתפירה!' },
                   ].map(({ n, title, desc }) => (
                     <div key={n} className="flex items-start gap-3">
                       <div className="bg-[#f5f0fa] text-[#5E2F88] rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">{n}</div>
@@ -773,6 +785,7 @@ export default function AISketchModal({
                   title={loadingTitle}
                   subtitles={loadingSubs}
                   progress={loadingProgress}
+                  showMobileKeepOpenHint
                 />
               </motion.div>
             )}
@@ -788,8 +801,8 @@ export default function AISketchModal({
                   <div className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-3 py-1 rounded-full text-[12px] font-bold mb-2">
                     <Check className="w-3.5 h-3.5" /> התמונה אושרה!
                   </div>
-                  <h2 className="text-xl font-bold text-[#581E83]">הגדרות צבעים</h2>
-                  <p className="text-[#464646]/60 text-sm">בחרו את פלטת הצבעים לסקיצה שלכם</p>
+                  <h2 className="text-xl font-bold text-[#581E83]">אישור והמרה</h2>
+                  <p className="text-[#464646]/60 text-sm">הסקיצה תיווצר בשחור-לבן, מוכנה לתפירה</p>
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-5 items-start">
@@ -814,99 +827,17 @@ export default function AISketchModal({
 
                   {/* Controls */}
                   <div className="w-full md:w-1/2 space-y-3.5">
-                    {/* Color mode toggle */}
-                    <div className="bg-[#f5f5f5] p-1 rounded-lg flex text-[13px] font-semibold">
-                      <button
-                        type="button"
-                        onClick={() => setColorMode('auto')}
-                        className={`flex-1 py-2 rounded-md transition-all ${
-                          colorMode === 'auto' ? 'bg-white shadow-sm text-[#5E2F88]' : 'text-[#464646]/50 hover:text-[#464646]/70'
-                        }`}
-                      >
-                        מהתמונה
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setColorMode('manual')}
-                        className={`flex-1 py-2 rounded-md transition-all ${
-                          colorMode === 'manual' ? 'bg-white shadow-sm text-[#5E2F88]' : 'text-[#464646]/50 hover:text-[#464646]/70'
-                        }`}
-                      >
-                        בחירה ידנית
-                      </button>
-                    </div>
-
-                    {/* Explanation */}
                     <div className="bg-blue-50 text-blue-800 p-2.5 rounded-xl text-[13px] border border-blue-100 flex items-start gap-2">
                       <Info className="w-4 h-4 mt-0.5 opacity-70 shrink-0" />
-                      <span>{colorMode === 'auto'
-                        ? 'המערכת תבחר אוטומטית את הגוונים הבולטים והמדויקים מהתמונה.'
-                        : 'הרכיבו בעצמכם את פלטת הצבעים הרצויה עבור הסקיצה.'
-                      }</span>
+                      <span>המערכת תהפוך את התמונה לסקיצת קווים בשחור-לבן, תסיר את הרקע ותפשט את הפרטים.</span>
                     </div>
 
-                    {/* Manual color picker */}
-                    <AnimatePresence>
-                      {colorMode === 'manual' && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="space-y-3 overflow-hidden"
-                        >
-                          <div>
-                            <label className="text-[13px] font-bold text-[#464646]">בחרו 3 עד 6 צבעים:</label>
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {manualColors.map((color, idx) => (
-                                <div key={idx} className="relative w-9 h-9 rounded-full border border-[#e8e8e8] shadow-sm overflow-hidden shrink-0 cursor-pointer group">
-                                  <input
-                                    type="color"
-                                    value={color}
-                                    onChange={(e) => updateColor(idx, e.target.value)}
-                                    className="absolute inset-0 w-[150%] h-[150%] -top-1 -left-1 cursor-pointer"
-                                  />
-                                  {manualColors.length > 3 && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); removeColor(idx); }}
-                                      className="absolute -top-1 -right-1 bg-red-500 text-white w-4 h-4 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                    >
-                                      <X className="w-2.5 h-2.5" />
-                                    </button>
-                                  )}
-                                </div>
-                              ))}
-                              {manualColors.length < 6 && (
-                                <button
-                                  type="button"
-                                  onClick={addColor}
-                                  className="w-9 h-9 rounded-full border-2 border-dashed border-[#464646]/30 flex items-center justify-center text-[#464646]/30 hover:border-[#5E2F88] hover:text-[#5E2F88] transition-colors"
-                                >
-                                  <Plus className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Difficulty alert */}
-                          <div className={`p-2.5 rounded-lg text-[13px] flex items-start gap-2 ${difficultyInfo.bg} ${difficultyInfo.text} border ${difficultyInfo.border}`}>
-                            <Info className="w-4 h-4 mt-0.5 shrink-0" />
-                            <div>
-                              <strong className="block">{difficultyInfo.label}</strong>
-                              <span className="opacity-90">{difficultyInfo.desc}</span>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    {/* Submit */}
                     <button
                       type="button"
                       onClick={handleStartConversion}
                       className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:scale-[1.02] transition-all flex justify-center items-center gap-2"
                     >
-                      <span>אישור והמשך</span>
+                      <span>יצירת סקיצה</span>
                       <ChevronLeft className="w-4 h-4" />
                     </button>
                   </div>
@@ -1016,7 +947,7 @@ export default function AISketchModal({
                   <div className="p-3 text-[13px]">
                     <ul className="text-[#464646]/70 space-y-1 list-disc list-inside">
                       <li>קווים ברורים</li>
-                      <li>מעט צבעים (עד 5)</li>
+                      <li>נושא ברור במרכז</li>
                       <li>ללא רקע עמוס</li>
                     </ul>
                   </div>
@@ -1074,7 +1005,7 @@ export default function AISketchModal({
             >
               <option value="" disabled>בחרו סיבה...</option>
               <option value="הסקיצה עמוסה מדי בפרטים">הסקיצה עמוסה מדי בפרטים</option>
-              <option value="הצבעים לא מתאימים לתמונה">הצבעים לא מתאימים לתמונה</option>
+              <option value="הרקע לא הוסר כראוי">הרקע לא הוסר כראוי</option>
               <option value="חסרים פרטים חשובים">חסרים פרטים חשובים בפנים/רקע</option>
               <option value="הקווים לא מספיק ברורים">הקווים לא מספיק ברורים</option>
               <option value="other">אחר (פירוט חופשי)</option>
