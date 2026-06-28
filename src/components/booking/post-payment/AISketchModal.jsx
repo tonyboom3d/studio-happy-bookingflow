@@ -510,10 +510,12 @@ export default function AISketchModal({
   useEffect(() => {
     if (view !== 'result' || !sketchUrl) return undefined;
     setRevealPhase('hidden');
-    const tStars = setTimeout(() => setRevealPhase('stars'), RESULT_BUFFER_MS);
+    const tStars = setTimeout(() => {
+      setRevealPhase('stars');
+      setHintTrigger((k) => k + 1);
+    }, RESULT_BUFFER_MS);
     const tDone = setTimeout(() => {
       setRevealPhase('done');
-      setHintTrigger((k) => k + 1);
     }, RESULT_BUFFER_MS + STARS_DURATION_MS);
     return () => { clearTimeout(tStars); clearTimeout(tDone); };
   }, [view, sketchUrl]);
