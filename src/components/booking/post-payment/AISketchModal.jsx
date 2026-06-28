@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Upload, Loader2, Check, ChevronLeft, ChevronRight,
@@ -50,7 +50,9 @@ const LOADING_SUBTITLES_GENERATE = [
 
 const MOBILE_KEEP_OPEN_HINT = 'אל תסגרו את החלונית עד לסיום התהליך';
 const AI_RATE_LIMIT_MESSAGE = 'הגעתם למגבלת הניסיונות. אנא המתינו כ-30 דקות לפני שתוכלו לנסות שוב.';
-const SKETCH_PROGRESS_DURATION_MS = 49000;
+const SKETCH_PROGRESS_DURATION_MS = 40000;
+const RESULT_BUFFER_MS = 5000;
+const STARS_DURATION_MS = 2500;
 
 function isRateLimitResponse(result) {
   if (!result) return false;
@@ -179,13 +181,43 @@ function LoadingView({ title, subtitles, progress, showMobileKeepOpenHint = fals
   );
 }
 
-function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1 }) {
+function StarsBurst() {
+  const stars = useMemo(
+    () => Array.from({ length: 16 }).map((_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      delay: Math.random() * 0.7,
+      size: 12 + Math.random() * 18,
+      dur: 1.5 + Math.random() * 0.9,
+      drift: (Math.random() - 0.5) * 60,
+    })),
+    []
+  );
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden rounded-2xl">
+      {stars.map((s) => (
+        <motion.div
+          key={s.id}
+          initial={{ opacity: 0, y: 20, x: 0 }}
+          animate={{ opacity: [0, 0.7, 0.7, 0], y: -340, x: s.drift }}
+          transition={{ duration: s.dur, delay: s.delay, ease: 'easeOut' }}
+          style={{ position: 'absolute', bottom: 0, left: `${s.left}%` }}
+        >
+          <Star style={{ width: s.size, height: s.size, color: '#facc15', opacity: 0.6 }} fill="#facc15" strokeWidth={0} />
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1, hintTrigger = 0 }) {
   const containerRef = useRef(null);
   const [pct, setPct] = useState(50);
   const dragging = useRef(false);
-  const [animated, setAnimated] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [hinting, setHinting] = useState(false);
   const frameStyle = getImageFrameStyle(aspectRatio, 360);
 
   useEffect(() => {
@@ -213,6 +245,7 @@ function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1 }) {
 
   const startDrag = useCallback((e) => {
     dragging.current = true;
+    setHinting(false);
     if (e.cancelable) e.preventDefault();
   }, []);
   const stopDrag = useCallback(() => { dragging.current = false; }, []);
@@ -237,15 +270,17 @@ function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1 }) {
     };
   }, [onMove, stopDrag]);
 
+  // Phase C: automated drag-handle hint (center -> right -> left -> center)
   useEffect(() => {
-    if (animated || !imagesLoaded) return;
-    setAnimated(true);
+    if (!hintTrigger || !imagesLoaded) return;
+    setHinting(true);
     setPct(50);
-    const t1 = setTimeout(() => setPct(90), 600);
-    const t2 = setTimeout(() => setPct(15), 1800);
-    const t3 = setTimeout(() => setPct(50), 3200);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [imagesLoaded]);
+    const t1 = setTimeout(() => setPct(85), 250);
+    const t2 = setTimeout(() => setPct(15), 1100);
+    const t3 = setTimeout(() => setPct(50), 1950);
+    const t4 = setTimeout(() => setHinting(false), 2700);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+  }, [hintTrigger, imagesLoaded]);
 
   if (!imagesLoaded) {
     return (
@@ -273,20 +308,24 @@ function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1 }) {
         className="absolute inset-0 z-0 w-full h-full object-contain bg-white"
       />
       <div
-        className="absolute inset-0 z-10 bg-white"
-        style={{ clipPath: `polygon(${pct}% 0, 100% 0, 100% 100%, ${pct}% 100%)` }}
+        className="absolute inset-0 z-10"
+        style={{
+          clipPath: `polygon(${pct}% 0, 100% 0, 100% 100%, ${pct}% 100%)`,
+          backgroundColor: '#ffffff',
+          transition: hinting ? 'clip-path 0.7s ease-in-out' : 'none',
+        }}
       >
         <img
           src={sketchUrl}
           alt="Sketch"
           draggable={false}
-          className="h-full w-full object-contain bg-white"
+          className="h-full w-full object-contain"
           style={{ backgroundColor: '#ffffff' }}
         />
       </div>
       <div
         className="absolute top-0 bottom-0 w-0.5 bg-[#5E2F88]/60 flex justify-center items-center -translate-x-1/2 z-20 cursor-ew-resize"
-        style={{ left: `${pct}%` }}
+        style={{ left: `${pct}%`, transition: hinting ? 'left 0.7s ease-in-out' : 'none' }}
       >
         <div className="w-7 h-7 bg-white rounded-full shadow-lg flex items-center justify-center text-[#464646]/60 ring-2 ring-[#5E2F88]/30 pointer-events-none">
           <GripHorizontal className="w-3.5 h-3.5" />
@@ -384,6 +423,10 @@ export default function AISketchModal({
   const [sketchUrl, setSketchUrl] = useState(null);
   const [originalMediaUrl, setOriginalMediaUrl] = useState(null);
 
+  // Post-generation reveal sequence: 'hidden' (buffer) -> 'stars' -> 'done'
+  const [revealPhase, setRevealPhase] = useState('hidden');
+  const [hintTrigger, setHintTrigger] = useState(0);
+
   // Error
   const [error, setError] = useState(null);
   const [errorCountdown, setErrorCountdown] = useState(0);
@@ -441,6 +484,8 @@ export default function AISketchModal({
       setManualColors(['#000000', '#ffffff', '#ff0000']);
       setSketchUrl(null);
       setOriginalMediaUrl(null);
+      setRevealPhase('hidden');
+      setHintTrigger(0);
       setError(null);
       setAttempts(0);
       setRetryReason('');
@@ -451,23 +496,27 @@ export default function AISketchModal({
 
   const animateProgress = useCallback((durationMs = 4000) => {
     setLoadingProgress(0);
-    if (durationMs >= 60000) {
-      const start = Date.now();
-      const iv = setInterval(() => {
-        const elapsed = Date.now() - start;
-        const pct = Math.min(90, Math.round((elapsed / durationMs) * 90));
-        setLoadingProgress(pct);
-      }, 500);
-      return () => clearInterval(iv);
-    }
-    let progress = 0;
+    const start = Date.now();
+    const tick = durationMs >= 15000 ? 200 : Math.max(120, durationMs / 12);
     const iv = setInterval(() => {
-      progress += Math.random() * 12;
-      if (progress > 90) progress = 90;
-      setLoadingProgress(Math.round(progress));
-    }, durationMs / 10);
+      const elapsed = Date.now() - start;
+      const pct = Math.min(95, (elapsed / durationMs) * 95);
+      setLoadingProgress(Math.round(pct * 10) / 10);
+    }, tick);
     return () => clearInterval(iv);
   }, []);
+
+  // Drives Phase A (5s buffer) -> Phase B (2.5s stars) -> Phase C (slider hint)
+  useEffect(() => {
+    if (view !== 'result' || !sketchUrl) return undefined;
+    setRevealPhase('hidden');
+    const tStars = setTimeout(() => setRevealPhase('stars'), RESULT_BUFFER_MS);
+    const tDone = setTimeout(() => {
+      setRevealPhase('done');
+      setHintTrigger((k) => k + 1);
+    }, RESULT_BUFFER_MS + STARS_DURATION_MS);
+    return () => { clearTimeout(tStars); clearTimeout(tDone); };
+  }, [view, sketchUrl]);
 
   const handleFileUpload = useCallback(async (e) => {
     const file = e.target.files?.[0];
@@ -919,7 +968,19 @@ export default function AISketchModal({
                     originalUrl={imagePreviewUrl}
                     sketchUrl={sketchUrl}
                     aspectRatio={imageAspectRatio}
+                    hintTrigger={hintTrigger}
                   />
+
+                  {/* Phase A: pre-load buffer overlay (image is in DOM but hidden) */}
+                  {revealPhase === 'hidden' && (
+                    <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 rounded-2xl border-4 border-white bg-white">
+                      <Loader2 className="w-10 h-10 text-[#5E2F88] animate-spin" />
+                      <p className="text-sm font-semibold text-[#5E2F88]">מכין את הסקיצה שלך...</p>
+                    </div>
+                  )}
+
+                  {/* Phase B: success stars animation */}
+                  {revealPhase === 'stars' && <StarsBurst />}
                 </div>
 
                 {/* Action buttons */}
