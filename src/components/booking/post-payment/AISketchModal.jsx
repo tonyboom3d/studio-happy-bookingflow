@@ -49,6 +49,15 @@ const LOADING_SUBTITLES_GENERATE = [
 ];
 
 const MOBILE_KEEP_OPEN_HINT = 'אל תסגרו את החלונית עד לסיום התהליך';
+const AI_RATE_LIMIT_MESSAGE = 'הגעתם למגבלת הניסיונות. אנא המתינו כ-30 דקות לפני שתוכלו לנסות שוב.';
+const SKETCH_PROGRESS_DURATION_MS = 62000;
+
+function isRateLimitResponse(result) {
+  if (!result) return false;
+  if (result.isAllowed === false) return true;
+  const text = result.reason || result.message || '';
+  return text.includes('מגבלת') && text.includes('ניסיונות');
+}
 
 function isMobileDevice() {
   if (typeof navigator === 'undefined') return false;
@@ -394,6 +403,7 @@ export default function AISketchModal({
   const [retryOpen, setRetryOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [blockedOpen, setBlockedOpen] = useState(false);
+  const [blockedMessage, setBlockedMessage] = useState(AI_RATE_LIMIT_MESSAGE);
 
   // Retry form
   const [retryReason, setRetryReason] = useState('');
@@ -430,6 +440,15 @@ export default function AISketchModal({
 
   const animateProgress = useCallback((durationMs = 4000) => {
     setLoadingProgress(0);
+    if (durationMs >= 60000) {
+      const start = Date.now();
+      const iv = setInterval(() => {
+        const elapsed = Date.now() - start;
+        const pct = Math.min(90, Math.round((elapsed / durationMs) * 90));
+        setLoadingProgress(pct);
+      }, 500);
+      return () => clearInterval(iv);
+    }
     let progress = 0;
     const iv = setInterval(() => {
       progress += Math.random() * 12;
@@ -465,6 +484,7 @@ export default function AISketchModal({
             clearProgress();
             setView('intro');
             setStep(0);
+            setBlockedMessage(rl.reason || AI_RATE_LIMIT_MESSAGE);
             setBlockedOpen(true);
             return;
           }
@@ -489,7 +509,12 @@ export default function AISketchModal({
       setLoadingProgress(100);
 
       if (!result?.isValid) {
-        setError(result?.reason || 'התמונה לא מתאימה לטאפטינג. נסו תמונה אחרת.');
+        if (isRateLimitResponse(result)) {
+          setBlockedMessage(result.reason || AI_RATE_LIMIT_MESSAGE);
+          setBlockedOpen(true);
+        } else {
+          setError(result?.reason || 'התמונה לא מתאימה לטאפטינג. נסו תמונה אחרת.');
+        }
         setView('intro');
         setStep(0);
         return;
@@ -501,7 +526,13 @@ export default function AISketchModal({
       }, 400);
     } catch (err) {
       clearProgress();
-      setError(err?.message || 'שגיאה בבדיקת התמונה. נסו שוב.');
+      const msg = err?.message || '';
+      if (msg.includes('מגבלת') && msg.includes('ניסיונות')) {
+        setBlockedMessage(msg);
+        setBlockedOpen(true);
+      } else {
+        setError(msg || 'שגיאה בבדיקת התמונה. נסו שוב.');
+      }
       setView('intro');
       setStep(0);
     }
@@ -514,7 +545,7 @@ export default function AISketchModal({
     setStep(2);
     setLoadingTitle('הופך לסקיצה...');
     setLoadingSubs(LOADING_SUBTITLES_GENERATE);
-    const clearProgress = animateProgress(60000);
+    const clearProgress = animateProgress(SKETCH_PROGRESS_DURATION_MS);
 
     try {
       const result = await onGenerateSketch(imageBase64, 'AUTO', imageDimensions);
@@ -536,8 +567,9 @@ export default function AISketchModal({
       clearProgress();
       console.error('[AISketchModal] generateSketch failed:', err);
       const msg = err?.message || '';
-      if (msg.includes('מגבלת') || msg.includes('ניסיונות')) {
-        setError(msg);
+      if (msg.includes('מגבלת') && msg.includes('ניסיונות')) {
+        setBlockedMessage(msg);
+        setBlockedOpen(true);
       } else {
         setError('שגיאה ביצירת הסקיצה. נסו שוב.');
       }
@@ -604,6 +636,7 @@ export default function AISketchModal({
 
     if (attempts >= MAX_ATTEMPTS) {
       setRetryOpen(false);
+      setBlockedMessage(AI_RATE_LIMIT_MESSAGE);
       setBlockedOpen(true);
       return;
     }
@@ -1094,7 +1127,7 @@ export default function AISketchModal({
             <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-3" />
             <h3 className="font-bold text-lg text-[#581E83] mb-1.5">הגעתם למגבלת הניסיונות</h3>
             <p className="text-[#464646]/60 text-sm mb-5">
-              זיהינו מספר רב של ניסיונות ({MAX_ATTEMPTS}) בזמן קצר. המערכת הוקפאה זמנית. אנא נסו שוב מאוחר יותר.
+              {blockedMessage}
             </p>
             <button
               type="button"
