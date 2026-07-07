@@ -166,17 +166,17 @@ export default function PostPaymentHub({
   }, [localOrder?._id, sendAndWait]);
 
   // Create a single group. Returns the created participant so the hub can
-  // immediately open the share modal for it.
-  // mode: 'participants' (send-to-group links) or 'organizer' (self-selection
-  // cards). Persisting organizer groups the same way ensures they survive a
-  // page refresh even before any sketch has been picked for them.
-  const handleCreateGroup = useCallback(async (group, mode = 'participants') => {
+  // immediately open the share modal for it. Used both by "participants"
+  // (send-to-group links) and "organizer" (self-selection cards) modes —
+  // persisting organizer groups the same way ensures they survive a page
+  // refresh even before any sketch has been picked for them. The order's
+  // selectionMode itself is set separately via onChooseMode, not here.
+  const handleCreateGroup = useCallback(async (group) => {
     setIsSaving(true);
     try {
       const result = await sendAndWait('CREATE_PARTICIPANT_GROUP', {
         orderId: localOrder._id,
         group,
-        mode,
       });
       if (result?.error) throw new Error(result.error);
       if (result?.participant) {

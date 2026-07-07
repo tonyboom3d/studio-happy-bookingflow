@@ -663,7 +663,11 @@ export default function OrganizerOrderHub({
               <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{usedRugs}/{maxRugs}</p>
               <p className="text-[14px] text-[#464646]/60 mt-0.5">שטיחים מוקצים</p>
               {remainingRugs > 0 && <p className="text-[13px] text-orange-600 font-semibold mt-0.5">נותרו {remainingRugs}</p>}
-              {remainingRugs === 0 && usedRugs > 0 && <p className="text-[13px] text-green-600 font-semibold mt-0.5">הכל מוקצה</p>}
+              {remainingRugs === 0 && usedRugs > 0 && (
+                <p className="text-[13px] text-green-600 font-semibold mt-0.5 flex items-center justify-center">
+                  <Check className="w-3.5 h-3.5" />
+                </p>
+              )}
             </div>
             <div className="bg-[#f5f0fa] rounded-xl p-2.5 text-center">
               <Users className="w-4 h-4 text-[#5E2F88] mx-auto mb-1" />
@@ -675,7 +679,11 @@ export default function OrganizerOrderHub({
               <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{usedChildren}/{maxChildren}</p>
               <p className="text-[14px] text-[#464646]/60 mt-0.5">ילדים מוקצים</p>
               {remainingChildren > 0 && <p className="text-[13px] text-orange-600 font-semibold mt-0.5">נותרו {remainingChildren}</p>}
-              {remainingChildren === 0 && maxChildren > 0 && <p className="text-[13px] text-green-600 font-semibold mt-0.5">הכל מוקצה</p>}
+              {remainingChildren === 0 && maxChildren > 0 && (
+                <p className="text-[13px] text-green-600 font-semibold mt-0.5 flex items-center justify-center">
+                  <Check className="w-3.5 h-3.5" />
+                </p>
+              )}
             </div>
           </div>
 

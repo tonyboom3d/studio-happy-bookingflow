@@ -93,24 +93,21 @@ export default function OrganizerSelfSelectionView({
 
   const totalSelectedSketches = cards.reduce((s, c) => s + c.sketches.length, 0);
 
-  // Bulk 90cm upgrade tracking
+  // Bulk 90cm upgrade tracking — based on already-saved selections only, so
+  // the banner appears only after the user confirms via "אישור ושמירה", not
+  // while a size is merely being edited (unsaved) inside the review modal.
   const allPendingUpgrades = useMemo(() => {
-    const upgrades = [];
-    cards.forEach(card => {
-      card.sketches.forEach(sketch => {
-        if (sketch.size === '90x90' && sketch.upgradePaymentStatus !== 'paid') {
-          upgrades.push({
-            rugIndex: sketch.rugIndex,
-            productId: sketch.productId,
-            productSnapshot: { title: sketch.title, image: sketch.image },
-            canvasSize: '90x90',
-            participantName: card.name,
-          });
-        }
-      });
-    });
-    return upgrades;
-  }, [cards]);
+    return (selections || [])
+      .filter(s => s.canvasSize === '90x90' && s.upgradePaymentStatus !== 'paid')
+      .map(s => ({
+        rugIndex: s.rugIndex,
+        productId: s.productId,
+        productSnapshot: { title: s.productSnapshot?.title, image: s.productSnapshot?.image },
+        canvasSize: '90x90',
+        participantId: s.participantId || null,
+        participantName: s.participantName,
+      }));
+  }, [selections]);
 
   // Child allocation: minimum children to keep remaining pool valid
   const minChildrenForSetup = useMemo(() => {
@@ -224,7 +221,7 @@ export default function OrganizerSelfSelectionView({
     try {
       const name = `קבוצה ${cards.length + 1}`;
       const created = onCreateGroup
-        ? await onCreateGroup({ name, participants: setupAdults, children: effectiveChildren }, 'organizer')
+        ? await onCreateGroup({ name, participants: setupAdults, children: effectiveChildren })
         : null;
       const newCard = created ? {
         id: created._id,
@@ -490,7 +487,11 @@ export default function OrganizerSelfSelectionView({
           <p className="text-lg font-bold text-[#581E83] tabular-nums leading-none">{usedRugs}/{totalRugs}</p>
           <p className="text-[14px] text-[#464646]/60 mt-0.5">שטיחים</p>
           {remainingRugs > 0 && <p className="text-[13px] text-orange-600 font-semibold mt-0.5">נותרו {remainingRugs}</p>}
-          {remainingRugs === 0 && usedRugs > 0 && <p className="text-[13px] text-green-600 font-semibold mt-0.5">הכל מוקצה</p>}
+          {remainingRugs === 0 && usedRugs > 0 && (
+            <p className="text-[13px] text-green-600 font-semibold mt-0.5 flex items-center justify-center">
+              <Check className="w-3.5 h-3.5" />
+            </p>
+          )}
         </div>
         <div className="bg-[#f5f0fa] rounded-xl p-2.5 text-center">
           <Users className="w-4 h-4 text-[#5E2F88] mx-auto mb-1" />
@@ -551,27 +552,30 @@ export default function OrganizerSelfSelectionView({
         const quota = card.adults;
         const picked = card.sketches.length;
         const complete = picked >= quota;
+        // A card is only truly "done" once any 90x90 upgrade on it has been paid.
+        const hasUnpaidUpgrade = card.sketches.some(s => s.size === '90x90' && s.upgradePaymentStatus !== 'paid');
+        const showComplete = complete && !hasUnpaidUpgrade;
 
         return (
           <div
             key={card.id}
             className={`bg-white rounded-xl border-2 p-3.5 transition-all ${
-              complete ? 'border-green-200' : 'border-[#e8e8e8]'
+              showComplete ? 'border-green-200' : 'border-[#e8e8e8]'
             }`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 min-w-0">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  complete ? 'bg-green-100 text-green-700' : 'bg-[#f5f0fa] text-[#5E2F88]'
+                  showComplete ? 'bg-green-100 text-green-700' : 'bg-[#f5f0fa] text-[#5E2F88]'
                 }`}>
-                  {complete ? <Check className="w-3.5 h-3.5" /> : idx + 1}
+                  {showComplete ? <Check className="w-3.5 h-3.5" /> : idx + 1}
                 </div>
                 <span className="text-[15px] font-semibold text-[#581E83] truncate">{card.name}</span>
                 <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                  complete ? 'bg-green-100 text-green-700' : picked > 0 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'
+                  showComplete ? 'bg-green-100 text-green-700' : picked > 0 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'
                 }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${complete ? 'bg-green-500' : picked > 0 ? 'bg-orange-500' : 'bg-red-500'}`} />
-                  {complete ? 'הושלם' : picked > 0 ? 'חלקי' : 'ממתין'}
+                  <span className={`w-1.5 h-1.5 rounded-full ${showComplete ? 'bg-green-500' : picked > 0 ? 'bg-orange-500' : 'bg-red-500'}`} />
+                  {showComplete ? 'הושלם' : complete ? 'ממתין לתשלום' : picked > 0 ? 'חלקי' : 'ממתין'}
                 </span>
               </div>
               <div className="flex items-center gap-1">
