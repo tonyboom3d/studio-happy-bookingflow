@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { MessageCircle, ChevronDown, ChevronLeft, ChevronRight, Clock, Timer, X, AlertTriangle, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -142,27 +142,44 @@ function getMinPriceForDate(slots, servicePricing) {
   return minPrice === Infinity ? null : minPrice;
 }
 
-function getTooltipAlignClass(colIndex, isMobile) {
-  if (!isMobile) return 'left-1/2 -translate-x-1/2';
-  if (colIndex === 0) return 'right-0';
-  if (colIndex === 6) return 'left-0';
-  return 'left-1/2 -translate-x-1/2';
-}
+const TOOLTIP_EDGE_MARGIN = 8;
 
-function DayTooltip({ slots, servicePricing, holiday, closingSoon, allBlocked, isVisible, isMobile, colIndex }) {
+function DayTooltip({ slots, servicePricing, holiday, closingSoon, allBlocked, isVisible, isMobile }) {
+  const wrapperRef = useRef(null);
+  const [offsetX, setOffsetX] = useState(0);
+
+  useLayoutEffect(() => {
+    if (!isVisible) return;
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      let shift = 0;
+      if (rect.left < TOOLTIP_EDGE_MARGIN) {
+        shift = TOOLTIP_EDGE_MARGIN - rect.left;
+      } else if (rect.right > window.innerWidth - TOOLTIP_EDGE_MARGIN) {
+        shift = (window.innerWidth - TOOLTIP_EDGE_MARGIN) - rect.right;
+      }
+      setOffsetX(shift);
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [isVisible, slots]);
+
   if (!isVisible || !slots?.length) return null;
 
   const minPrice = getMinPriceForDate(slots, servicePricing);
   const times = slots.map(slot => getSlotTimeRange(slot)).sort();
-  const uniqueTimes = [...new Set(times)].slice(0, isMobile ? 3 : 3);
+  const uniqueTimes = [...new Set(times)].slice(0, 3);
 
   return (
     <div
-      className={cn(
-        'absolute z-[100] bottom-full mb-1.5',
-        getTooltipAlignClass(colIndex, isMobile)
-      )}
-      style={{ pointerEvents: 'none' }}
+      ref={wrapperRef}
+      className="absolute z-[100] bottom-full mb-1.5 left-1/2"
+      style={{ pointerEvents: 'none', transform: `translateX(calc(-50% + ${offsetX}px))` }}
     >
       <motion.div
         initial={{ opacity: 0, y: 4 }}
@@ -170,13 +187,13 @@ function DayTooltip({ slots, servicePricing, holiday, closingSoon, allBlocked, i
         exit={{ opacity: 0, y: 4 }}
         transition={{ duration: 0.13 }}
         className={cn(
-          'bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 text-right',
+          'bg-white rounded-lg shadow-xl border border-[#5E2F88]/20 text-right',
           isMobile
-            ? 'p-2 max-w-[min(180px,calc(100vw-1.5rem))] whitespace-normal'
-            : 'p-2 whitespace-nowrap'
+            ? 'p-3 min-w-[150px] max-w-[min(220px,calc(100vw-1rem))] whitespace-normal'
+            : 'p-2.5 whitespace-nowrap'
         )}
       >
-        <div className={cn('space-y-1.5', isMobile ? 'text-[12px]' : 'text-[14px]')}>
+        <div className={cn('space-y-2', isMobile ? 'text-[13px]' : 'text-[14px]')}>
           {allBlocked && (
             <div className="flex items-center gap-1.5 text-red-600 font-medium">
               <span>🚫</span>
@@ -202,16 +219,14 @@ function DayTooltip({ slots, servicePricing, holiday, closingSoon, allBlocked, i
             </div>
           )}
           <div className="flex items-start gap-1.5 text-[#464646]">
-            <Clock className={cn('shrink-0', isMobile ? 'w-3.5 h-3.5 mt-0.5' : 'w-4 h-4')} />
+            <Clock className={cn('shrink-0', isMobile ? 'w-4 h-4 mt-0.5' : 'w-4 h-4')} />
             <span className="break-words">{uniqueTimes.join(' | ')}</span>
           </div>
         </div>
 
         <div
-          className={cn(
-            'absolute top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white',
-            colIndex === 0 && isMobile ? 'right-2' : colIndex === 6 && isMobile ? 'left-2' : 'left-1/2 -translate-x-1/2'
-          )}
+          className="absolute top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white"
+          style={{ left: `calc(50% - ${offsetX}px)`, transform: 'translateX(-50%)' }}
         />
       </motion.div>
     </div>
@@ -356,7 +371,6 @@ export default function TimeSlotsSection({
         {/* ימים */}
         <div className="grid grid-cols-7 gap-0.5 sm:gap-2">
           {calendarDays.map((day, i) => {
-            const colIndex = i % 7;
             const sod = startOfDay(day);
             const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
             const isPast = isBefore(sod, today);
@@ -431,7 +445,6 @@ export default function TimeSlotsSection({
                       allBlocked={allBlocked}
                       isVisible={true}
                       isMobile={isMobile}
-                      colIndex={colIndex}
                     />
                   )}
                 </AnimatePresence>
