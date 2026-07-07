@@ -3,21 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { X, Check, ZoomIn, Search, ChevronDown, AlertTriangle, Plus, Minus } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
-
-function getDifficultyLabel(product) {
-  const raw = product.difficulty;
-  if (!raw) return '';
-  if (typeof raw === 'string') return raw;
-  if (Array.isArray(raw)) return raw[0] || '';
-  return '';
-}
-
-function isHardDifficulty(label) {
-  if (!label) return false;
-  const l = label.toLowerCase();
-  return l === 'קשה' || l === 'hard' || l === 'מאתגר';
-}
+import { cn, getDifficultyLabel, getDifficultyTextClass, isHardDifficulty } from '@/lib/utils';
 
 function ProductCard({ product, isSelected, selectedCount = 0, onPick, onRemove, onZoom, disabled, plusDisabled = false, showQuantity = false }) {
   const difficultyLabel = getDifficultyLabel(product);
@@ -104,9 +90,11 @@ function ProductCard({ product, isSelected, selectedCount = 0, onPick, onRemove,
           )}
           {difficultyLabel && (
             <div className="flex items-center gap-1 pt-1.5 border-t border-[#e8e8e8]">
-              <span className="text-xs sm:text-sm text-[#464646]/70">{difficultyLabel}</span>
+              <span className={cn('text-xs sm:text-sm font-medium', getDifficultyTextClass(difficultyLabel))}>
+                {difficultyLabel}
+              </span>
               {hard && (
-                <span className="text-[10px] text-orange-500 flex items-center gap-0.5">
+                <span className="text-[10px] text-red-600 flex items-center gap-0.5">
                   <AlertTriangle className="w-3 h-3" />
                   דורש ניסיון
                 </span>

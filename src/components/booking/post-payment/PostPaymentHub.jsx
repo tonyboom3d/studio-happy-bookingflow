@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Baby, CreditCard } from 'lucide-react';
+import { readCatalogCache, writeCatalogCache } from '@/lib/utils';
 import OrganizerOrderHub from './OrganizerOrderHub';
 import SketchSelectionView from './SketchSelectionView';
 import InvalidLinkMessage from './InvalidLinkMessage';
@@ -36,16 +37,28 @@ export default function PostPaymentHub({
     [localParticipants]
   );
   const [verifiedParticipant, setVerifiedParticipant] = useState(participantContext?.participant || null);
-  const [catalog, setCatalog] = useState(initialCatalog || null);
+  const [catalog, setCatalog] = useState(() => {
+    if (initialCatalog?.length) return initialCatalog;
+    return readCatalogCache() || null;
+  });
   const [paymentStatus, setPaymentStatus] = useState(null);
-  const catalogFetchedRef = React.useRef(false);
+  const catalogCacheRef = useRef(catalog?.length ? catalog : readCatalogCache());
+  const catalogFetchPromiseRef = useRef(null);
   const paymentListenerRef = useRef(false);
+
+  const applyCatalog = useCallback((products) => {
+    if (!products?.length) return;
+    catalogCacheRef.current = products;
+    writeCatalogCache(products);
+    setCatalog(products);
+  }, []);
 
   useEffect(() => {
     if (orderContext?.order) setLocalOrder(orderContext.order);
     if (orderContext?.participants) setLocalParticipants(orderContext.participants);
     if (orderContext?.selections) setLocalSelections(orderContext.selections);
-  }, [orderContext]);
+    if (orderContext?.catalog?.length) applyCatalog(orderContext.catalog);
+  }, [orderContext, applyCatalog]);
 
   useEffect(() => {
     if (participantContext?.participant) setVerifiedParticipant(participantContext.participant);
@@ -55,8 +68,8 @@ export default function PostPaymentHub({
   }, [participantContext]);
 
   useEffect(() => {
-    if (initialCatalog?.length && !catalog?.length) setCatalog(initialCatalog);
-  }, [initialCatalog]);
+    if (initialCatalog?.length) applyCatalog(initialCatalog);
+  }, [initialCatalog, applyCatalog]);
 
   const sendAndWait = useCallback((type, data) => {
     return new Promise((resolve) => {
@@ -67,21 +80,52 @@ export default function PostPaymentHub({
     });
   }, [onSendMessage]);
 
-  const handleFetchCatalog = useCallback(async () => {
-    if (catalog?.length || catalogFetchedRef.current) return catalog;
-    catalogFetchedRef.current = true;
-    try {
-      const result = await sendAndWait('FETCH_CATALOG', {});
-      if (result?.products?.length) {
-        setCatalog(result.products);
-        return result.products;
-      }
-    } catch (e) {
-      console.error('Failed to fetch catalog:', e);
-      catalogFetchedRef.current = false;
+  const fetchCatalogFromServer = useCallback(async () => {
+    if (catalogFetchPromiseRef.current) {
+      return catalogFetchPromiseRef.current;
     }
-    return catalog;
-  }, [catalog, sendAndWait]);
+
+    catalogFetchPromiseRef.current = (async () => {
+      try {
+        const result = await sendAndWait('FETCH_CATALOG', {});
+        if (result?.products?.length) {
+          applyCatalog(result.products);
+          return result.products;
+        }
+      } catch (e) {
+        console.error('Failed to fetch catalog:', e);
+      }
+      return catalogCacheRef.current || null;
+    })();
+
+    try {
+      return await catalogFetchPromiseRef.current;
+    } finally {
+      catalogFetchPromiseRef.current = null;
+    }
+  }, [sendAndWait, applyCatalog]);
+
+  const handleFetchCatalog = useCallback(async () => {
+    if (catalog?.length) return catalog;
+    if (catalogCacheRef.current?.length) {
+      setCatalog(catalogCacheRef.current);
+      return catalogCacheRef.current;
+    }
+    const cached = readCatalogCache();
+    if (cached?.length) {
+      applyCatalog(cached);
+      return cached;
+    }
+    return fetchCatalogFromServer();
+  }, [catalog, applyCatalog, fetchCatalogFromServer]);
+
+  useEffect(() => {
+    if (isLoading || orderError) return;
+    if (catalog?.length || catalogCacheRef.current?.length) return;
+    const hasOrder = localOrder?._id || verifiedParticipant?.orderId;
+    if (!hasOrder) return;
+    fetchCatalogFromServer();
+  }, [isLoading, orderError, localOrder, verifiedParticipant, catalog?.length, fetchCatalogFromServer]);
 
   // --- AI Sketch handlers ---
   const orderId = localOrder?._id;

@@ -5,25 +5,11 @@ import { Button } from '@/components/ui/button';
 import { X, Check, ZoomIn, Minus, Plus, Package, Search, ChevronDown, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { cn, getDifficultyLabel, getDifficultyTextClass, isHardDifficulty } from '@/lib/utils';
 
 const FALLBACK_PRODUCTS = [
   { id: 'fallback-1', title: 'טוען שטיחים...', difficulty: '', image: null, favorites: false }
 ];
-
-function getDifficultyLabel(product) {
-  const raw = product.difficulty;
-  if (!raw) return '';
-  if (typeof raw === 'string') return raw;
-  if (Array.isArray(raw)) return raw[0] || '';
-  return '';
-}
-
-function isHardDifficulty(label) {
-  if (!label) return false;
-  const l = label.toLowerCase();
-  return l === 'קשה' || l === 'hard' || l === 'מאתגר';
-}
 
 function ProductGridCard({ product, isSelected, onClick, onZoom, quantity, onQuantityChange, canIncrease }) {
   const difficultyLabel = getDifficultyLabel(product);
@@ -82,9 +68,11 @@ function ProductGridCard({ product, isSelected, onClick, onZoom, quantity, onQua
           <div className="flex flex-nowrap items-center justify-between gap-1 pt-1.5 border-t border-[#e8e8e8] min-w-0">
             {difficultyLabel && (
               <div className="flex items-center gap-1">
-                <span className="text-xs sm:text-sm text-[#464646]/70">{difficultyLabel}</span>
+                <span className={cn('text-xs sm:text-sm font-medium', getDifficultyTextClass(difficultyLabel))}>
+                  {difficultyLabel}
+                </span>
                 {hard && (
-                  <span className="text-[10px] text-orange-500 flex items-center gap-0.5">
+                  <span className="text-[10px] text-red-600 flex items-center gap-0.5">
                     <AlertTriangle className="w-3 h-3" />
                     דורש ניסיון
                   </span>

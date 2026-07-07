@@ -168,10 +168,14 @@ function handleWixMessage(event) {
             wixData.orderRole = data.role || 'organizer';
             wixData.orderContextReady = !!data.orderContext;
             wixData.orderError = false;
+            if (data.orderContext?.catalog?.length) {
+                wixData.products = data.orderContext.catalog;
+            }
             notifyListeners({
                 orderContext: wixData.orderContext,
                 role: wixData.orderRole,
                 ecomSummary: wixData.ecomSummary,
+                products: wixData.products,
             });
             break;
 

@@ -10,6 +10,7 @@ import {
   notifyIframeReady,
   isInWix,
 } from '@/api/wixBridge';
+import { readCatalogCache, writeCatalogCache } from '@/lib/utils';
 
 export default function OrderPage() {
   const { token } = useParams();
@@ -26,7 +27,10 @@ export default function OrderPage() {
 
   useEffect(() => {
     const cached = getWixData();
-    if (cached.products) setCatalog(cached.products);
+    const cachedCatalog = cached.products
+      || cached.orderContext?.catalog
+      || readCatalogCache();
+    if (cachedCatalog?.length) setCatalog(cachedCatalog);
     if (cached.orderContext) {
       setOrderContext(cached.orderContext);
       setRole(cached.orderRole || 'organizer');
@@ -35,7 +39,10 @@ export default function OrderPage() {
     }
 
     const unsubscribe = subscribeToWix((data) => {
-      if (data.products) setCatalog(data.products);
+      if (data.products?.length) {
+        setCatalog(data.products);
+        writeCatalogCache(data.products);
+      }
 
       if (data.orderError) {
         setOrderError(true);
@@ -48,6 +55,10 @@ export default function OrderPage() {
         setOrderContext(data.orderContext);
         setRole(data.role || 'organizer');
         if (data.ecomSummary) setEcomSummary(data.ecomSummary);
+        if (data.orderContext.catalog?.length) {
+          setCatalog(data.orderContext.catalog);
+          writeCatalogCache(data.orderContext.catalog);
+        }
         setIsLoading(false);
         if (data.orderContext?.order?._id) {
           try { sessionStorage.setItem('workshop_order_id', data.orderContext.order._id); } catch (e) {}

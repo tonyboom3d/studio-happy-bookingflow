@@ -15,14 +15,9 @@ function getEditingPolicyText(workshopStartTimestamp) {
   const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
 
   if (msUntilWorkshop > SIX_DAYS_MS) {
-    const deadlineDate = new Date(workshopStart - SIX_DAYS_MS);
-    const dd = String(deadlineDate.getDate()).padStart(2, '0');
-    const mm = String(deadlineDate.getMonth() + 1).padStart(2, '0');
-    const hh = String(deadlineDate.getHours()).padStart(2, '0');
-    const min = String(deadlineDate.getMinutes()).padStart(2, '0');
     return (
       <>
-        ניתן לבחור ולשנות סקיצות <strong className="text-[#581E83]">עד {dd}/{mm} בשעה {hh}:{min}</strong> (6 ימים לפני הסדנה).
+        ניתן לבחור ולשנות סקיצות <strong className="text-[#581E83]">עד 6 ימים לפני מועד הסדנה</strong>.
       </>
     );
   }
