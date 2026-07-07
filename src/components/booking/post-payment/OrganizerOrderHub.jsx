@@ -630,6 +630,7 @@ export default function OrganizerOrderHub({
         <OrganizerSelfSelectionView
           order={order}
           catalog={catalog}
+          participants={participants}
           selections={selections}
           onSelectSketch={onSelectSketch}
           onRequestUpgrade={onRequestUpgrade}
@@ -640,6 +641,8 @@ export default function OrganizerOrderHub({
           onSaveApprovedSketch={onSaveApprovedSketch}
           onSubmitFeedback={onSubmitFeedback}
           onCheckRateLimit={onCheckRateLimit}
+          onCreateGroup={onCreateGroup}
+          onUpdateParticipant={onUpdateParticipant}
           onDeleteOrganizerGroup={onDeleteOrganizerGroup}
         />
       )}

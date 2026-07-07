@@ -167,12 +167,16 @@ export default function PostPaymentHub({
 
   // Create a single group. Returns the created participant so the hub can
   // immediately open the share modal for it.
-  const handleCreateGroup = useCallback(async (group) => {
+  // mode: 'participants' (send-to-group links) or 'organizer' (self-selection
+  // cards). Persisting organizer groups the same way ensures they survive a
+  // page refresh even before any sketch has been picked for them.
+  const handleCreateGroup = useCallback(async (group, mode = 'participants') => {
     setIsSaving(true);
     try {
       const result = await sendAndWait('CREATE_PARTICIPANT_GROUP', {
         orderId: localOrder._id,
         group,
+        mode,
       });
       if (result?.error) throw new Error(result.error);
       if (result?.participant) {
@@ -196,18 +200,22 @@ export default function PostPaymentHub({
   }, [sendAndWait]);
 
   // Delete an organizer self-selection card + its saved sketch selections in CMS.
-  const handleDeleteOrganizerGroup = useCallback(async ({ participantName, rugIndexes }) => {
+  const handleDeleteOrganizerGroup = useCallback(async ({ participantName, rugIndexes, participantId }) => {
     const orderId = localOrder?._id;
     if (!orderId) throw new Error('Order not loaded');
-    const result = await sendAndWait('DELETE_ORGANIZER_GROUP', { orderId, participantName, rugIndexes });
+    const result = await sendAndWait('DELETE_ORGANIZER_GROUP', { orderId, participantName, rugIndexes, participantId });
     if (result?.error) throw new Error(result.error);
     if (!result?.success) throw new Error('Delete failed');
     const rugSet = new Set(rugIndexes || []);
     setLocalSelections(prev => prev.filter(s => {
+      if (participantId && s.participantId === participantId) return false;
       if (participantName && s.participantName === participantName) return false;
       if (rugSet.size > 0 && rugSet.has(s.rugIndex)) return false;
       return true;
     }));
+    if (participantId) {
+      setLocalParticipants(prev => prev.filter(p => p._id !== participantId));
+    }
     return result;
   }, [localOrder?._id, sendAndWait]);
 

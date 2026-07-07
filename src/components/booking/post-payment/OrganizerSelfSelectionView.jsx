@@ -29,6 +29,7 @@ function getSketchStatusBadge(sketch, editingWindowClosed) {
 export default function OrganizerSelfSelectionView({
   order,
   catalog,
+  participants,
   selections,
   onSelectSketch,
   onRequestUpgrade,
@@ -39,12 +40,16 @@ export default function OrganizerSelfSelectionView({
   onSaveApprovedSketch,
   onSubmitFeedback,
   onCheckRateLimit,
+  onCreateGroup,
+  onUpdateParticipant,
   onDeleteOrganizerGroup,
 }) {
-  const [cards, setCards] = useState(() => buildInitialCards(order, selections));
+  const [cards, setCards] = useState(() => buildInitialCards(participants, selections));
   const [setupOpen, setSetupOpen] = useState(false);
   const [setupAdults, setSetupAdults] = useState(1);
   const [setupChildren, setSetupChildren] = useState(0);
+  const [setupCreating, setSetupCreating] = useState(false);
+  const seededParticipantIdsRef = React.useRef(new Set((participants || []).map(p => p._id)));
 
   // Source selection state
   const [sourceOpen, setSourceOpen] = useState(false);
@@ -119,33 +124,81 @@ export default function OrganizerSelfSelectionView({
     }
   }, [minChildrenForSetup, setupOpen]);
 
-  function buildInitialCards(ord, sels) {
-    if (!sels?.length) return [];
-    const grouped = {};
-    sels.forEach(s => {
-      const key = s.participantName || '__default__';
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(s);
+  // Safety net: if groups arrive/refresh from the backend after the initial
+  // mount (e.g. slow context load) and aren't reflected in local state yet,
+  // merge them in without dropping any not-yet-persisted local sketches.
+  useEffect(() => {
+    (participants || []).forEach(p => {
+      if (seededParticipantIdsRef.current.has(p._id)) return;
+      seededParticipantIdsRef.current.add(p._id);
+      setCards(prev => {
+        if (prev.some(c => c.participantId === p._id)) return prev;
+        const mySelections = (selections || []).filter(s => s.participantId === p._id);
+        return [...prev, {
+          id: p._id,
+          participantId: p._id,
+          name: p.name,
+          adults: p.rugAllowance || 1,
+          children: p.childrenCount || 0,
+          sketches: mySelections.map(mapSelectionToSketch),
+        }];
+      });
     });
-    return Object.entries(grouped).map(([name, items], idx) => ({
-      id: `card_${idx}`,
+  }, [participants, selections]);
+
+  function mapSelectionToSketch(s) {
+    return {
+      productId: s.productId,
+      title: s.productSnapshot?.title || s.title || 'סקיצה',
+      image: s.productSnapshot?.image || null,
+      size: s.canvasSize || '60x60',
+      source: s.source || 'catalog',
+      rugIndex: s.rugIndex,
+      upgradePaymentStatus: s.upgradePaymentStatus || null,
+      ...(s.source === 'ai' ? {
+        aiOriginalImage: s.aiOriginalImage || null,
+        aiColors: s.aiColors || null,
+        aiTaskId: s.aiTaskId || null,
+      } : {}),
+    };
+  }
+
+  // Groups are persisted immediately as WorkshopParticipants records (created
+  // via onCreateGroup with mode='organizer') so a group's name/adults/children
+  // survive a page refresh even before any sketch has been picked for it.
+  // Selections are matched back to their group via participantId.
+  function buildInitialCards(parts, sels) {
+    const selsByParticipant = {};
+    const selsByName = {};
+    (sels || []).forEach(s => {
+      if (s.participantId) {
+        (selsByParticipant[s.participantId] ||= []).push(s);
+      } else {
+        const key = s.participantName || '__default__';
+        (selsByName[key] ||= []).push(s);
+      }
+    });
+
+    if (parts && parts.length) {
+      return parts.map((p, idx) => ({
+        id: p._id,
+        participantId: p._id,
+        name: p.name || `קבוצה ${idx + 1}`,
+        adults: p.rugAllowance || 1,
+        children: p.childrenCount || 0,
+        sketches: (selsByParticipant[p._id] || []).map(mapSelectionToSketch),
+      }));
+    }
+
+    // Legacy fallback for groups created before organizer groups were
+    // persisted server-side (adults inferred from sketch count, children lost).
+    return Object.entries(selsByName).map(([name, items], idx) => ({
+      id: `legacy_${idx}`,
+      participantId: null,
       name: name === '__default__' ? `קבוצה ${idx + 1}` : name,
       adults: items.length,
       children: 0,
-      sketches: items.map(s => ({
-        productId: s.productId,
-        title: s.productSnapshot?.title || s.title || 'סקיצה',
-        image: s.productSnapshot?.image || null,
-        size: s.canvasSize || '60x60',
-        source: s.source || 'catalog',
-        rugIndex: s.rugIndex,
-        upgradePaymentStatus: s.upgradePaymentStatus || null,
-        ...(s.source === 'ai' ? {
-          aiOriginalImage: s.aiOriginalImage || null,
-          aiColors: s.aiColors || null,
-          aiTaskId: s.aiTaskId || null,
-        } : {}),
-      })),
+      sketches: items.map(mapSelectionToSketch),
     }));
   }
 
@@ -156,7 +209,7 @@ export default function OrganizerSelfSelectionView({
     setSetupOpen(true);
   };
 
-  const confirmSetup = () => {
+  const confirmSetup = async () => {
     if (setupChildren > setupAdults) {
       setSetupError('מספר הילדים לא יכול לעלות על מספר המבוגרים בקבוצה');
       return;
@@ -167,17 +220,40 @@ export default function OrganizerSelfSelectionView({
       return;
     }
     setSetupError('');
-    const newCard = {
-      id: `card_${Date.now()}`,
-      name: `קבוצה ${cards.length + 1}`,
-      adults: setupAdults,
-      children: effectiveChildren,
-      sketches: [],
-    };
-    setCards(prev => [...prev, newCard]);
-    setSetupOpen(false);
-    setSourceCardIdx(cards.length);
-    setSourceOpen(true);
+    setSetupCreating(true);
+    try {
+      const name = `קבוצה ${cards.length + 1}`;
+      const created = onCreateGroup
+        ? await onCreateGroup({ name, participants: setupAdults, children: effectiveChildren }, 'organizer')
+        : null;
+      const newCard = created ? {
+        id: created._id,
+        participantId: created._id,
+        name: created.name || name,
+        adults: created.rugAllowance || setupAdults,
+        children: created.childrenCount || effectiveChildren,
+        sketches: [],
+      } : {
+        id: `card_${Date.now()}`,
+        participantId: null,
+        name,
+        adults: setupAdults,
+        children: effectiveChildren,
+        sketches: [],
+      };
+      if (created?._id) seededParticipantIdsRef.current.add(created._id);
+      setCards(prev => [...prev, newCard]);
+      setSetupOpen(false);
+      setSourceCardIdx(cards.length);
+      setSourceOpen(true);
+    } catch (e) {
+      const msg = String(e?.message || '');
+      if (msg.startsWith('RUG_LIMIT_EXCEEDED')) setSetupError('אין מספיק שטיחים פנויים');
+      else if (msg.startsWith('CHILDREN_LIMIT_EXCEEDED')) setSetupError('אין מספיק מקומות לילדים');
+      else setSetupError('יצירת הקבוצה נכשלה, נסו שוב');
+    } finally {
+      setSetupCreating(false);
+    }
   };
 
   const openSourceFor = (cardIdx) => {
@@ -299,6 +375,11 @@ export default function OrganizerSelfSelectionView({
     setReviewOpen(true);
   };
 
+  const closeReview = () => {
+    setReviewOpen(false);
+    setEditingNameIdx(null);
+  };
+
   const updateSketchSize = (cardIdx, sketchIdx, newSize) => {
     setCards(prev => prev.map((c, i) => {
       if (i !== cardIdx) return c;
@@ -331,6 +412,7 @@ export default function OrganizerSelfSelectionView({
         productId: sketch.productId,
         productSnapshot: { title: sketch.title, image: sketch.image },
         canvasSize: sketch.size || '60x60',
+        participantId: card.participantId || null,
         participantName: card.name,
         ...(sketch.source === 'ai' ? {
           source: 'ai',
@@ -342,7 +424,7 @@ export default function OrganizerSelfSelectionView({
       await onSelectSketch(selData);
     }
 
-    setReviewOpen(false);
+    closeReview();
     setExpandedCards(prev => ({ ...prev, [reviewCardIdx]: true }));
   };
 
@@ -362,6 +444,7 @@ export default function OrganizerSelfSelectionView({
         await onDeleteOrganizerGroup({
           participantName: card.name,
           rugIndexes,
+          participantId: card.participantId || null,
         });
       }
       setCards(prev => prev.filter((_, i) => i !== idx));
@@ -378,12 +461,17 @@ export default function OrganizerSelfSelectionView({
     setEditingNameIdx(idx);
   };
 
-  const saveEditName = () => {
+  const saveEditName = async () => {
     if (editingNameIdx == null || editNameValue.trim().length < 1) return;
+    const trimmed = editNameValue.trim();
+    const card = cards[editingNameIdx];
     setCards(prev => prev.map((c, i) =>
-      i === editingNameIdx ? { ...c, name: editNameValue.trim() } : c
+      i === editingNameIdx ? { ...c, name: trimmed } : c
     ));
     setEditingNameIdx(null);
+    if (card?.participantId && onUpdateParticipant) {
+      try { await onUpdateParticipant(card.participantId, { name: trimmed }); } catch (e) {}
+    }
   };
 
   return (
@@ -489,21 +577,12 @@ export default function OrganizerSelfSelectionView({
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => startEditName(idx)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-[#5E2F88]/60 hover:text-[#5E2F88] hover:bg-[#f5f0fa] transition-colors"
-                  title="עריכת שם"
+                  onClick={() => openReview(idx)}
+                  className="flex items-center gap-1 text-[11px] font-medium text-[#5E2F88] bg-[#f5f0fa] hover:bg-[#ebe0f5] px-2 py-1 rounded-lg transition-colors"
                 >
-                  <Pencil className="w-3.5 h-3.5" />
+                  <Pencil className="w-3 h-3" />
+                  עריכה
                 </button>
-                {complete && (
-                  <button
-                    type="button"
-                    onClick={() => openReview(idx)}
-                    className="text-[11px] font-medium text-[#5E2F88] bg-[#f5f0fa] hover:bg-[#ebe0f5] px-2 py-1 rounded-lg transition-colors"
-                  >
-                    עריכה
-                  </button>
-                )}
                 <button
                   type="button"
                   onClick={() => setDeleteConfirmIdx(idx)}
@@ -720,9 +799,10 @@ export default function OrganizerSelfSelectionView({
               <button
                 type="button"
                 onClick={confirmSetup}
-                className="w-full flex items-center justify-center gap-2 bg-[#5E2F88] hover:bg-[#7B3DB0] text-white font-semibold py-3 rounded-xl text-[15px] transition-colors"
+                disabled={setupCreating}
+                className="w-full flex items-center justify-center gap-2 bg-[#5E2F88] hover:bg-[#7B3DB0] disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-[15px] transition-colors"
               >
-                המשך לבחירת סקיצה
+                {setupCreating ? 'יוצר קבוצה...' : 'המשך לבחירת סקיצה'}
               </button>
             </motion.div>
           </motion.div>
@@ -821,7 +901,7 @@ export default function OrganizerSelfSelectionView({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-              onClick={() => setReviewOpen(false)}
+              onClick={closeReview}
             >
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -832,12 +912,50 @@ export default function OrganizerSelfSelectionView({
                 dir="rtl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <button type="button" onClick={() => setReviewOpen(false)} className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646]">
+                <button type="button" onClick={closeReview} className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646]">
                   <X className="w-5 h-5" />
                 </button>
 
                 <div className="text-center">
-                  <h3 className="text-[19px] font-bold text-[#581E83]">סיכום בחירות — {card.name}</h3>
+                  {editingNameIdx === reviewCardIdx ? (
+                    <div className="flex items-center gap-2 justify-center" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="text"
+                        value={editNameValue}
+                        onChange={(e) => setEditNameValue(e.target.value)}
+                        placeholder="שם הקבוצה"
+                        className="border-2 border-[#5E2F88] rounded-xl px-3 py-1.5 text-[15px] text-[#464646] outline-none transition-colors max-w-[180px]"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={saveEditName}
+                        disabled={editNameValue.trim().length < 1}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#5E2F88] hover:bg-[#7B3DB0] disabled:opacity-50 text-white transition-colors shrink-0"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingNameIdx(null)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-[#464646]/50 hover:text-[#464646] hover:bg-[#fafafa] transition-colors shrink-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <h3 className="text-[19px] font-bold text-[#581E83] flex items-center justify-center gap-1.5">
+                      סיכום בחירות — {card.name}
+                      <button
+                        type="button"
+                        onClick={() => startEditName(reviewCardIdx)}
+                        className="text-[#5E2F88]/60 hover:text-[#5E2F88] transition-colors"
+                        title="עריכת שם"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    </h3>
+                  )}
                   <p className="text-[14px] text-[#464646]/70 mt-1">
                     {card.sketches.length}/{card.adults} סקיצות נבחרו
                     {card.sketches.length < card.adults && (
@@ -851,7 +969,7 @@ export default function OrganizerSelfSelectionView({
                     <p className="text-[14px] text-[#464646]/60">לא נבחרו סקיצות עדיין</p>
                     <button
                       type="button"
-                      onClick={() => { setReviewOpen(false); openSourceFor(reviewCardIdx); }}
+                      onClick={() => { closeReview(); openSourceFor(reviewCardIdx); }}
                       className="mt-3 text-[#5E2F88] font-semibold text-[14px] hover:underline"
                     >
                       בחירת סקיצות
@@ -908,7 +1026,7 @@ export default function OrganizerSelfSelectionView({
                 {card.sketches.length < card.adults && (
                   <button
                     type="button"
-                    onClick={() => { setReviewOpen(false); openSourceFor(reviewCardIdx); }}
+                    onClick={() => { closeReview(); openSourceFor(reviewCardIdx); }}
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[14px] font-medium border-2 border-dashed border-[#5E2F88]/30 text-[#5E2F88] hover:bg-[#f5f0fa] transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -1009,56 +1127,6 @@ export default function OrganizerSelfSelectionView({
             </motion.div>
           );
         })()}
-      </AnimatePresence>
-
-      {/* Edit Name Modal */}
-      <AnimatePresence>
-        {editingNameIdx != null && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            onClick={() => setEditingNameIdx(null)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-5 space-y-4 relative"
-              dir="rtl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-[17px] font-bold text-[#581E83] text-center">שינוי שם קבוצה</h3>
-              <input
-                type="text"
-                value={editNameValue}
-                onChange={(e) => setEditNameValue(e.target.value)}
-                placeholder="שם הקבוצה"
-                className="w-full border-2 border-[#e8e8e8] focus:border-[#5E2F88] rounded-xl px-4 py-3 text-sm text-[#464646] outline-none transition-colors"
-                autoFocus
-              />
-              <div className="flex gap-3 w-full">
-                <button
-                  type="button"
-                  onClick={() => setEditingNameIdx(null)}
-                  className="flex-1 py-2.5 rounded-xl border-2 border-[#e8e8e8] text-[14px] font-medium text-[#464646] hover:bg-[#fafafa] transition-colors"
-                >
-                  ביטול
-                </button>
-                <button
-                  type="button"
-                  onClick={saveEditName}
-                  disabled={editNameValue.trim().length < 1}
-                  className="flex-1 py-2.5 rounded-xl bg-[#5E2F88] hover:bg-[#7B3DB0] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-medium transition-colors"
-                >
-                  שמירה
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
       </AnimatePresence>
 
       {catalogLoading && (
