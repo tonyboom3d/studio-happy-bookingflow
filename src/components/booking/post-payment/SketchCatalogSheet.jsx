@@ -145,17 +145,19 @@ export default function SketchCatalogSheet({
     }
   }, [isOpen]);
 
+  const safeCatalog = catalog || [];
+
   const difficultyOptions = useMemo(() => {
     const set = new Set();
-    catalog.forEach((p) => {
+    safeCatalog.forEach((p) => {
       const d = getDifficultyLabel(p);
       if (d) set.add(d);
     });
     return Array.from(set);
-  }, [catalog]);
+  }, [safeCatalog]);
 
   const filteredProducts = useMemo(() => {
-    let result = [...catalog];
+    let result = [...safeCatalog];
 
     if (difficultyFilter) {
       result = result.filter((p) => getDifficultyLabel(p) === difficultyFilter);
@@ -173,7 +175,7 @@ export default function SketchCatalogSheet({
     return result.sort((a, b) =>
       (a.title || '').toString().localeCompare((b.title || '').toString(), 'he')
     );
-  }, [catalog, debouncedSearch, difficultyFilter]);
+  }, [safeCatalog, debouncedSearch, difficultyFilter]);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>

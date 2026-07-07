@@ -39,7 +39,7 @@ export default function PostPaymentHub({
   const [verifiedParticipant, setVerifiedParticipant] = useState(participantContext?.participant || null);
   const [catalog, setCatalog] = useState(() => {
     if (initialCatalog?.length) return initialCatalog;
-    return readCatalogCache() || null;
+    return readCatalogCache() || [];
   });
   const [paymentStatus, setPaymentStatus] = useState(null);
   const catalogCacheRef = useRef(catalog?.length ? catalog : readCatalogCache());
@@ -547,7 +547,7 @@ export default function PostPaymentHub({
         <OrganizerOrderHub
           order={localOrder}
           ecomSummary={ecomSummary}
-          catalog={catalog}
+          catalog={catalog || []}
           participants={localParticipants}
           selections={localSelections}
           participantLinks={participantLinks}
@@ -644,7 +644,7 @@ export default function PostPaymentHub({
 
         <SketchSelectionView
           rugSlots={rugSlots}
-          catalog={catalog}
+          catalog={catalog || []}
           workshopStart={localOrder.workshopStart}
           deadlineAt={localOrder.deadlineAt}
           totalRugCount={localOrder.rugCount}
