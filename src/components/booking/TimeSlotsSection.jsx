@@ -154,67 +154,62 @@ function DayTooltip({ slots, servicePricing, holiday, closingSoon, allBlocked, i
 
   const minPrice = getMinPriceForDate(slots, servicePricing);
   const times = slots.map(slot => getSlotTimeRange(slot)).sort();
-  const uniqueTimes = [...new Set(times)].slice(0, isMobile ? 2 : 3);
-  const showBelow = isMobile;
+  const uniqueTimes = [...new Set(times)].slice(0, isMobile ? 3 : 3);
 
   return (
     <div
       className={cn(
-        'absolute z-[100]',
-        showBelow ? 'top-full mt-1' : 'bottom-full mb-1.5',
+        'absolute z-[100] bottom-full mb-1.5',
         getTooltipAlignClass(colIndex, isMobile)
       )}
       style={{ pointerEvents: 'none' }}
     >
       <motion.div
-        initial={{ opacity: 0, y: showBelow ? -4 : 4 }}
+        initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: showBelow ? -4 : 4 }}
+        exit={{ opacity: 0, y: 4 }}
         transition={{ duration: 0.13 }}
         className={cn(
-          'bg-white rounded-md shadow-lg border border-[#5E2F88]/20 text-right',
+          'bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 text-right',
           isMobile
-            ? 'p-1.5 max-w-[min(160px,calc(100vw-1.5rem))] whitespace-normal'
+            ? 'p-2 max-w-[min(180px,calc(100vw-1.5rem))] whitespace-normal'
             : 'p-2 whitespace-nowrap'
         )}
       >
-        <div className={cn('space-y-1', isMobile ? 'text-[10px] leading-tight' : 'space-y-1.5 text-[14px]')}>
+        <div className={cn('space-y-1.5', isMobile ? 'text-[12px]' : 'text-[14px]')}>
           {allBlocked && (
-            <div className="flex items-center gap-1 text-red-600 font-medium">
+            <div className="flex items-center gap-1.5 text-red-600 font-medium">
               <span>🚫</span>
               <span>הזמנה מקוונת סגורה</span>
             </div>
           )}
           {!allBlocked && closingSoon && (
-            <div className="flex items-center gap-1 text-red-600 font-medium">
+            <div className="flex items-center gap-1.5 text-red-600 font-medium">
               <span>⏰</span>
               <span>ההרשמה נסגרת בקרוב!</span>
             </div>
           )}
           {holiday && (
-            <div className="flex items-center gap-1 text-[#7B3DB0] font-medium">
+            <div className="flex items-center gap-1.5 text-[#7B3DB0] font-medium">
               <span>🎉</span>
               <span>{holiday}</span>
             </div>
           )}
           {minPrice && (
-            <div className="flex items-center gap-1 text-[#581E83]">
+            <div className="flex items-center gap-1.5 text-[#581E83]">
               <span>💰</span>
               <span>החל מ: {minPrice}₪</span>
             </div>
           )}
-          <div className="flex items-start gap-1 text-[#464646]">
-            <Clock className={cn('shrink-0', isMobile ? 'w-3 h-3 mt-0.5' : 'w-4 h-4')} />
+          <div className="flex items-start gap-1.5 text-[#464646]">
+            <Clock className={cn('shrink-0', isMobile ? 'w-3.5 h-3.5 mt-0.5' : 'w-4 h-4')} />
             <span className="break-words">{uniqueTimes.join(' | ')}</span>
           </div>
         </div>
 
         <div
           className={cn(
-            'absolute w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent',
-            showBelow
-              ? 'bottom-full border-b-[5px] border-b-white'
-              : 'top-full border-t-[5px] border-t-white',
+            'absolute top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white',
             colIndex === 0 && isMobile ? 'right-2' : colIndex === 6 && isMobile ? 'left-2' : 'left-1/2 -translate-x-1/2'
           )}
         />
@@ -314,6 +309,17 @@ export default function TimeSlotsSection({
     ? (slotsMap.get(timePickerDate) || []).sort(sortSlotsByStartTime)
     : [];
 
+  const timePickerMinPrice = timePickerDate
+    ? getMinPriceForDate(slotsMap.get(timePickerDate) || [], servicePricing)
+    : null;
+
+  const selectedMinPrice = useMemo(() => {
+    if (!selectedSlot?.start?.timestamp) return null;
+    const dateStr = getSlotDateStrIsrael(selectedSlot);
+    if (!dateStr) return null;
+    return getMinPriceForDate(slotsMap.get(dateStr) || [], servicePricing);
+  }, [selectedSlot, slotsMap, servicePricing]);
+
   return (
     <div className="py-2" dir="rtl">
       <div className="rounded-xl border border-[#e8e8e8] bg-white p-1 sm:p-1.5">
@@ -392,13 +398,12 @@ export default function TimeSlotsSection({
                   )}>
                     {format(day, 'd')}
                   </span>
-                  {isCurrentMonth && !isPast && hasSlot && minPrice && (
+                  {isCurrentMonth && !isPast && hasSlot && minPrice && !isMobile && (
                     <span className={cn(
-                      'leading-none mt-0.5 max-w-full text-center',
-                      isMobile ? 'text-[8px] px-0.5 truncate' : 'text-[9px] whitespace-nowrap',
+                      'text-[9px] leading-none mt-0.5 whitespace-nowrap',
                       isSelected ? 'text-white/90' : 'text-[#5E2F88]/80'
                     )}>
-                      {isMobile ? `${minPrice}₪` : `החל מ: ${minPrice}₪`}
+                      החל מ: {minPrice}₪
                     </span>
                   )}
                   {/* עיגול לחגים */}
@@ -471,7 +476,12 @@ export default function TimeSlotsSection({
           >
             <div className="p-2">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-[#581E83]">בחרו שעה:</span>
+                <span className="flex items-center gap-2 text-xs font-medium text-[#581E83]">
+                  בחרו שעה:
+                  {timePickerMinPrice && (
+                    <span className="text-[#5E2F88]">החל מ: {timePickerMinPrice}₪</span>
+                  )}
+                </span>
                 <button
                   type="button"
                   onClick={() => setTimePickerDate(null)}
@@ -536,6 +546,12 @@ export default function TimeSlotsSection({
               <Timer className="w-4 h-4 text-[#581E83]" />
               <span className="text-xs font-medium text-[#581E83]">{selectedInfo.timeRange}</span>
             </div>
+            {selectedMinPrice && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs">💰</span>
+                <span className="text-xs font-medium text-[#581E83]">החל מ: {selectedMinPrice}₪</span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -559,7 +575,7 @@ export default function TimeSlotsSection({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
             onClick={() => setBlockedPopup(false)}
           >
             <motion.div
