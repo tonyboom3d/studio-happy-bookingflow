@@ -7,12 +7,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SketchCatalogSheet from './SketchCatalogSheet';
 import AISketchModal from './AISketchModal';
 import EnlargeableSketchImage from './EnlargeableSketchImage';
-import { isAiTestModeEnabled } from '@/lib/utils';
+import { isAiTestModeEnabled, getSelectionDisplaySize, selectionWants90Upgrade } from '@/lib/utils';
 
 function getSketchStatusBadge(sketch, editingWindowClosed) {
   const status = sketch.sketchStatus || '';
   const upgrade = sketch.upgradePaymentStatus || null;
-  const is90 = sketch.size === '90x90';
+  const is90 = getSelectionDisplaySize(sketch) === '90x90';
 
   if (status === 'סקיצה מוכנה' || status === 'Ready')
     return { label: 'סקיצה מוכנה', bg: 'bg-green-100', text: 'text-green-700' };
@@ -100,7 +100,7 @@ export default function OrganizerSelfSelectionView({
   // while a size is merely being edited (unsaved) inside the review modal.
   const allPendingUpgrades = useMemo(() => {
     return (selections || [])
-      .filter(s => s.canvasSize === '90x90' && s.upgradePaymentStatus !== 'paid')
+      .filter(selectionWants90Upgrade)
       .map(s => ({
         rugIndex: s.rugIndex,
         productId: s.productId,
@@ -150,7 +150,7 @@ export default function OrganizerSelfSelectionView({
       productId: s.productId,
       title: s.productSnapshot?.title || s.title || 'סקיצה',
       image: s.productSnapshot?.image || null,
-      size: s.canvasSize || '60x60',
+      size: getSelectionDisplaySize(s),
       source: s.source || 'catalog',
       rugIndex: s.rugIndex,
       upgradePaymentStatus: s.upgradePaymentStatus || null,

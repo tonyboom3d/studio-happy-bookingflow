@@ -60,3 +60,30 @@ export function isHardDifficulty(label) {
   const l = label.toLowerCase();
   return l === 'קשה' || l === 'hard' || l === 'מאתגר';
 }
+
+/** Authoritative stored size in CMS — 60x60 until upgrade is paid. */
+export function getSelectionStoredSize(sel) {
+  return sel?.canvasSize || '60x60';
+}
+
+/** UI/reporting size — shows 90 intent while upgrade is unpaid. */
+export function getSelectionDisplaySize(sel) {
+  if (!sel) return '60x60';
+  if (sel.upgradePaymentStatus === 'paid') return sel.canvasSize || '90x90';
+  if (sel.requestedCanvasSize === '90x90') return '90x90';
+  if (sel.upgradePaymentStatus === 'pending-upgrade' || sel.upgradePaymentStatus === 'pending-payment-approval') {
+    return '90x90';
+  }
+  // Legacy records may still store 90x90 before payment
+  if (sel.canvasSize === '90x90' && sel.upgradePaymentStatus !== 'failed') return '90x90';
+  return sel.canvasSize || '60x60';
+}
+
+export function selectionWants90Upgrade(sel) {
+  if (!sel || sel.upgradePaymentStatus === 'paid' || sel.upgradePaymentStatus === 'failed') return false;
+  if (sel.requestedCanvasSize === '90x90') return true;
+  if (sel.upgradePaymentStatus === 'pending-upgrade' || sel.upgradePaymentStatus === 'pending-payment-approval') {
+    return true;
+  }
+  return sel.canvasSize === '90x90';
+}

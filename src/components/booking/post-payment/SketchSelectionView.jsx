@@ -6,7 +6,7 @@ import ConfirmationModal from './ConfirmationModal';
 import SketchCatalogSheet from './SketchCatalogSheet';
 import AISketchModal from './AISketchModal';
 import EnlargeableSketchImage from './EnlargeableSketchImage';
-import { isAiTestModeEnabled } from '@/lib/utils';
+import { isAiTestModeEnabled, getSelectionDisplaySize, selectionWants90Upgrade } from '@/lib/utils';
 
 export default function SketchSelectionView({
   rugSlots,
@@ -67,6 +67,25 @@ export default function SketchSelectionView({
     });
     if (Object.keys(seeded).length) {
       setParticipantNames((prev) => ({ ...seeded, ...prev }));
+    }
+  }, [existingSelections]);
+
+  // Restore unpaid 90cm intents after refresh / browser reopen.
+  useEffect(() => {
+    const restored = {};
+    (existingSelections || []).forEach((s) => {
+      if (!selectionWants90Upgrade(s)) return;
+      restored[s.rugIndex] = {
+        rugIndex: s.rugIndex,
+        productId: s.productId,
+        productSnapshot: s.productSnapshot,
+        canvasSize: '90x90',
+        title: s.productSnapshot?.title,
+        participantName: s.participantName || null,
+      };
+    });
+    if (Object.keys(restored).length) {
+      setPendingUpgrades((prev) => ({ ...restored, ...prev }));
     }
   }, [existingSelections]);
 
@@ -147,6 +166,8 @@ export default function SketchSelectionView({
 
     if (size === '90x90') {
       setPendingUpgrades(prev => ({ ...prev, [pendingProduct.rugIndex]: selection }));
+      // Persist sketch as 60x60 in CMS; backend tracks 90cm upgrade intent separately.
+      onSelectSketch(selection);
     } else {
       // If reverting from 90x90 to 60x60, clear any pending upgrade for this slot
       if (pendingUpgrades[pendingProduct.rugIndex]) {
@@ -166,16 +187,21 @@ export default function SketchSelectionView({
 
   const doPayAndSave = useCallback(() => {
     if (isExpired) { setDeadlineError(true); return; }
-    const upgrades = Object.values(pendingUpgrades);
+    const upgrades = buildUpgradePayload();
+    if (!upgrades.length) return;
     onRequestUpgrade(upgrades);
     setPendingUpgrades({});
     setIncompleteWarning(null);
-  }, [pendingUpgrades, isExpired, onRequestUpgrade]);
+  }, [buildUpgradePayload, isExpired, onRequestUpgrade]);
 
   const handlePayAndSave = useCallback(() => {
     if (isExpired) { setDeadlineError(true); return; }
     const totalSlots = rugSlots.length;
-    const selectedCount = Object.keys(selectionsMap).length + Object.keys(pendingUpgrades).length;
+    const selectedSlots = new Set([
+      ...Object.keys(selectionsMap).map(Number),
+      ...Object.keys(pendingUpgrades).map(Number),
+    ]);
+    const selectedCount = selectedSlots.size;
     const unselected = totalSlots - selectedCount;
     if (unselected > 0) {
       setIncompleteWarning(unselected);
@@ -245,7 +271,31 @@ export default function SketchSelectionView({
 
   const visibleSlots = expanded ? rugSlots : rugSlots.slice(0, 4);
   const hasHiddenSlots = rugSlots.length > 4 && !expanded;
-  const pendingUpgradeCount = Object.keys(pendingUpgrades).length;
+  const pendingUpgradeCount = useMemo(() => {
+    const slots = new Set();
+    (existingSelections || []).forEach((s) => {
+      if (selectionWants90Upgrade(s)) slots.add(s.rugIndex);
+    });
+    Object.keys(pendingUpgrades).forEach((k) => slots.add(Number(k)));
+    return slots.size;
+  }, [existingSelections, pendingUpgrades]);
+
+  const buildUpgradePayload = useCallback(() => {
+    const upgrades = (existingSelections || [])
+      .filter(selectionWants90Upgrade)
+      .map((s) => ({
+        rugIndex: s.rugIndex,
+        productId: s.productId,
+        productSnapshot: s.productSnapshot,
+        canvasSize: '90x90',
+        participantName: s.participantName || participantNames[s.rugIndex] || null,
+      }));
+    Object.values(pendingUpgrades).forEach((pending) => {
+      if (upgrades.some((u) => u.rugIndex === pending.rugIndex)) return;
+      upgrades.push(pending);
+    });
+    return upgrades;
+  }, [existingSelections, pendingUpgrades, participantNames]);
   const slotLabel = catalogForSlot != null
     ? (rugSlots.length > 1 ? `בחירת עיצוב לשטיח ${catalogForSlot + 1}` : 'בחירת עיצוב לשטיח')
     : 'בחירת עיצוב';
@@ -279,10 +329,12 @@ export default function SketchSelectionView({
           const sel = selectionsMap[slot.rugIndex];
           const pending = pendingUpgrades[slot.rugIndex];
           const display = sel || pending;
+          const needsUpgradePayment = selectionWants90Upgrade(sel) || !!pending;
           const name = participantNames[slot.rugIndex] || sel?.participantName || slot.participantName;
           const sketchStatus = sel?.sketchStatus || 'Changeable';
           const sizePaidLock = sel?.upgradePaymentStatus === 'paid';
-          const awaitingApproval = sel?.canvasSize === '90x90' && sel?.upgradePaymentStatus === 'pending-payment-approval';
+          const awaitingApproval = selectionWants90Upgrade(sel) && sel?.upgradePaymentStatus === 'pending-payment-approval';
+          const displaySize = sel ? getSelectionDisplaySize(sel) : (pending?.canvasSize || '60x60');
           const isLocked = sel && (
             sketchStatus !== 'Changeable' ||
             (daysUntilWorkshop <= 6 && sel.confirmedAt)
@@ -292,14 +344,14 @@ export default function SketchSelectionView({
             <div
               key={slot.rugIndex}
               className={`bg-white rounded-xl border-2 p-3.5 transition-all ${
-                sel ? 'border-[#5E2F88]/30' : pending ? 'border-orange-300' : 'border-[#e8e8e8] hover:border-[#5E2F88]/40 cursor-pointer'
+                sel ? 'border-[#5E2F88]/30' : needsUpgradePayment ? 'border-orange-300' : 'border-[#e8e8e8] hover:border-[#5E2F88]/40 cursor-pointer'
               }`}
               onClick={!display && !isLocked ? () => openCatalogForSlot(slot.rugIndex) : undefined}
             >
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                    sel ? 'bg-green-100 text-green-700' : pending ? 'bg-orange-100 text-orange-700' : 'bg-[#f5f0fa] text-[#5E2F88]'
+                    sel ? 'bg-green-100 text-green-700' : needsUpgradePayment ? 'bg-orange-100 text-orange-700' : 'bg-[#f5f0fa] text-[#5E2F88]'
                   }`}>
                     {sel ? <Check className="w-3.5 h-3.5" /> : slot.rugIndex + 1}
                   </div>
@@ -326,7 +378,7 @@ export default function SketchSelectionView({
                     {getSketchStatusLabel(sketchStatus)}
                   </span>
                 )}
-                {pending && (
+                {needsUpgradePayment && !awaitingApproval && (
                   <span className="text-[11px] font-bold bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full flex items-center gap-1">
                     <Clock className="w-3 h-3" />ממתין לתשלום
                   </span>
@@ -348,8 +400,8 @@ export default function SketchSelectionView({
                       {display.productSnapshot?.title || display.title || 'סקיצה'}
                     </p>
                     <p className="text-xs text-[#464646]/60 mt-0.5" dir="rtl">
-                      {display.canvasSize === '90x90'
-                        ? <span>{'גודל: 90*90 ס"מ'}{(pending || awaitingApproval) && <span className="text-orange-600 font-medium">{' | תוספת: 299 ש"ח'}</span>}</span>
+                      {displaySize === '90x90'
+                        ? <span>{'גודל: 90*90 ס"מ'}{(needsUpgradePayment || awaitingApproval) && <span className="text-orange-600 font-medium">{' | תוספת: 299 ש"ח'}</span>}</span>
                         : <span>{'גודל: 60*60 ס"מ'}</span>}
                     </p>
                   </div>
@@ -373,10 +425,10 @@ export default function SketchSelectionView({
                 </div>
               )}
 
-              {pending && (
+              {needsUpgradePayment && (
                 <p className="text-[11px] text-orange-600 mt-2 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  הבחירה לא נשמרה עדיין — ממתין להשלמת תשלום
+                  הסקיצה נשמרה ב-60×60 — שדרוג ל-90×90 יופעל רק לאחר השלמת התשלום
                 </p>
               )}
             </div>

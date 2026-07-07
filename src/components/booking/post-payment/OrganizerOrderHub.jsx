@@ -14,11 +14,12 @@ import ParticipantSetupForm from './ParticipantSetupForm';
 import SketchSelectionView from './SketchSelectionView';
 import OrganizerSelfSelectionView from './OrganizerSelfSelectionView';
 import EnlargeableSketchImage from './EnlargeableSketchImage';
+import { getSelectionDisplaySize, selectionWants90Upgrade } from '@/lib/utils';
 
 function getSelectionStatusBadge(sel, editingWindowClosed) {
   const status = sel.sketchStatus || '';
   const upgrade = sel.upgradePaymentStatus || null;
-  const is90 = sel.canvasSize === '90x90';
+  const is90 = getSelectionDisplaySize(sel) === '90x90';
 
   if (status === 'סקיצה מוכנה' || status === 'Ready')
     return { label: 'סקיצה מוכנה', bg: 'bg-green-100', text: 'text-green-700', icon: true };
@@ -757,7 +758,7 @@ export default function OrganizerOrderHub({
 
                   const groupSelections = (selections || []).filter(
                     s => s.participantId === p._id && s.selectionStatus === 'selected'
-                      && (s.canvasSize !== '90x90' || s.upgradePaymentStatus === 'paid')
+                      && (!selectionWants90Upgrade(s) || s.upgradePaymentStatus === 'paid')
                   );
                   const rugNeeded = rugCount;
                   const completed = rugNeeded > 0 && groupSelections.length >= rugNeeded;
@@ -857,7 +858,7 @@ export default function OrganizerOrderHub({
                                   </p>
                                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                     <span className="text-[11px] text-[#464646]/50">
-                                      {sel.canvasSize === '90x90' ? '90×90 ס"מ' : '60×60 ס"מ'}
+                                      {getSelectionDisplaySize(sel) === '90x90' ? '90×90 ס"מ' : '60×60 ס"מ'}
                                     </span>
                                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${badge.bg} ${badge.text}`}>
                                       {badge.icon && <Lock className="w-2.5 h-2.5" />}
