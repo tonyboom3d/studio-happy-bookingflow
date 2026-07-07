@@ -561,6 +561,7 @@ export default function OrganizerOrderHub({
 
       <DeadlineCountdown
         deadlineAt={order.deadlineAt}
+        workshopStart={order.workshopStart}
         rugCount={order.rugCount}
         participantCount={participantCount}
       />

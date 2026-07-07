@@ -593,6 +593,7 @@ export default function PostPaymentHub({
 
         <DeadlineCountdown
           deadlineAt={localOrder.deadlineAt}
+          workshopStart={localOrder.workshopStart}
           rugCount={rugQty}
           participantCount={1}
         />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 function pad(n) {
   return String(n).padStart(2, '0');
@@ -17,8 +17,17 @@ function TimeBox({ value, label }) {
   );
 }
 
-export default function DeadlineCountdown({ deadlineAt, rugCount = 1, participantCount = 1 }) {
+export default function DeadlineCountdown({ deadlineAt, workshopStart, rugCount = 1, participantCount = 1 }) {
   const [remaining, setRemaining] = useState(null);
+
+  const daysUntilWorkshop = useMemo(() => {
+    if (!workshopStart) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const ws = new Date(workshopStart);
+    ws.setHours(0, 0, 0, 0);
+    return Math.floor((ws - today) / 86400000);
+  }, [workshopStart]);
 
   useEffect(() => {
     if (!deadlineAt) return;
@@ -42,6 +51,7 @@ export default function DeadlineCountdown({ deadlineAt, rugCount = 1, participan
     return () => clearInterval(interval);
   }, [deadlineAt]);
 
+  if (daysUntilWorkshop === null || daysUntilWorkshop > 15) return null;
   if (!remaining) return null;
 
   const isPluralPeople = participantCount > 1;
