@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { MessageCircle, ChevronDown, ChevronLeft, ChevronRight, Clock, Timer, X, AlertTriangle, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   getSlotDateStrIsrael,
   getSlotLocalDate,
@@ -141,67 +142,81 @@ function getMinPriceForDate(slots, servicePricing) {
   return minPrice === Infinity ? null : minPrice;
 }
 
-// Tooltip קומפוננטה
-function DayTooltip({ slots, servicePricing, holiday, closingSoon, allBlocked, isVisible }) {
+function getTooltipAlignClass(colIndex, isMobile) {
+  if (!isMobile) return 'left-1/2 -translate-x-1/2';
+  if (colIndex === 0) return 'right-0';
+  if (colIndex === 6) return 'left-0';
+  return 'left-1/2 -translate-x-1/2';
+}
+
+function DayTooltip({ slots, servicePricing, holiday, closingSoon, allBlocked, isVisible, isMobile, colIndex }) {
   if (!isVisible || !slots?.length) return null;
 
   const minPrice = getMinPriceForDate(slots, servicePricing);
   const times = slots.map(slot => getSlotTimeRange(slot)).sort();
-  const uniqueTimes = [...new Set(times)].slice(0, 3);
+  const uniqueTimes = [...new Set(times)].slice(0, isMobile ? 2 : 3);
+  const showBelow = isMobile;
 
   return (
     <div
-      className="absolute z-[100] bottom-full mb-1.5"
-      style={{ pointerEvents: 'none', left: '50%', transform: 'translateX(-50%)' }}
+      className={cn(
+        'absolute z-[100]',
+        showBelow ? 'top-full mt-1' : 'bottom-full mb-1.5',
+        getTooltipAlignClass(colIndex, isMobile)
+      )}
+      style={{ pointerEvents: 'none' }}
     >
       <motion.div
-        initial={{ opacity: 0, y: 4 }}
+        initial={{ opacity: 0, y: showBelow ? -4 : 4 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 4 }}
+        exit={{ opacity: 0, y: showBelow ? -4 : 4 }}
         transition={{ duration: 0.13 }}
-        className="bg-white rounded-lg shadow-lg border border-[#5E2F88]/20 p-2 whitespace-nowrap text-right"
+        className={cn(
+          'bg-white rounded-md shadow-lg border border-[#5E2F88]/20 text-right',
+          isMobile
+            ? 'p-1.5 max-w-[min(160px,calc(100vw-1.5rem))] whitespace-normal'
+            : 'p-2 whitespace-nowrap'
+        )}
       >
-        <div className="space-y-1.5 text-[14px]">
+        <div className={cn('space-y-1', isMobile ? 'text-[10px] leading-tight' : 'space-y-1.5 text-[14px]')}>
           {allBlocked && (
-            <div className="flex items-center gap-1.5 text-red-600 font-medium">
+            <div className="flex items-center gap-1 text-red-600 font-medium">
               <span>🚫</span>
               <span>הזמנה מקוונת סגורה</span>
             </div>
           )}
           {!allBlocked && closingSoon && (
-            <div className="flex items-center gap-1.5 text-red-600 font-medium">
+            <div className="flex items-center gap-1 text-red-600 font-medium">
               <span>⏰</span>
               <span>ההרשמה נסגרת בקרוב!</span>
             </div>
           )}
-          {/* חג */}
           {holiday && (
-            <div className="flex items-center gap-1.5 text-[#7B3DB0] font-medium">
+            <div className="flex items-center gap-1 text-[#7B3DB0] font-medium">
               <span>🎉</span>
               <span>{holiday}</span>
             </div>
           )}
-
-          {/* מחיר */}
           {minPrice && (
-            <div className="flex items-center gap-1.5 text-[#581E83]">
+            <div className="flex items-center gap-1 text-[#581E83]">
               <span>💰</span>
               <span>החל מ: {minPrice}₪</span>
             </div>
           )}
-
-          {/* שעות הסדנאות */}
-          <div className="flex items-center gap-1.5 text-[#464646]">
-            <Clock className="w-4 h-4" />
-            <span>{uniqueTimes.join(' | ')}</span>
+          <div className="flex items-start gap-1 text-[#464646]">
+            <Clock className={cn('shrink-0', isMobile ? 'w-3 h-3 mt-0.5' : 'w-4 h-4')} />
+            <span className="break-words">{uniqueTimes.join(' | ')}</span>
           </div>
-
         </div>
 
-        {/* חץ */}
         <div
-          className="absolute top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white"
-          style={{ left: '50%', transform: 'translateX(-50%)' }}
+          className={cn(
+            'absolute w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent',
+            showBelow
+              ? 'bottom-full border-b-[5px] border-b-white'
+              : 'top-full border-t-[5px] border-t-white',
+            colIndex === 0 && isMobile ? 'right-2' : colIndex === 6 && isMobile ? 'left-2' : 'left-1/2 -translate-x-1/2'
+          )}
         />
       </motion.div>
     </div>
@@ -221,6 +236,19 @@ export default function TimeSlotsSection({
   const [blockedPopup, setBlockedPopup] = useState(false);
   const [timePickerDate, setTimePickerDate] = useState(null);
   const [hoveredDate, setHoveredDate] = useState(null);
+  const isMobile = useIsMobile();
+
+  useEffect(() => {
+    if (!isMobile || !hoveredDate) return;
+    const dismiss = () => setHoveredDate(null);
+    const timer = setTimeout(() => {
+      document.addEventListener('touchstart', dismiss, { passive: true });
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('touchstart', dismiss);
+    };
+  }, [isMobile, hoveredDate]);
 
   const { availableDates, slotsMap } = useMemo(
     () => getAvailabilityInfo(Array.isArray(availableSlots) ? availableSlots : []),
@@ -288,7 +316,7 @@ export default function TimeSlotsSection({
 
   return (
     <div className="py-2" dir="rtl">
-      <div className="rounded-xl border border-[#e8e8e8] bg-white p-1.5">
+      <div className="rounded-xl border border-[#e8e8e8] bg-white p-1 sm:p-1.5">
         {/* כותרת חודש */}
         <div className="mb-1 flex items-center justify-between">
           <button
@@ -311,17 +339,18 @@ export default function TimeSlotsSection({
         </div>
 
         {/* ימי השבוע */}
-        <div className="grid grid-cols-7 gap-2 mb-0.5">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-2 mb-0.5">
           {['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'].map(day => (
-            <div key={day} className="text-center text-[20px] font-semibold text-[#581E83] py-0.5">
+            <div key={day} className="text-center text-xs sm:text-[20px] font-semibold text-[#581E83] py-0.5">
               {day}
             </div>
           ))}
         </div>
 
         {/* ימים */}
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-2">
           {calendarDays.map((day, i) => {
+            const colIndex = i % 7;
             const sod = startOfDay(day);
             const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
             const isPast = isBefore(sod, today);
@@ -343,11 +372,13 @@ export default function TimeSlotsSection({
                 <button
                   type="button"
                   onClick={() => handleDateClick(day)}
-                  onMouseEnter={() => hasSlot && setHoveredDate(dateStr)}
-                  onMouseLeave={() => setHoveredDate(null)}
+                  onMouseEnter={() => !isMobile && hasSlot && setHoveredDate(dateStr)}
+                  onMouseLeave={() => !isMobile && setHoveredDate(null)}
+                  onTouchStart={() => isMobile && hasSlot && setHoveredDate(dateStr)}
                   disabled={isDisabled}
                   className={cn(
-                    'relative flex flex-col items-center justify-center rounded-lg text-[18px] transition-all h-10 w-full',
+                    'relative flex flex-col items-center justify-center rounded-lg transition-all w-full',
+                    isMobile ? 'h-12 text-sm' : 'h-10 text-[18px]',
                     !isCurrentMonth && 'text-[#464646]/15',
                     isCurrentMonth && isDisabled && 'text-[#b0b0b0] cursor-default',
                     isCurrentMonth && !isPast && hasSlot && !isSelected &&
@@ -363,10 +394,11 @@ export default function TimeSlotsSection({
                   </span>
                   {isCurrentMonth && !isPast && hasSlot && minPrice && (
                     <span className={cn(
-                      'text-[9px] leading-none mt-0.5 whitespace-nowrap',
+                      'leading-none mt-0.5 max-w-full text-center',
+                      isMobile ? 'text-[8px] px-0.5 truncate' : 'text-[9px] whitespace-nowrap',
                       isSelected ? 'text-white/90' : 'text-[#5E2F88]/80'
                     )}>
-                      החל מ: {minPrice}₪
+                      {isMobile ? `${minPrice}₪` : `החל מ: ${minPrice}₪`}
                     </span>
                   )}
                   {/* עיגול לחגים */}
@@ -393,6 +425,8 @@ export default function TimeSlotsSection({
                       closingSoon={closingSoon}
                       allBlocked={allBlocked}
                       isVisible={true}
+                      isMobile={isMobile}
+                      colIndex={colIndex}
                     />
                   )}
                 </AnimatePresence>
@@ -413,7 +447,7 @@ export default function TimeSlotsSection({
           </div>
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-[#A9DEF9]" />
-            <span>כמה שעות</span>
+            <span>כמה מועדים</span>
           </div>
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-[#DA9BFF]" />
