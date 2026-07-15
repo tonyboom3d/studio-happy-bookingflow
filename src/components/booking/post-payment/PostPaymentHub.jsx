@@ -45,6 +45,8 @@ export default function PostPaymentHub({
   const catalogCacheRef = useRef(catalog?.length ? catalog : readCatalogCache());
   const catalogFetchPromiseRef = useRef(null);
   const paymentListenerRef = useRef(false);
+  const sketchSavePromisesRef = useRef(new Map());
+  const activeSketchSavesRef = useRef(0);
 
   const applyCatalog = useCallback((products) => {
     if (!products?.length) return;
@@ -318,34 +320,49 @@ export default function PostPaymentHub({
     }
   };
 
-  const handleSelectSketch = async (selection) => {
-    setIsSaving(true);
-    try {
-      const phoneNumber = selection.phoneNumber
-        || verifiedParticipant?.phone
-        || verifiedParticipant?.rawPhone
-        || ecomSummary?.buyerPhone
-        || null;
-      const participantId = selection.participantId || verifiedParticipant?._id || null;
-      const result = await sendAndWait('SAVE_SKETCH_SELECTION', {
-        orderId: localOrder._id,
-        ...selection,
-        participantId,
-        phoneNumber,
-      });
-      if (result?.selection) {
-        setLocalSelections(prev => {
-          const filtered = prev.filter(s => !(
-            s.rugIndex === result.selection.rugIndex &&
-            (s.participantId || null) === (result.selection.participantId || null)
-          ));
-          return [...filtered, result.selection];
+  const handleSelectSketch = useCallback(async (selection) => {
+    const participantId = selection.participantId || verifiedParticipant?._id || null;
+    const saveKey = `${localOrder?._id || ''}:${participantId || ''}:${selection.rugIndex}`;
+    const inFlight = sketchSavePromisesRef.current.get(saveKey);
+    if (inFlight) return inFlight;
+
+    const savePromise = (async () => {
+      activeSketchSavesRef.current += 1;
+      setIsSaving(true);
+      try {
+        const phoneNumber = selection.phoneNumber
+          || verifiedParticipant?.phone
+          || verifiedParticipant?.rawPhone
+          || ecomSummary?.buyerPhone
+          || null;
+        const result = await sendAndWait('SAVE_SKETCH_SELECTION', {
+          orderId: localOrder._id,
+          ...selection,
+          participantId,
+          phoneNumber,
         });
+        if (result?.error) throw new Error(result.error);
+        if (!result?.selection) throw new Error('Save failed');
+        if (result?.selection) {
+          setLocalSelections(prev => {
+            const filtered = prev.filter(s => !(
+              s.rugIndex === result.selection.rugIndex &&
+              (s.participantId || null) === (result.selection.participantId || null)
+            ));
+            return [...filtered, result.selection];
+          });
+        }
+        return result;
+      } finally {
+        sketchSavePromisesRef.current.delete(saveKey);
+        activeSketchSavesRef.current = Math.max(0, activeSketchSavesRef.current - 1);
+        if (activeSketchSavesRef.current === 0) setIsSaving(false);
       }
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    })();
+
+    sketchSavePromisesRef.current.set(saveKey, savePromise);
+    return savePromise;
+  }, [localOrder?._id, verifiedParticipant, ecomSummary, sendAndWait]);
 
   useEffect(() => {
     if (paymentListenerRef.current) return;

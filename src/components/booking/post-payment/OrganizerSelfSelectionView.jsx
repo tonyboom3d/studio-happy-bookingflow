@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   Check, Plus, Minus, Baby, Users, LayoutGrid, ChevronDown, ChevronUp,
-  Sparkles, Image as ImageIcon, X, AlertCircle, CreditCard, Trash2, Pencil, Lock,
+  Sparkles, Image as ImageIcon, X, AlertCircle, CreditCard, Trash2, Pencil, Lock, Loader2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SketchCatalogSheet from './SketchCatalogSheet';
@@ -65,6 +65,7 @@ export default function OrganizerSelfSelectionView({
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewCardIdx, setReviewCardIdx] = useState(null);
   const [reviewError, setReviewError] = useState('');
+  const [reviewSaving, setReviewSaving] = useState(false);
 
   // Expanded cards
   const [expandedCards, setExpandedCards] = useState({});
@@ -375,6 +376,7 @@ export default function OrganizerSelfSelectionView({
   };
 
   const closeReview = () => {
+    if (reviewSaving) return;
     setReviewOpen(false);
     setEditingNameIdx(null);
   };
@@ -397,34 +399,42 @@ export default function OrganizerSelfSelectionView({
   };
 
   const confirmReview = async () => {
-    if (reviewCardIdx == null) return;
+    if (reviewCardIdx == null || reviewSaving) return;
     const card = cards[reviewCardIdx];
     if (card.sketches.length < card.adults) {
       setReviewError(`יש לבחור לפחות ${card.adults} סקיצות (נבחרו ${card.sketches.length})`);
       return;
     }
     setReviewError('');
+    setReviewSaving(true);
 
-    for (const sketch of card.sketches) {
-      const selData = {
-        rugIndex: sketch.rugIndex,
-        productId: sketch.productId,
-        productSnapshot: { title: sketch.title, image: sketch.image },
-        canvasSize: sketch.size || '60x60',
-        participantId: card.participantId || null,
-        participantName: card.name,
-        ...(sketch.source === 'ai' ? {
-          source: 'ai',
-          aiOriginalImage: sketch.aiOriginalImage,
-          aiColors: sketch.aiColors,
-          aiTaskId: sketch.aiTaskId,
-        } : {}),
-      };
-      await onSelectSketch(selData);
+    try {
+      for (const sketch of card.sketches) {
+        const selData = {
+          rugIndex: sketch.rugIndex,
+          productId: sketch.productId,
+          productSnapshot: { title: sketch.title, image: sketch.image },
+          canvasSize: sketch.size || '60x60',
+          participantId: card.participantId || null,
+          participantName: card.name,
+          ...(sketch.source === 'ai' ? {
+            source: 'ai',
+            aiOriginalImage: sketch.aiOriginalImage,
+            aiColors: sketch.aiColors,
+            aiTaskId: sketch.aiTaskId,
+          } : {}),
+        };
+        await onSelectSketch(selData);
+      }
+
+      setReviewOpen(false);
+      setEditingNameIdx(null);
+      setExpandedCards(prev => ({ ...prev, [reviewCardIdx]: true }));
+    } catch (_) {
+      setReviewError('שמירת הבחירות נכשלה, נסו שוב');
+    } finally {
+      setReviewSaving(false);
     }
-
-    closeReview();
-    setExpandedCards(prev => ({ ...prev, [reviewCardIdx]: true }));
   };
 
   const toggleExpand = (idx) => {
@@ -932,9 +942,16 @@ export default function OrganizerSelfSelectionView({
                 dir="rtl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <button type="button" onClick={closeReview} className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646]">
+                <button type="button" onClick={closeReview} disabled={reviewSaving} className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646] disabled:opacity-30">
                   <X className="w-5 h-5" />
                 </button>
+
+                {reviewSaving && (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 rounded-2xl">
+                    <Loader2 className="w-8 h-8 text-[#5E2F88] animate-spin mb-2" />
+                    <p className="text-sm font-medium text-[#581E83]">שומר את הבחירות...</p>
+                  </div>
+                )}
 
                 <div className="text-center">
                   {editingNameIdx === reviewCardIdx ? (
@@ -1071,11 +1088,20 @@ export default function OrganizerSelfSelectionView({
                 <button
                   type="button"
                   onClick={confirmReview}
-                  disabled={card.sketches.length === 0}
+                  disabled={card.sketches.length === 0 || reviewSaving}
                   className="w-full flex items-center justify-center gap-2 bg-[#5E2F88] hover:bg-[#7B3DB0] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-[15px] transition-colors"
                 >
-                  <Check className="w-4 h-4" />
-                  אישור ושמירה
+                  {reviewSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      שומר...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      אישור ושמירה
+                    </>
+                  )}
                 </button>
               </motion.div>
             </motion.div>

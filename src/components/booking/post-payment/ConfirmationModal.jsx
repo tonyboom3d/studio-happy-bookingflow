@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Check, AlertCircle } from 'lucide-react';
+import { AlertTriangle, Check, AlertCircle, Loader2 } from 'lucide-react';
 
 const DELAY_KEY = 'sketch_confirm_delay_done';
 
@@ -22,6 +22,8 @@ export default function ConfirmationModal({
   const [participantName, setParticipantName] = useState(existingName || '');
   const [countdown, setCountdown] = useState(0);
   const [confirmed, setConfirmed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const [deadlineError, setDeadlineError] = useState(false);
   const hasDelayedRef = useRef(false);
 
@@ -36,9 +38,11 @@ export default function ConfirmationModal({
       setParticipantName(existingName || '');
       setCountdown(0);
       setConfirmed(false);
+      setSaving(false);
+      setSaveError(false);
       setDeadlineError(false);
     }
-  }, [open, existingName]);
+  }, [open, existingName, initialStep]);
 
   useEffect(() => {
     if (step !== 'confirm') return;
@@ -64,14 +68,26 @@ export default function ConfirmationModal({
     if (nameValid) setStep('confirm');
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (isExpired) { setDeadlineError(true); return; }
-    setConfirmed(true);
-    if (!hasDelayedRef.current) {
-      hasDelayedRef.current = true;
-      try { sessionStorage.setItem(DELAY_KEY, '1'); } catch (_) {}
+    if (saving) return;
+    setSaveError(false);
+    setSaving(true);
+    try {
+      await onConfirm(
+        selectedSize,
+        (requireName && !skipNameStep) ? participantName.trim() : null
+      );
+      setConfirmed(true);
+      if (!hasDelayedRef.current) {
+        hasDelayedRef.current = true;
+        try { sessionStorage.setItem(DELAY_KEY, '1'); } catch (_) {}
+      }
+    } catch (_) {
+      setSaveError(true);
+    } finally {
+      setSaving(false);
     }
-    onConfirm(selectedSize, (requireName && !skipNameStep) ? participantName.trim() : null);
   };
 
   return (
@@ -85,7 +101,24 @@ export default function ConfirmationModal({
             </div>
           )}
 
-          {confirmed && (
+          {saving && (
+            <>
+              <div className="w-12 h-12 rounded-full bg-[#f5f0fa] flex items-center justify-center mb-3">
+                <Loader2 className="w-6 h-6 text-[#5E2F88] animate-spin" />
+              </div>
+              <h3 className="text-lg font-bold text-[#581E83] mb-2">שומר את הבחירה...</h3>
+              <p className="text-sm text-[#464646]/70">אנא המתינו עד שהשמירה תושלם</p>
+            </>
+          )}
+
+          {saveError && !saving && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 w-full mb-3 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+              <p className="text-sm text-red-700 text-right">השמירה נכשלה. נסו שוב.</p>
+            </div>
+          )}
+
+          {confirmed && !saving && (
             <>
               <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-3">
                 <Check className="w-6 h-6 text-green-600" />
@@ -101,7 +134,7 @@ export default function ConfirmationModal({
             </>
           )}
 
-          {!confirmed && step === 'size' && (
+          {!confirmed && !saving && step === 'size' && (
             <>
               <h3 className="text-lg font-bold text-[#581E83] mb-1">בחירת גודל שטיח</h3>
               <p className="text-sm text-[#464646]/70 mb-4">{sketchTitle}</p>
@@ -132,7 +165,7 @@ export default function ConfirmationModal({
             </>
           )}
 
-          {!confirmed && step === 'name' && (
+          {!confirmed && !saving && step === 'name' && (
             <>
               <h3 className="text-lg font-bold text-[#581E83] mb-1">שם המשתתף/קבוצה</h3>
               <p className="text-sm text-[#464646]/70 mb-4">הזינו שם לזיהוי בחירה זו</p>
@@ -151,7 +184,7 @@ export default function ConfirmationModal({
             </>
           )}
 
-          {!confirmed && step === 'confirm' && (
+          {!confirmed && !saving && step === 'confirm' && (
             <>
               <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${isFinal ? 'bg-orange-100' : 'bg-[#f5f0fa]'}`}>
                 {isFinal ? <AlertTriangle className="w-6 h-6 text-orange-600" /> : <Check className="w-6 h-6 text-[#5E2F88]" />}
@@ -175,7 +208,7 @@ export default function ConfirmationModal({
               )}
               <div className="flex gap-3 w-full">
                 <Button variant="outline" onClick={onClose} className="flex-1 border-[#e8e8e8]">ביטול</Button>
-                <Button onClick={handleConfirm} disabled={countdown > 0} className="flex-1 bg-[#5E2F88] hover:bg-[#7B3DB0] text-white">
+                <Button onClick={handleConfirm} disabled={countdown > 0 || saving} className="flex-1 bg-[#5E2F88] hover:bg-[#7B3DB0] text-white">
                   {countdown > 0 ? `אישור (${countdown})` : 'אישור'}
                 </Button>
               </div>

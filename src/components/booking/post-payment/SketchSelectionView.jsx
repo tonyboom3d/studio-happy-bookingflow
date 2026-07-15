@@ -148,7 +148,7 @@ export default function SketchSelectionView({
     setShowModal(true);
   }, [catalogForSlot, isExpired]);
 
-  const handleModalConfirm = useCallback((size, participantName) => {
+  const handleModalConfirm = useCallback(async (size, participantName) => {
     if (isExpired) { setDeadlineError(true); setShowModal(false); return; }
 
     const selection = {
@@ -166,10 +166,8 @@ export default function SketchSelectionView({
 
     if (size === '90x90') {
       setPendingUpgrades(prev => ({ ...prev, [pendingProduct.rugIndex]: selection }));
-      // Persist sketch as 60x60 in CMS; backend tracks 90cm upgrade intent separately.
-      onSelectSketch(selection);
+      await onSelectSketch(selection);
     } else {
-      // If reverting from 90x90 to 60x60, clear any pending upgrade for this slot
       if (pendingUpgrades[pendingProduct.rugIndex]) {
         setPendingUpgrades(prev => {
           const next = { ...prev };
@@ -177,7 +175,7 @@ export default function SketchSelectionView({
           return next;
         });
       }
-      onSelectSketch(selection);
+      await onSelectSketch(selection);
     }
 
     setShowModal(false);
