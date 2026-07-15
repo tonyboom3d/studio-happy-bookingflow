@@ -5,6 +5,7 @@ import {
   Calendar, MapPin, Tag, CreditCard, CalendarPlus, MessageCircle,
   HelpCircle, X, ExternalLink, User, Mail, Phone, MoveLeft, Baby, Plus, Minus, Image as ImageIcon,
   Link2, LayoutGrid, Users, Trash2, AlertTriangle, UserPlus, Lock, CheckSquare, Square, ListOrdered, Loader2,
+  MessageSquare,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
@@ -566,6 +567,12 @@ export default function OrganizerOrderHub({
                           <div className="flex items-center gap-2 text-[15px] text-[#464646]">
                             <Phone className="w-4 h-4 text-[#5E2F88] shrink-0" />
                             <span dir="ltr" className="font-medium">{formatPhone(ecomSummary.buyerPhone)}</span>
+                          </div>
+                        )}
+                        {ecomSummary.organizerNotes && (
+                          <div className="flex items-start gap-2 text-[15px] text-[#464646]">
+                            <MessageSquare className="w-4 h-4 text-[#5E2F88] shrink-0 mt-0.5" />
+                            <span className="whitespace-pre-wrap">{ecomSummary.organizerNotes}</span>
                           </div>
                         )}
                       </div>
