@@ -17,6 +17,7 @@ export default function OrderPage() {
   const [role, setRole] = useState(token ? 'participant' : 'organizer');
   const [orderContext, setOrderContext] = useState(null);
   const [ecomSummary, setEcomSummary] = useState(null);
+  const [orderHistory, setOrderHistory] = useState(null);
   const [participantContext, setParticipantContext] = useState(null);
   const [catalog, setCatalog] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +36,7 @@ export default function OrderPage() {
       setOrderContext(cached.orderContext);
       setRole(cached.orderRole || 'organizer');
       if (cached.ecomSummary) setEcomSummary(cached.ecomSummary);
+      if (cached.orderHistory) setOrderHistory(cached.orderHistory);
       setIsLoading(false);
     }
 
@@ -55,6 +57,7 @@ export default function OrderPage() {
         setOrderContext(data.orderContext);
         setRole(data.role || 'organizer');
         if (data.ecomSummary) setEcomSummary(data.ecomSummary);
+        if (data.orderHistory) setOrderHistory(data.orderHistory);
         if (data.orderContext.catalog?.length) {
           setCatalog(data.orderContext.catalog);
           writeCatalogCache(data.orderContext.catalog);
@@ -127,6 +130,7 @@ export default function OrderPage() {
       <PostPaymentHub
         orderContext={orderContext}
         ecomSummary={ecomSummary}
+        orderHistory={orderHistory}
         participantContext={participantContext}
         role={role}
         catalog={catalog || []}

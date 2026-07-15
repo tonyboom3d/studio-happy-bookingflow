@@ -4,7 +4,7 @@ import {
   Check, UserCheck, Send, Copy, Settings, ChevronDown, ChevronUp,
   Calendar, MapPin, Tag, CreditCard, CalendarPlus, MessageCircle,
   HelpCircle, X, ExternalLink, User, Mail, Phone, MoveLeft, Baby, Plus, Minus, Image as ImageIcon,
-  Link2, LayoutGrid, Users, Trash2, AlertTriangle, UserPlus, Lock, CheckSquare, Square,
+  Link2, LayoutGrid, Users, Trash2, AlertTriangle, UserPlus, Lock, CheckSquare, Square, ListOrdered, Loader2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
@@ -37,6 +37,9 @@ function getSelectionStatusBadge(sel, editingWindowClosed) {
 export default function OrganizerOrderHub({
   order,
   ecomSummary,
+  orderHistory,
+  onSwitchOrder,
+  isSwitchingOrder,
   catalog,
   participants,
   selections,
@@ -61,6 +64,7 @@ export default function OrganizerOrderHub({
   onCheckRateLimit,
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [orderSwitcherOpen, setOrderSwitcherOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(null);
   const [contactOpen, setContactOpen] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
@@ -410,6 +414,60 @@ export default function OrganizerOrderHub({
           )}
         </div>
       </motion.div>
+
+      {/* "My orders" switcher — only shown when the buyer has other paid orders */}
+      {orderHistory?.length > 0 && (
+        <div className="relative flex justify-center">
+          <button
+            type="button"
+            onClick={() => setOrderSwitcherOpen((v) => !v)}
+            disabled={isSwitchingOrder}
+            className="flex items-center gap-1.5 text-[13px] font-medium text-[#5E2F88] hover:text-[#7B3DB0] bg-[#f5f0fa] border border-[#5E2F88]/20 rounded-full px-3 py-1.5 transition-colors disabled:opacity-60"
+          >
+            {isSwitchingOrder ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ListOrdered className="w-3.5 h-3.5" />}
+            ההזמנות שלי ({orderHistory.length + 1})
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${orderSwitcherOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          <AnimatePresence>
+            {orderSwitcherOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="absolute top-full mt-2 z-30 w-72 bg-white rounded-xl border border-[#e8e8e8] shadow-lg overflow-hidden"
+              >
+                <div className="px-3 py-2 bg-[#5E2F88] text-white text-[13px] font-semibold flex items-center justify-between">
+                  <span>הזמנה נוכחית</span>
+                  {ecomSummary?.orderNumber && <span dir="ltr">#{ecomSummary.orderNumber}</span>}
+                </div>
+                <div className="max-h-64 overflow-y-auto divide-y divide-[#e8e8e8]">
+                  {orderHistory.map((h) => (
+                    <button
+                      key={h._id}
+                      type="button"
+                      onClick={() => { setOrderSwitcherOpen(false); onSwitchOrder && onSwitchOrder(h._id); }}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-right hover:bg-[#f5f0fa] transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-medium text-[#581E83] truncate">
+                          {h.orderNumber ? `הזמנה #${h.orderNumber}` : 'הזמנה'}
+                        </p>
+                        <p className="text-[12px] text-[#464646]/60">
+                          {h.workshopStart ? format(new Date(h.workshopStart), 'd בMMMM yyyy', { locale: he }) : ''}
+                        </p>
+                      </div>
+                      {h.paidTotal > 0 && (
+                        <span className="text-[13px] font-semibold text-[#5E2F88] shrink-0">₪{h.paidTotal}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* Expand toggle — visible only when collapsed */}
       <AnimatePresence>

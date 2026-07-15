@@ -20,6 +20,7 @@ let wixData = {
     servicePricing: null,
     orderContext: null,
     ecomSummary: null,
+    orderHistory: null,
     orderRole: null,
     orderError: false,
     initialized: false,
@@ -165,6 +166,7 @@ function handleWixMessage(event) {
             }
             wixData.orderContext = data.orderContext || null;
             wixData.ecomSummary = data.ecomSummary || null;
+            wixData.orderHistory = data.orderHistory || wixData.orderHistory || null;
             wixData.orderRole = data.role || 'organizer';
             wixData.orderContextReady = !!data.orderContext;
             wixData.orderError = false;
@@ -175,6 +177,7 @@ function handleWixMessage(event) {
                 orderContext: wixData.orderContext,
                 role: wixData.orderRole,
                 ecomSummary: wixData.ecomSummary,
+                orderHistory: wixData.orderHistory,
                 products: wixData.products,
             });
             break;

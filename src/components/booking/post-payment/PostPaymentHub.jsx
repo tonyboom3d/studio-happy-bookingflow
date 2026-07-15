@@ -11,7 +11,8 @@ import AdminOtpVerification from './AdminOtpVerification';
 
 export default function PostPaymentHub({
   orderContext,
-  ecomSummary,
+  ecomSummary: ecomSummaryProp,
+  orderHistory: orderHistoryProp,
   participantContext,
   role,
   catalog: initialCatalog,
@@ -26,6 +27,9 @@ export default function PostPaymentHub({
   const [localOrder, setLocalOrder] = useState(orderContext?.order || null);
   const [localParticipants, setLocalParticipants] = useState(orderContext?.participants || []);
   const [localSelections, setLocalSelections] = useState(orderContext?.selections || []);
+  const [ecomSummary, setEcomSummary] = useState(ecomSummaryProp || null);
+  const [orderHistory, setOrderHistory] = useState(orderHistoryProp || []);
+  const [switchingOrder, setSwitchingOrder] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Share links are derived directly from each group's stable plaintext token so
@@ -61,6 +65,14 @@ export default function PostPaymentHub({
     if (orderContext?.selections) setLocalSelections(orderContext.selections);
     if (orderContext?.catalog?.length) applyCatalog(orderContext.catalog);
   }, [orderContext, applyCatalog]);
+
+  useEffect(() => {
+    if (ecomSummaryProp) setEcomSummary(ecomSummaryProp);
+  }, [ecomSummaryProp]);
+
+  useEffect(() => {
+    if (orderHistoryProp) setOrderHistory(orderHistoryProp);
+  }, [orderHistoryProp]);
 
   useEffect(() => {
     if (participantContext?.participant) setVerifiedParticipant(participantContext.participant);
@@ -440,6 +452,26 @@ export default function PostPaymentHub({
     participantChildrenQty,
   ]);
 
+  // Switch to viewing a different (past) order of the same buyer, chosen via
+  // the "my orders" switcher. Replaces local state in place without a page reload.
+  const handleSwitchOrder = useCallback(async (targetOrderId) => {
+    if (!targetOrderId || targetOrderId === localOrder?._id) return;
+    setSwitchingOrder(true);
+    try {
+      const result = await sendAndWait('SWITCH_ORDER', { orderId: targetOrderId });
+      if (result?.error) throw new Error(result.error);
+      if (result?.orderContext?.order) setLocalOrder(result.orderContext.order);
+      if (result?.orderContext?.participants) setLocalParticipants(result.orderContext.participants);
+      if (result?.orderContext?.selections) setLocalSelections(result.orderContext.selections);
+      if (result?.ecomSummary) setEcomSummary(result.ecomSummary);
+      if (result?.orderHistory) setOrderHistory(result.orderHistory);
+    } catch (e) {
+      console.error('[PostPaymentHub] Failed to switch order:', e?.message);
+    } finally {
+      setSwitchingOrder(false);
+    }
+  }, [localOrder?._id, sendAndWait]);
+
   const handleUpdateSettings = async (settings) => {
     try {
       await sendAndWait('UPDATE_ORDER_SETTINGS', {
@@ -564,6 +596,9 @@ export default function PostPaymentHub({
         <OrganizerOrderHub
           order={localOrder}
           ecomSummary={ecomSummary}
+          orderHistory={orderHistory}
+          onSwitchOrder={handleSwitchOrder}
+          isSwitchingOrder={switchingOrder}
           catalog={catalog || []}
           participants={localParticipants}
           selections={localSelections}
