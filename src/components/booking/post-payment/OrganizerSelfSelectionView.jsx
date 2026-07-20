@@ -85,6 +85,7 @@ export default function OrganizerSelfSelectionView({
   participants,
   selections,
   onSelectSketch,
+  onDeleteSketchSelection,
   onRequestUpgrade,
   onFetchCatalog,
   editingWindowClosed = false,
@@ -142,6 +143,38 @@ export default function OrganizerSelfSelectionView({
   // AI sketch modal
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [aiModalCardIdx, setAiModalCardIdx] = useState(null);
+
+  const editSnapshotRef = React.useRef(null);
+
+  const beginEditSession = useCallback((cardIdx) => {
+    if (editSnapshotRef.current?.cardIdx === cardIdx) return;
+    const card = cards[cardIdx];
+    if (!card) return;
+    editSnapshotRef.current = {
+      cardIdx,
+      sketches: JSON.parse(JSON.stringify(card.sketches)),
+    };
+  }, [cards]);
+
+  const restoreEditSnapshot = useCallback(() => {
+    const snap = editSnapshotRef.current;
+    if (!snap || snap.cardIdx == null) return;
+    setCards((prev) => prev.map((c, i) => (
+      i === snap.cardIdx ? { ...c, sketches: snap.sketches } : c
+    )));
+    editSnapshotRef.current = null;
+  }, []);
+
+  const clearEditSnapshot = useCallback(() => {
+    editSnapshotRef.current = null;
+  }, []);
+
+  function getServerSelectionsForCard(card) {
+    return (selections || []).filter((s) => (
+      (card.participantId && s.participantId === card.participantId)
+      || (!card.participantId && s.participantName === card.name)
+    ));
+  }
 
   const totalRugs = order.rugCount || 0;
   const maxChildren = order.children || 0;
@@ -320,6 +353,7 @@ export default function OrganizerSelfSelectionView({
   };
 
   const openSourceFor = (cardIdx) => {
+    beginEditSession(cardIdx);
     setSourceCardIdx(cardIdx);
     setSourceOpen(true);
   };
@@ -386,6 +420,7 @@ export default function OrganizerSelfSelectionView({
             aiOriginalImage: sketch.aiOriginalImage || null,
             aiColors: sketch.aiColors || null,
             aiTaskId: sketch.aiTaskId || null,
+            pendingMediaUpload: sketch.pendingMediaUpload || false,
           }],
         };
       });
@@ -512,11 +547,22 @@ export default function OrganizerSelfSelectionView({
     }
 
     setReviewCardIdx(cardIdx);
+    setCards((prev) => {
+      const c = prev[cardIdx];
+      if (c && editSnapshotRef.current?.cardIdx !== cardIdx) {
+        editSnapshotRef.current = {
+          cardIdx,
+          sketches: JSON.parse(JSON.stringify(c.sketches)),
+        };
+      }
+      return prev;
+    });
     setReviewOpen(true);
   };
 
-  const closeReview = () => {
+  const closeReview = ({ discard = true } = {}) => {
     if (reviewSaving) return;
+    if (discard) restoreEditSnapshot();
     setReviewOpen(false);
     setEditingNameIdx(null);
   };
@@ -567,25 +613,66 @@ export default function OrganizerSelfSelectionView({
     setReviewSaving(true);
 
     try {
+      const currentRugIndexes = new Set(card.sketches.map((s) => s.rugIndex));
+      const serverSelections = getServerSelectionsForCard(card);
+
+      if (onDeleteSketchSelection) {
+        for (const serverSel of serverSelections) {
+          if (currentRugIndexes.has(serverSel.rugIndex)) continue;
+          if (isLockedStatus(serverSel.sketchStatus)) continue;
+          await onDeleteSketchSelection({
+            rugIndex: serverSel.rugIndex,
+            participantId: card.participantId || null,
+            participantName: card.name,
+          });
+        }
+      }
+
       for (const sketch of card.sketches) {
         if (isSketchStaffLocked(sketch)) continue;
+
+        let image = sketch.image;
+        let aiOriginalImage = sketch.aiOriginalImage;
+        let aiTaskId = sketch.aiTaskId;
+        let aiColors = sketch.aiColors;
+
+        if (sketch.source === 'ai' && sketch.pendingMediaUpload && onSaveApprovedSketch) {
+          const saved = await onSaveApprovedSketch(
+            sketch.aiOriginalImage || image,
+            sketch.image,
+            sketch.aiColors || 'AUTO',
+          );
+          if (saved?.sketchUrl) image = saved.sketchUrl;
+          if (saved?.originalUrl) aiOriginalImage = saved.originalUrl;
+          if (saved?.taskId) aiTaskId = saved.taskId;
+          if (saved?.colors) aiColors = saved.colors;
+        }
+
         const selData = {
           rugIndex: sketch.rugIndex,
           productId: sketch.productId,
-          productSnapshot: { title: sketch.title, image: sketch.image },
+          productSnapshot: { title: sketch.title, image },
           canvasSize: sketch.size || '60x60',
           participantId: card.participantId || null,
           participantName: card.name,
           ...(sketch.source === 'ai' ? {
             source: 'ai',
-            aiOriginalImage: sketch.aiOriginalImage,
-            aiColors: sketch.aiColors,
-            aiTaskId: sketch.aiTaskId,
+            aiOriginalImage,
+            aiColors,
+            aiTaskId,
           } : {}),
         };
         await onSelectSketch(selData);
       }
 
+      clearEditSnapshot();
+      setCards((prev) => prev.map((c, i) => {
+        if (i !== reviewCardIdx) return c;
+        return {
+          ...c,
+          sketches: c.sketches.map((s) => ({ ...s, pendingMediaUpload: false })),
+        };
+      }));
       setReviewOpen(false);
       setEditingNameIdx(null);
       setExpandedCards(prev => ({ ...prev, [reviewCardIdx]: true }));
@@ -597,6 +684,9 @@ export default function OrganizerSelfSelectionView({
       } else if (msg.includes('QUOTA_EXCEEDED')) {
         const limit = msg.split(':').pop();
         setReviewError(`חריגה ממכסת השטיחים בקבוצה (מקסימום ${limit})`);
+      } else if (msg.includes('DELETE_LOCKED_SKETCH_STATUS')) {
+        const status = msg.split(':').pop();
+        setReviewError(`לא ניתן למחוק — יש סקיצה בסטטוס "${getSketchStatusLabel(status)}"`);
       } else {
         setReviewError('שמירת הבחירות נכשלה, נסו שוב');
       }
@@ -1150,7 +1240,7 @@ export default function OrganizerSelfSelectionView({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-              onClick={closeReview}
+              onClick={() => closeReview({ discard: true })}
             >
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -1161,7 +1251,7 @@ export default function OrganizerSelfSelectionView({
                 dir="rtl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <button type="button" onClick={closeReview} disabled={reviewSaving} className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646] disabled:opacity-30">
+                <button type="button" onClick={() => closeReview({ discard: true })} disabled={reviewSaving} className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646] disabled:opacity-30">
                   <X className="w-5 h-5" />
                 </button>
 
@@ -1230,7 +1320,7 @@ export default function OrganizerSelfSelectionView({
                     <p className="text-[14px] text-[#464646]/60">לא נבחרו סקיצות עדיין</p>
                     <button
                       type="button"
-                      onClick={() => { closeReview(); openSourceFor(reviewCardIdx); }}
+                      onClick={() => { closeReview({ discard: false }); openSourceFor(reviewCardIdx); }}
                       className="mt-3 text-[#5E2F88] font-semibold text-[14px] hover:underline"
                     >
                       בחירת סקיצות
@@ -1299,7 +1389,7 @@ export default function OrganizerSelfSelectionView({
                 {card.sketches.length < card.adults && (
                   <button
                     type="button"
-                    onClick={() => { closeReview(); openSourceFor(reviewCardIdx); }}
+                    onClick={() => { closeReview({ discard: false }); openSourceFor(reviewCardIdx); }}
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[14px] font-medium border-2 border-dashed border-[#5E2F88]/30 text-[#5E2F88] hover:bg-[#f5f0fa] transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -1475,6 +1565,7 @@ export default function OrganizerSelfSelectionView({
         onSaveApprovedSketch={onSaveApprovedSketch}
         onSubmitFeedback={onSubmitFeedback}
         onCheckRateLimit={onCheckRateLimit}
+        deferSketchPersistence
       />
     </div>
   );

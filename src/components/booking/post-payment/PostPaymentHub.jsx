@@ -452,6 +452,21 @@ export default function PostPaymentHub({
     return savePromise;
   }, [localOrder?._id, verifiedParticipant, ecomSummary, sendAndWait]);
 
+  const handleDeleteSketchSelection = useCallback(async ({ rugIndex, participantId, participantName }) => {
+    const result = await sendAndWait('DELETE_SKETCH_SELECTION', {
+      orderId: localOrder._id,
+      rugIndex,
+      participantId: participantId || null,
+      participantName: participantName || null,
+    });
+    if (result?.error) throw new Error(result.error);
+    setLocalSelections((prev) => prev.filter((s) => !(
+      s.rugIndex === rugIndex
+      && (s.participantId || null) === (participantId || null)
+    )));
+    return result;
+  }, [localOrder?._id, sendAndWait]);
+
   const mergeFreshSelection = useCallback((freshSelection) => {
     if (!freshSelection) return;
     setLocalSelections((prev) => {
@@ -729,6 +744,7 @@ export default function PostPaymentHub({
           onDeleteGroup={handleDeleteGroup}
           onDeleteOrganizerGroup={handleDeleteOrganizerGroup}
           onSelectSketch={handleSelectSketch}
+          onDeleteSketchSelection={handleDeleteSketchSelection}
           onRequestUpgrade={handleRequestUpgrade}
           onUpdateSettings={handleUpdateSettings}
           onUpdateParticipant={handleUpdateParticipant}

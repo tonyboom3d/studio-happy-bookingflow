@@ -86,8 +86,20 @@ export function computeDesignCounts(selections) {
   return counts;
 }
 
-/** Returns locked minimum violation after hypothetically replacing one rug slot. */
-export function wouldViolateLockedMinimum(selections, { rugIndex, replacement } = {}) {
+/**
+ * @typedef {Object} LockedMinimumCheckOpts
+ * @property {number} [rugIndex]
+ * @property {object} [replacement]
+ */
+
+/**
+ * Returns locked minimum violation after hypothetically replacing one rug slot.
+ * @param {any[]} selections
+ * @param {LockedMinimumCheckOpts} [checkOpts]
+ */
+export function wouldViolateLockedMinimum(selections, checkOpts = {}) {
+  const rugIndex = checkOpts.rugIndex;
+  const replacement = checkOpts.replacement;
   const lockedMins = computeLockedDesignCounts(selections);
   const after = (selections || []).filter((s) => s.rugIndex !== rugIndex);
   if (replacement) after.push(replacement);

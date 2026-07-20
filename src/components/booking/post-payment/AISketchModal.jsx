@@ -399,6 +399,7 @@ export default function AISketchModal({
   onSaveApprovedSketch,
   onSubmitFeedback,
   onCheckRateLimit,
+  deferSketchPersistence = false,
 }) {
   // View: 'intro' | 'loading' | 'config' | 'result'
   const [view, setView] = useState('intro');
@@ -644,6 +645,23 @@ export default function AISketchModal({
 
   const handleApprove = useCallback(async () => {
     setError(null);
+
+    if (deferSketchPersistence) {
+      onApprove({
+        source: 'ai',
+        productId: null,
+        title: 'עיצוב מותאם אישית (AI)',
+        image: sketchUrl,
+        aiOriginalImage: originalMediaUrl || imageBase64,
+        aiColors: 'AUTO',
+        aiTaskId: null,
+        canvasSize: '60x60',
+        pendingMediaUpload: true,
+      });
+      onClose();
+      return;
+    }
+
     setView('loading');
     setStep(2);
     setLoadingTitle('שומר את הסקיצה...');
@@ -688,7 +706,7 @@ export default function AISketchModal({
       setView('result');
       setStep(2);
     }
-  }, [imageBase64, originalMediaUrl, sketchUrl, onApprove, onClose, onSaveApprovedSketch, animateProgress]);
+  }, [imageBase64, originalMediaUrl, sketchUrl, onApprove, onClose, onSaveApprovedSketch, animateProgress, deferSketchPersistence]);
 
   const handleRetrySubmit = useCallback(async () => {
     if (!retryReason) return;
@@ -992,7 +1010,7 @@ export default function AISketchModal({
                     onClick={handleApprove}
                     className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-5 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 flex-1 min-w-[140px]"
                   >
-                    <Check className="w-4 h-4" /> אישור ושמירה
+                    <Check className="w-4 h-4" /> {deferSketchPersistence ? 'אישור והמשך' : 'אישור ושמירה'}
                   </button>
                   <button
                     type="button"

@@ -67,6 +67,7 @@ export default function OrganizerOrderHub({
   onDeleteGroup,
   onDeleteOrganizerGroup,
   onSelectSketch,
+  onDeleteSketchSelection,
   onRequestUpgrade,
   onUpdateSettings,
   onUpdateParticipant,
@@ -743,6 +744,7 @@ export default function OrganizerOrderHub({
           participants={participants}
           selections={selections}
           onSelectSketch={onSelectSketch}
+          onDeleteSketchSelection={onDeleteSketchSelection}
           onRequestUpgrade={onRequestUpgrade}
           onFetchCatalog={onFetchCatalog}
           editingWindowClosed={editingWindowClosed}
