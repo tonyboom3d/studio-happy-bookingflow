@@ -16,6 +16,7 @@ import SketchSelectionView from './SketchSelectionView';
 import OrganizerSelfSelectionView from './OrganizerSelfSelectionView';
 import EnlargeableSketchImage from './EnlargeableSketchImage';
 import { getSelectionDisplaySize, selectionWants90Upgrade } from '@/lib/utils';
+import { isEditingWindowClosed } from '@/lib/sketchEditingPolicy';
 
 function getSelectionStatusBadge(sel, editingWindowClosed) {
   const status = sel.sketchStatus || '';
@@ -271,22 +272,10 @@ export default function OrganizerOrderHub({
     ? (new Date(order.workshopStart).getTime() - Date.now() <= 48 * 60 * 60 * 1000)
     : false;
 
-  const editingWindowClosed = useMemo(() => {
-    if (!order?.workshopStart || !order?._createdDate) return false;
-    const now = Date.now();
-    const ws = new Date(order.workshopStart).getTime();
-    const oc = new Date(order._createdDate).getTime();
-    const SIX_DAYS = 6 * 24 * 60 * 60 * 1000;
-    const FORTY_EIGHT_H = 48 * 60 * 60 * 1000;
-    const TEN_H = 10 * 60 * 60 * 1000;
-    const SIX_H = 6 * 60 * 60 * 1000;
-    const gap = ws - oc;
-    let deadline;
-    if (gap > SIX_DAYS) deadline = ws - SIX_DAYS;
-    else if (gap > FORTY_EIGHT_H) deadline = oc + TEN_H;
-    else deadline = oc + SIX_H;
-    return now >= deadline;
-  }, [order?.workshopStart, order?._createdDate]);
+  const editingWindowClosed = useMemo(
+    () => isEditingWindowClosed(order),
+    [order?.editingWindowAllowed, order?.deadlineAt]
+  );
 
   const openCreate = () => {
     if (remainingRugs <= 0) return;

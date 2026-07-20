@@ -1,45 +1,11 @@
 import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Palette, Users, Clock, Info } from 'lucide-react';
-
-function getEditingPolicyText(workshopStartTimestamp) {
-  if (!workshopStartTimestamp) {
-    return 'ניתן לבחור ולשנות סקיצות לאחר התשלום בהתאם למדיניות הזמנים שלנו.';
-  }
-
-  const now = Date.now();
-  const workshopStart = new Date(workshopStartTimestamp).getTime();
-  const msUntilWorkshop = workshopStart - now;
-
-  const SIX_DAYS_MS = 6 * 24 * 60 * 60 * 1000;
-  const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
-
-  if (msUntilWorkshop > SIX_DAYS_MS) {
-    return (
-      <>
-        ניתן לבחור ולשנות סקיצות <strong className="text-[#581E83]">עד 6 ימים לפני מועד הסדנה</strong>.
-      </>
-    );
-  }
-
-  if (msUntilWorkshop > FORTY_EIGHT_HOURS_MS) {
-    return (
-      <>
-        ניתן לבחור ולשנות סקיצות <strong className="text-[#581E83]">עד 10 שעות מרגע ביצוע ההזמנה</strong>.
-      </>
-    );
-  }
-
-  return (
-    <>
-      ניתן לבחור ולשנות סקיצות <strong className="text-[#581E83]">עד 6 שעות מרגע ביצוע ההזמנה</strong>.
-    </>
-  );
-}
+import { getPreBookingPolicyHighlight } from '@/lib/sketchEditingPolicy';
 
 export default function SketchInfoSection({ onContinue, selectedSlot }) {
-  const warningText = useMemo(
-    () => getEditingPolicyText(selectedSlot?.start?.timestamp),
+  const policyHighlight = useMemo(
+    () => getPreBookingPolicyHighlight(selectedSlot?.start?.timestamp),
     [selectedSlot?.start?.timestamp]
   );
 
@@ -78,7 +44,14 @@ export default function SketchInfoSection({ onContinue, selectedSlot }) {
           <div className="flex items-start gap-3 bg-[#fff8e1] rounded-xl p-3">
             <Clock className="w-5 h-5 text-[#F59E0B] mt-0.5 shrink-0" />
             <p className="text-sm text-[#464646] leading-relaxed">
-              {warningText}
+              {policyHighlight ? (
+                <>
+                  ניתן לבחור ולשנות סקיצות{' '}
+                  <strong className="text-[#581E83]">{policyHighlight}</strong>.
+                </>
+              ) : (
+                'ניתן לבחור ולשנות סקיצות לאחר התשלום בהתאם למדיניות הזמנים שלנו.'
+              )}
             </p>
           </div>
         </div>

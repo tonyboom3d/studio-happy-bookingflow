@@ -77,8 +77,9 @@ export default function PostPaymentHub({
   useEffect(() => {
     if (participantContext?.participant) setVerifiedParticipant(participantContext.participant);
     if (participantContext?.selections) setLocalSelections(participantContext.selections);
-    // Participant context carries the minimal order fields needed for the selection view.
-    if (participantContext?.order && !localOrder) setLocalOrder(participantContext.order);
+    if (participantContext?.order) {
+      setLocalOrder((prev) => (prev ? { ...prev, ...participantContext.order } : participantContext.order));
+    }
   }, [participantContext]);
 
   useEffect(() => {
