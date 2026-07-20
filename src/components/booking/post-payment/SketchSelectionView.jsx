@@ -183,6 +183,23 @@ export default function SketchSelectionView({
     setEditOnlyMode(null);
   }, [pendingProduct, isExpired, onSelectSketch, pendingUpgrades]);
 
+  const buildUpgradePayload = useCallback(() => {
+    const upgrades = (existingSelections || [])
+      .filter(selectionWants90Upgrade)
+      .map((s) => ({
+        rugIndex: s.rugIndex,
+        productId: s.productId,
+        productSnapshot: s.productSnapshot,
+        canvasSize: '90x90',
+        participantName: s.participantName || participantNames[s.rugIndex] || null,
+      }));
+    Object.values(pendingUpgrades).forEach((pending) => {
+      if (upgrades.some((u) => u.rugIndex === pending.rugIndex)) return;
+      upgrades.push(pending);
+    });
+    return upgrades;
+  }, [existingSelections, pendingUpgrades, participantNames]);
+
   const doPayAndSave = useCallback(() => {
     if (isExpired) { setDeadlineError(true); return; }
     const upgrades = buildUpgradePayload();
@@ -278,22 +295,6 @@ export default function SketchSelectionView({
     return slots.size;
   }, [existingSelections, pendingUpgrades]);
 
-  const buildUpgradePayload = useCallback(() => {
-    const upgrades = (existingSelections || [])
-      .filter(selectionWants90Upgrade)
-      .map((s) => ({
-        rugIndex: s.rugIndex,
-        productId: s.productId,
-        productSnapshot: s.productSnapshot,
-        canvasSize: '90x90',
-        participantName: s.participantName || participantNames[s.rugIndex] || null,
-      }));
-    Object.values(pendingUpgrades).forEach((pending) => {
-      if (upgrades.some((u) => u.rugIndex === pending.rugIndex)) return;
-      upgrades.push(pending);
-    });
-    return upgrades;
-  }, [existingSelections, pendingUpgrades, participantNames]);
   const slotLabel = catalogForSlot != null
     ? (rugSlots.length > 1 ? `בחירת עיצוב לשטיח ${catalogForSlot + 1}` : 'בחירת עיצוב לשטיח')
     : 'בחירת עיצוב';
