@@ -22,6 +22,8 @@ let wixData = {
     ecomSummary: null,
     orderHistory: null,
     orderRole: null,
+    participantContext: null,
+    participantReady: false,
     orderError: false,
     initialized: false,
     orderContextReady: false,
@@ -183,8 +185,17 @@ function handleWixMessage(event) {
             break;
 
         case 'PARTICIPANT_CONTEXT':
+            wixData.participantContext = data.participantContext || null;
+            wixData.participantReady = !!data.participantContext;
+            wixData.orderRole = 'participant';
+            if (data.participantContext?.ecomSummary) {
+                wixData.ecomSummary = data.participantContext.ecomSummary;
+            } else if (data.ecomSummary) {
+                wixData.ecomSummary = data.ecomSummary;
+            }
             notifyListeners({
                 participantContext: data.participantContext,
+                ecomSummary: data.participantContext?.ecomSummary || data.ecomSummary || wixData.ecomSummary || null,
                 role: 'participant',
             });
             break;
@@ -225,10 +236,10 @@ function handleWixMessage(event) {
 export function subscribeToWix(callback) {
     listeners.add(callback);
 
-    if (wixData.initialized || wixData.orderContextReady) {
+    if (wixData.initialized || wixData.orderContextReady || wixData.participantReady) {
         callback({
             ...wixData,
-            role: wixData.orderRole,
+            role: wixData.participantReady ? 'participant' : wixData.orderRole,
         });
     }
 

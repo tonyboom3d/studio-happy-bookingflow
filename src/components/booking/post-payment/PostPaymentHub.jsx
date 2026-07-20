@@ -26,10 +26,14 @@ export default function PostPaymentHub({
   adminOrderId,
   onAdminVerified,
 }) {
-  const [localOrder, setLocalOrder] = useState(orderContext?.order || null);
+  const [localOrder, setLocalOrder] = useState(
+    orderContext?.order || participantContext?.order || null
+  );
   const [localParticipants, setLocalParticipants] = useState(orderContext?.participants || []);
   const [localSelections, setLocalSelections] = useState(orderContext?.selections || []);
-  const [ecomSummary, setEcomSummary] = useState(ecomSummaryProp || null);
+  const [ecomSummary, setEcomSummary] = useState(
+    ecomSummaryProp || participantContext?.ecomSummary || null
+  );
   const [orderHistory, setOrderHistory] = useState(orderHistoryProp || []);
   const [switchingOrder, setSwitchingOrder] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -456,6 +460,23 @@ export default function PostPaymentHub({
     participantChildrenQty,
   ]);
 
+  // Organizer contact — always resolved for participant view (ecomSummary or order fields).
+  const organizerInfo = useMemo(() => ({
+    buyerName: ecomSummary?.buyerName || localOrder?.organizerName || '',
+    buyerEmail: ecomSummary?.buyerEmail || localOrder?.organizerEmail || '',
+    buyerPhone: ecomSummary?.buyerPhone || localOrder?.organizerPhone || '',
+    organizerNotes: ecomSummary?.organizerNotes || localOrder?.organizerNotes || '',
+  }), [
+    ecomSummary?.buyerName,
+    ecomSummary?.buyerEmail,
+    ecomSummary?.buyerPhone,
+    ecomSummary?.organizerNotes,
+    localOrder?.organizerName,
+    localOrder?.organizerEmail,
+    localOrder?.organizerPhone,
+    localOrder?.organizerNotes,
+  ]);
+
   // Switch to viewing a different (past) order of the same buyer, chosen via
   // the "my orders" switcher. Replaces local state in place without a page reload.
   const handleSwitchOrder = useCallback(async (targetOrderId) => {
@@ -742,35 +763,33 @@ export default function PostPaymentHub({
               )}
             </div>
 
-            {ecomSummary && (ecomSummary.buyerName || ecomSummary.buyerEmail || ecomSummary.buyerPhone) && (
-              <div className="sm:border-r sm:border-[#e8e8e8] sm:pr-4 mt-2.5 sm:mt-0 space-y-1.5">
-                <h4 className="text-[15px] font-semibold text-[#581E83] mb-1">פרטי המזמין</h4>
-                {ecomSummary.buyerName && (
-                  <div className="flex items-center gap-2 text-[15px] text-[#464646]">
-                    <User className="w-4 h-4 text-[#5E2F88] shrink-0" />
-                    <span className="font-medium">{ecomSummary.buyerName}</span>
-                  </div>
-                )}
-                {ecomSummary.buyerEmail && (
-                  <div className="flex items-center gap-2 text-[15px] text-[#464646]">
-                    <Mail className="w-4 h-4 text-[#5E2F88] shrink-0" />
-                    <span dir="ltr" className="text-left truncate">{ecomSummary.buyerEmail}</span>
-                  </div>
-                )}
-                {ecomSummary.buyerPhone && (
-                  <div className="flex items-center gap-2 text-[15px] text-[#464646]">
-                    <Phone className="w-4 h-4 text-[#5E2F88] shrink-0" />
-                    <span dir="ltr" className="font-medium">{formatPhone(ecomSummary.buyerPhone)}</span>
-                  </div>
-                )}
-                {ecomSummary.organizerNotes && (
-                  <div className="flex items-start gap-2 text-[15px] text-[#464646]">
-                    <MessageSquare className="w-4 h-4 text-[#5E2F88] shrink-0 mt-0.5" />
-                    <span className="whitespace-pre-wrap">{ecomSummary.organizerNotes}</span>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="sm:border-r sm:border-[#e8e8e8] sm:pr-4 mt-2.5 sm:mt-0 space-y-1.5">
+              <h4 className="text-[15px] font-semibold text-[#581E83] mb-1">פרטי המזמין</h4>
+              {organizerInfo.buyerName && (
+                <div className="flex items-center gap-2 text-[15px] text-[#464646]">
+                  <User className="w-4 h-4 text-[#5E2F88] shrink-0" />
+                  <span className="font-medium">{organizerInfo.buyerName}</span>
+                </div>
+              )}
+              {organizerInfo.buyerEmail && (
+                <div className="flex items-center gap-2 text-[15px] text-[#464646]">
+                  <Mail className="w-4 h-4 text-[#5E2F88] shrink-0" />
+                  <span dir="ltr" className="text-left truncate">{organizerInfo.buyerEmail}</span>
+                </div>
+              )}
+              {organizerInfo.buyerPhone && (
+                <div className="flex items-center gap-2 text-[15px] text-[#464646]">
+                  <Phone className="w-4 h-4 text-[#5E2F88] shrink-0" />
+                  <span dir="ltr" className="font-medium">{formatPhone(organizerInfo.buyerPhone)}</span>
+                </div>
+              )}
+              {organizerInfo.organizerNotes && (
+                <div className="flex items-start gap-2 text-[15px] text-[#464646]">
+                  <MessageSquare className="w-4 h-4 text-[#5E2F88] shrink-0 mt-0.5" />
+                  <span className="whitespace-pre-wrap">{organizerInfo.organizerNotes}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -787,7 +806,7 @@ export default function PostPaymentHub({
           workshopStart={localOrder.workshopStart}
           deadlineAt={localOrder.deadlineAt}
           totalRugCount={localOrder.rugCount}
-          buyerName={ecomSummary?.buyerName}
+          buyerName={organizerInfo.buyerName}
           orderNumber={ecomSummary?.orderNumber}
           onSelectSketch={(sel) => handleSelectSketch({ ...sel, participantId: verifiedParticipant._id })}
           onRequestUpgrade={handleRequestUpgrade}

@@ -39,6 +39,16 @@ export default function OrderPage() {
       if (cached.orderHistory) setOrderHistory(cached.orderHistory);
       setIsLoading(false);
     }
+    if (cached.participantContext) {
+      setParticipantContext(cached.participantContext);
+      setRole('participant');
+      if (cached.participantContext.ecomSummary) {
+        setEcomSummary(cached.participantContext.ecomSummary);
+      } else if (cached.ecomSummary) {
+        setEcomSummary(cached.ecomSummary);
+      }
+      setIsLoading(false);
+    }
 
     const unsubscribe = subscribeToWix((data) => {
       if (data.products?.length) {
@@ -75,6 +85,11 @@ export default function OrderPage() {
         }
         setParticipantContext(data.participantContext);
         setRole('participant');
+        if (data.participantContext.ecomSummary) {
+          setEcomSummary(data.participantContext.ecomSummary);
+        } else if (data.ecomSummary) {
+          setEcomSummary(data.ecomSummary);
+        }
         setIsLoading(false);
       }
 

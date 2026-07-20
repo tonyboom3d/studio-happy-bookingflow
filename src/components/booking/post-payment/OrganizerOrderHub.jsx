@@ -17,6 +17,7 @@ import OrganizerSelfSelectionView from './OrganizerSelfSelectionView';
 import EnlargeableSketchImage from './EnlargeableSketchImage';
 import { getSelectionDisplaySize, selectionWants90Upgrade } from '@/lib/utils';
 import { isEditingWindowClosed } from '@/lib/sketchEditingPolicy';
+import { isLockedStatus, normalizeSketchStatus } from '@/lib/sketchStatus';
 
 function getSelectionStatusBadge(sel, editingWindowClosed) {
   const status = sel.sketchStatus || '';
@@ -91,10 +92,20 @@ export default function OrganizerOrderHub({
   // Mode switch warning
   const [modeSwitchTarget, setModeSwitchTarget] = useState(null);
   const [modeSwitching, setModeSwitching] = useState(false);
+  const [modeSwitchLockedInfo, setModeSwitchLockedInfo] = useState(null);
+
+  const lockedSelection = useMemo(
+    () => (selections || []).find((sel) => isLockedStatus(sel?.sketchStatus)),
+    [selections]
+  );
 
   const handleModeClick = useCallback((mode) => {
     const currentMode = order.selectionMode;
     if (currentMode && currentMode !== mode) {
+      if (lockedSelection) {
+        setModeSwitchLockedInfo({ status: normalizeSketchStatus(lockedSelection.sketchStatus) });
+        return;
+      }
       const hasData = (participants?.length > 0) || (selections?.length > 0);
       if (hasData) {
         setModeSwitchTarget(mode);
@@ -104,7 +115,7 @@ export default function OrganizerOrderHub({
     setModeChosen(true);
     setOrderDetailsCollapsed(true);
     onChooseMode(mode);
-  }, [order.selectionMode, participants, selections, onChooseMode]);
+  }, [order.selectionMode, participants, selections, onChooseMode, lockedSelection]);
 
   const confirmModeSwitch = useCallback(async () => {
     if (!modeSwitchTarget || !onSwitchModeWithClear) return;
@@ -1227,6 +1238,62 @@ export default function OrganizerOrderHub({
                 >
                   {modeSwitching ? 'מחליף...' : 'אישור ומעבר'}
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mode switch blocked — sketch already in preparation/ready */}
+      <AnimatePresence>
+        {modeSwitchLockedInfo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setModeSwitchLockedInfo(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 relative"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="w-11 h-11 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-2">
+                  <Lock className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-[19px] font-bold text-[#581E83]">לא ניתן לשנות את אופן הבחירה</h3>
+                <div className="text-[14px] text-[#464646]/80 mt-2 space-y-2 text-right">
+                  <p>
+                    אחת הסקיצות נמצאת כבר בסטטוס <span className="font-semibold text-[#581E83]">״{modeSwitchLockedInfo.status}״</span>,
+                    ולכן לא ניתן לשנות את שיטת הבחירה.
+                  </p>
+                  <p>אם בכל זאת תרצו לשנות את אופן הבחירה, יש לפנות לשירות עם פרטי ההזמנה שלכם.</p>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setModeSwitchLockedInfo(null)}
+                  className="flex-1 border-2 border-[#e8e8e8] text-[#464646] font-medium py-2.5 rounded-xl text-[14px] hover:bg-[#fafafa] transition-colors"
+                >
+                  סגירה
+                </button>
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-[#25D366] hover:bg-[#1ebe5a] text-white font-semibold py-2.5 rounded-xl text-[14px] transition-colors"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  פנייה בוואטסאפ
+                </a>
               </div>
             </motion.div>
           </motion.div>
