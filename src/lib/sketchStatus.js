@@ -55,6 +55,61 @@ export function groupDeletableCacheKey(opts = {}) {
   return `o:${orderId || ''}:${(participantName || '').trim()}:${rugs}`;
 }
 
+/** Stable identity for catalog / AI sketches when enforcing locked minimum counts. */
+export function getSelectionDesignKey(sel) {
+  if (!sel) return null;
+  if (sel.source === 'ai' || sel.aiTaskId) {
+    return `ai:${sel.aiTaskId || `rug-${sel.rugIndex}`}`;
+  }
+  if (sel.productId) return `catalog:${sel.productId}`;
+  return `rug-${sel.rugIndex}`;
+}
+
+export function computeLockedDesignCounts(selections) {
+  const counts = {};
+  (selections || []).forEach((sel) => {
+    if (!isLockedStatus(sel?.sketchStatus)) return;
+    const key = getSelectionDesignKey(sel);
+    if (!key) return;
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  return counts;
+}
+
+export function computeDesignCounts(selections) {
+  const counts = {};
+  (selections || []).forEach((sel) => {
+    const key = getSelectionDesignKey(sel);
+    if (!key) return;
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  return counts;
+}
+
+/** Returns locked minimum violation after hypothetically replacing one rug slot. */
+export function wouldViolateLockedMinimum(selections, { rugIndex, replacement } = {}) {
+  const lockedMins = computeLockedDesignCounts(selections);
+  const after = (selections || []).filter((s) => s.rugIndex !== rugIndex);
+  if (replacement) after.push(replacement);
+  const afterCounts = computeDesignCounts(after);
+  for (const [key, min] of Object.entries(lockedMins)) {
+    if ((afterCounts[key] || 0) < min) {
+      return { violated: true, designKey: key, minimum: min, actual: afterCounts[key] || 0 };
+    }
+  }
+  return { violated: false };
+}
+
+/** Locked catalog counts keyed by productId (for SketchCatalogSheet). */
+export function computeLockedCatalogCounts(sketches) {
+  const counts = {};
+  (sketches || []).forEach((s) => {
+    if (!s?.productId || !isLockedStatus(s.sketchStatus)) return;
+    counts[s.productId] = (counts[s.productId] || 0) + 1;
+  });
+  return counts;
+}
+
 export function getSketchStatusLabel(status) {
   const normalized = normalizeSketchStatus(status);
   if (normalized === SKETCH_STATUS.READY) return 'מוכנה';

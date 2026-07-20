@@ -16,10 +16,30 @@ import {
   isLockedStatus,
   normalizeSketchStatus,
   findLockedInGroup,
+  computeLockedCatalogCounts,
+  wouldViolateLockedMinimum,
 } from '@/lib/sketchStatus';
 
 function isSketchStaffLocked(sketch) {
   return sketch && isLockedStatus(sketch.sketchStatus);
+}
+
+function buildGroupMergedSelections(serverSelections, card) {
+  const serverForGroup = (serverSelections || []).filter((s) => (
+    (card.participantId && s.participantId === card.participantId)
+    || (!card.participantId && s.participantName === card.name)
+  ));
+  const byRug = new Map(serverForGroup.map((s) => [s.rugIndex, s]));
+  card.sketches.forEach((sk) => {
+    byRug.set(sk.rugIndex, {
+      rugIndex: sk.rugIndex,
+      productId: sk.productId,
+      source: sk.source,
+      aiTaskId: sk.aiTaskId,
+      sketchStatus: sk.sketchStatus,
+    });
+  });
+  return [...byRug.values()];
 }
 
 function mapSelectionToSketch(s) {
@@ -39,6 +59,7 @@ function mapSelectionToSketch(s) {
     } : {}),
   };
 }
+
 function getSketchStatusBadge(sketch, editingWindowClosed) {
   const status = normalizeSketchStatus(sketch.sketchStatus);
   const upgrade = sketch.upgradePaymentStatus || null;
@@ -91,6 +112,7 @@ export default function OrganizerSelfSelectionView({
 
   // Catalog multi-select
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalogError, setCatalogError] = useState('');
   const [catalogCardIdx, setCatalogCardIdx] = useState(null);
   const [catalogLoading, setCatalogLoading] = useState(false);
 
@@ -310,6 +332,7 @@ export default function OrganizerSelfSelectionView({
         setCatalogLoading(true);
         try { await onFetchCatalog(); } finally { setCatalogLoading(false); }
       }
+      setCatalogError('');
       setCatalogOpen(true);
     } else {
       setAiModalCardIdx(sourceCardIdx);
@@ -400,31 +423,36 @@ export default function OrganizerSelfSelectionView({
     if (catalogCardIdx == null) return {};
     const card = cards[catalogCardIdx];
     if (!card) return {};
-    const counts = {};
-    card.sketches.forEach((s) => {
-      if (s.productId && isSketchStaffLocked(s)) {
-        counts[s.productId] = (counts[s.productId] || 0) + 1;
-      }
-    });
-    return counts;
+    return computeLockedCatalogCounts(card.sketches);
   }, [catalogCardIdx, cards]);
 
   const handleCatalogRemovePick = useCallback((product) => {
     if (catalogCardIdx == null) return;
+    const card = cards[catalogCardIdx];
+    if (!card) return;
+    const pid = product._id || product.id;
+    const lastIdx = [...card.sketches].reverse().findIndex(
+      (s) => s.productId === pid && !isSketchStaffLocked(s)
+    );
+    if (lastIdx < 0) return;
+    const realIdx = card.sketches.length - 1 - lastIdx;
+    const sketch = card.sketches[realIdx];
+    const merged = buildGroupMergedSelections(selections, card);
+    const check = wouldViolateLockedMinimum(merged, { rugIndex: sketch.rugIndex });
+    if (check.violated) {
+      setCatalogError(`לא ניתן להוריד מתחת ל-${check.minimum} עותקים מאושרים של עיצוב זה`);
+      return;
+    }
+    setCatalogError('');
     setCards(prev => prev.map((c, i) => {
       if (i !== catalogCardIdx) return c;
-      const pid = product._id || product.id;
-      const lastIdx = [...c.sketches].reverse().findIndex(
-        (s) => s.productId === pid && !isSketchStaffLocked(s)
-      );
-      if (lastIdx < 0) return c;
-      const realIdx = c.sketches.length - 1 - lastIdx;
       return { ...c, sketches: c.sketches.filter((_, si) => si !== realIdx) };
     }));
-  }, [catalogCardIdx]);
+  }, [catalogCardIdx, cards, selections]);
 
   const handleCatalogDone = () => {
     setCatalogOpen(false);
+    setCatalogError('');
     setReviewCardIdx(catalogCardIdx);
     setReviewError('');
     setReviewOpen(true);
@@ -437,19 +465,27 @@ export default function OrganizerSelfSelectionView({
     if (onVerifySketchForEdit && card?.sketches?.length) {
       setReviewVerifying(true);
       try {
+        const statusUpdates = {};
         for (const sketch of card.sketches) {
           const localStatus = normalizeSketchStatus(sketch.sketchStatus);
           const result = await onVerifySketchForEdit(sketch.rugIndex, card.participantId || null);
           const freshStatus = normalizeSketchStatus(
             result?.sketchStatus ?? result?.selection?.sketchStatus ?? localStatus
           );
-          if (result?.found && (result?.isStatusLocked || isLockedStatus(freshStatus))) {
-            setReviewError(
-              localStatus !== freshStatus
-                ? `סקיצה "${sketch.title}" עודכנה לסטטוס "${getSketchStatusLabel(freshStatus)}" ולא ניתנת לעריכה.`
-                : `סקיצה "${sketch.title}" בסטטוס "${getSketchStatusLabel(freshStatus)}" ולא ניתנת לעריכה.`
-            );
+          if (result?.found && freshStatus !== localStatus) {
+            statusUpdates[sketch.rugIndex] = freshStatus;
           }
+        }
+        if (Object.keys(statusUpdates).length) {
+          setCards((prev) => prev.map((c, i) => {
+            if (i !== cardIdx) return c;
+            return {
+              ...c,
+              sketches: c.sketches.map((s) => (
+                statusUpdates[s.rugIndex] ? { ...s, sketchStatus: statusUpdates[s.rugIndex] } : s
+              )),
+            };
+          }));
         }
       } catch {
         setReviewError('לא הצלחנו לאמת את סטטוס הסקיצות. נסו שוב.');
@@ -483,9 +519,17 @@ export default function OrganizerSelfSelectionView({
   };
 
   const removeSketch = (cardIdx, sketchIdx) => {
-    const sketch = cards[cardIdx]?.sketches[sketchIdx];
+    const card = cards[cardIdx];
+    const sketch = card?.sketches[sketchIdx];
+    if (!sketch) return;
     if (isSketchStaffLocked(sketch)) {
       setReviewError(`הסקיצה בסטטוס "${getSketchStatusLabel(sketch.sketchStatus)}" ולא ניתנת לשינוי`);
+      return;
+    }
+    const merged = buildGroupMergedSelections(selections, card);
+    const check = wouldViolateLockedMinimum(merged, { rugIndex: sketch.rugIndex });
+    if (check.violated) {
+      setReviewError(`לא ניתן להוריד מתחת ל-${check.minimum} עותקים מאושרים של עיצוב זה`);
       return;
     }
     setCards(prev => prev.map((c, i) => {
@@ -528,8 +572,14 @@ export default function OrganizerSelfSelectionView({
       setReviewOpen(false);
       setEditingNameIdx(null);
       setExpandedCards(prev => ({ ...prev, [reviewCardIdx]: true }));
-    } catch (_) {
-      setReviewError('שמירת הבחירות נכשלה, נסו שוב');
+    } catch (e) {
+      const msg = String(e?.message || '');
+      if (msg.includes('LOCKED_DESIGN_MINIMUM')) {
+        const min = msg.split(':').pop();
+        setReviewError(`לא ניתן להוריד מתחת ל-${min} עותקים מאושרים של עיצוב זה`);
+      } else {
+        setReviewError('שמירת הבחירות נכשלה, נסו שוב');
+      }
     } finally {
       setReviewSaving(false);
     }
@@ -1048,6 +1098,11 @@ export default function OrganizerSelfSelectionView({
       </AnimatePresence>
 
       {/* Catalog Sheet — stays open until "done" */}
+      {catalogError && catalogOpen && (
+        <div className="fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 max-w-sm w-[calc(100%-2rem)] bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-[13px] text-red-700 shadow-lg">
+          {catalogError}
+        </div>
+      )}
       <SketchCatalogSheet
         isOpen={catalogOpen}
         onClose={handleCatalogDone}
@@ -1143,6 +1198,11 @@ export default function OrganizerSelfSelectionView({
                       <span className="text-orange-600 font-medium"> · חסרות {card.adults - card.sketches.length}</span>
                     )}
                   </p>
+                  {card.sketches.some(isSketchStaffLocked) && (
+                    <p className="text-[12px] text-[#464646]/60 mt-1">
+                      סקיצות מאושרות נשארות ללא שינוי — ניתן להוסיף או לשנות עותקים פתוחים בלבד
+                    </p>
+                  )}
                 </div>
 
                 {card.sketches.length === 0 && (

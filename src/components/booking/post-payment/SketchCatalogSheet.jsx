@@ -251,7 +251,6 @@ export default function SketchCatalogSheet({
                 const lockedCount = lockedSelectedCounts[productId] || 0;
                 const isSelected = keepOpenOnPick ? count > 0 : selectedProductId === productId;
                 const quotaReached = totalSelected >= maxSelections;
-                const fullyLocked = count > 0 && lockedCount >= count;
                 return (
                   <ProductCard
                     key={productId}
@@ -261,15 +260,15 @@ export default function SketchCatalogSheet({
                     lockedCount={lockedCount}
                     showQuantity={keepOpenOnPick}
                     onPick={(p) => {
-                      if (!readOnly && !quotaReached && !fullyLocked) {
+                      if (!readOnly && !quotaReached) {
                         onPick(p);
                         if (!keepOpenOnPick) onClose();
                       }
                     }}
                     onRemove={onRemovePick}
                     onZoom={setEnlargedImage}
-                    disabled={readOnly || fullyLocked || (quotaReached && count === 0)}
-                    plusDisabled={quotaReached || fullyLocked}
+                    disabled={readOnly || (quotaReached && count === 0)}
+                    plusDisabled={quotaReached}
                   />
                 );
               })}

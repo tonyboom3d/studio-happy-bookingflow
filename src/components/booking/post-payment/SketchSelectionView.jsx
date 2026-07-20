@@ -14,6 +14,7 @@ import {
   isEditableSketchStatus,
   isLockedStatus,
   normalizeSketchStatus,
+  wouldViolateLockedMinimum,
 } from '@/lib/sketchStatus';
 
 export default function SketchSelectionView({
@@ -157,11 +158,22 @@ export default function SketchSelectionView({
       aiOriginalImage: sketch.aiOriginalImage,
       aiColors: sketch.aiColors,
       aiTaskId: sketch.aiTaskId,
+      sketchStatus: selectionsMap[aiModalSlot]?.sketchStatus || SKETCH_STATUS.OPEN,
     };
+
+    const minimumCheck = wouldViolateLockedMinimum(existingSelections, {
+      rugIndex: aiModalSlot,
+      replacement: selection,
+    });
+    if (minimumCheck.violated) {
+      setStatusError({ slot: aiModalSlot, minimumViolation: true, minimum: minimumCheck.minimum });
+      setAiModalOpen(false);
+      return;
+    }
 
     onSelectSketch(selection);
     setAiModalOpen(false);
-  }, [aiModalSlot, isExpired, onSelectSketch, selectionsMap]);
+  }, [aiModalSlot, isExpired, onSelectSketch, selectionsMap, existingSelections]);
 
   const handleSketchPick = useCallback((product) => {
     if (catalogForSlot != null) {
@@ -196,7 +208,23 @@ export default function SketchSelectionView({
       canvasSize: size,
       title: pendingProduct.title,
       participantName: participantName || null,
+      source: 'catalog',
+      sketchStatus: selectionsMap[pendingProduct.rugIndex]?.sketchStatus || SKETCH_STATUS.OPEN,
     };
+
+    const minimumCheck = wouldViolateLockedMinimum(existingSelections, {
+      rugIndex: pendingProduct.rugIndex,
+      replacement: selection,
+    });
+    if (minimumCheck.violated) {
+      setStatusError({
+        slot: pendingProduct.rugIndex,
+        minimumViolation: true,
+        minimum: minimumCheck.minimum,
+      });
+      setShowModal(false);
+      return;
+    }
 
     if (participantName) {
       setParticipantNames(prev => ({ ...prev, [pendingProduct.rugIndex]: participantName }));
@@ -219,7 +247,7 @@ export default function SketchSelectionView({
     setShowModal(false);
     setPendingProduct(null);
     setEditOnlyMode(null);
-  }, [pendingProduct, isExpired, onSelectSketch, pendingUpgrades, selectionsMap]);
+  }, [pendingProduct, isExpired, onSelectSketch, pendingUpgrades, selectionsMap, existingSelections]);
 
   const buildUpgradePayload = useCallback(() => {
     const upgrades = (existingSelections || [])
@@ -786,12 +814,16 @@ export default function SketchSelectionView({
               </button>
               <div className="text-center">
                 <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-2" />
-                <h3 className="text-[17px] font-bold text-[#581E83]">לא ניתן לערוך</h3>
+                <h3 className="text-[17px] font-bold text-[#581E83]">
+                  {statusError.minimumViolation ? 'לא ניתן להוריד כמות' : 'לא ניתן לערוך'}
+                </h3>
                 {statusError.stale && (
                   <p className="text-xs text-orange-600 font-medium mt-2">הסטטוס עודכן מהשרת.</p>
                 )}
                 <p className="text-sm text-[#464646]/70 mt-2">
-                  הסקיצה בסטטוס "{getSketchStatusLabel(statusError.status)}" ולא ניתנת לשינוי.
+                  {statusError.minimumViolation
+                    ? `יש לשמור לפחות ${statusError.minimum} עותקים מאושרים של עיצוב זה.`
+                    : `הסקיצה בסטטוס "${getSketchStatusLabel(statusError.status)}" ולא ניתנת לשינוי.`}
                 </p>
                 <p className="text-xs text-[#464646]/50 mt-1">לעזרה נוספת ניתן לפנות לשירות הלקוחות שלנו</p>
               </div>
