@@ -23,6 +23,7 @@ import {
   SKETCH_STATUS,
   getSketchStatusShortLabel,
   getSketchStatusBadgeStyle,
+  getSketchStatusLabel,
 } from '@/lib/sketchStatus';
 
 function getSelectionStatusBadge(sel, editingWindowClosed) {
@@ -78,6 +79,7 @@ export default function OrganizerOrderHub({
   onSubmitFeedback,
   onCheckRateLimit,
   onVerifySketchForEdit,
+  onCheckGroupDeletable,
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [orderSwitcherOpen, setOrderSwitcherOpen] = useState(false);
@@ -100,6 +102,8 @@ export default function OrganizerOrderHub({
   // Group deletion (single confirmation)
   const [deleteFor, setDeleteFor] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteBlockedInfo, setDeleteBlockedInfo] = useState(null);
+  const [deleteChecking, setDeleteChecking] = useState(null);
   const [deleteError, setDeleteError] = useState('');
 
   // Mode switch warning
@@ -379,10 +383,51 @@ export default function OrganizerOrderHub({
     }
   };
 
-  const askDelete = (p) => {
+  const askDelete = async (p) => {
     if (within48h) return;
     setDeleteError('');
+
+    if (onCheckGroupDeletable) {
+      setDeleteChecking(p._id);
+      try {
+        const check = await onCheckGroupDeletable({ participantId: p._id });
+        if (!check?.canDelete) {
+          const status = check?.lockedSketchStatus;
+          setDeleteBlockedInfo({
+            groupName: p.name,
+            status: status || 'בהכנה',
+          });
+          return;
+        }
+      } catch {
+        setDeleteBlockedInfo({ groupName: p.name, status: null, generic: true });
+        return;
+      } finally {
+        setDeleteChecking(null);
+      }
+    } else {
+      const locked = (selections || [])
+        .filter((s) => s.participantId === p._id)
+        .find((s) => isLockedStatus(s.sketchStatus));
+      if (locked) {
+        setDeleteBlockedInfo({
+          groupName: p.name,
+          status: locked.sketchStatus,
+        });
+        return;
+      }
+    }
+
     setDeleteFor(p);
+  };
+
+  const formatDeleteError = (msg) => {
+    if (msg.includes('DELETE_LOCKED_SKETCH_STATUS:')) {
+      const status = msg.split('DELETE_LOCKED_SKETCH_STATUS:')[1];
+      return `לא ניתן למחוק את הקבוצה — יש סקיצה בסטטוס "${getSketchStatusLabel(status)}"`;
+    }
+    if (msg.includes('DELETE_LOCKED_48H')) return 'לא ניתן למחוק קבוצה בתוך 48 שעות מהסדנה';
+    return 'מחיקת הקבוצה נכשלה, נסו שוב';
   };
 
   const confirmDelete = async () => {
@@ -392,9 +437,7 @@ export default function OrganizerOrderHub({
       await onDeleteGroup(deleteFor._id);
       setDeleteFor(null);
     } catch (e) {
-      const msg = String(e?.message || '');
-      if (msg.includes('DELETE_LOCKED_48H')) setDeleteError('לא ניתן למחוק קבוצה בתוך 48 שעות מהסדנה');
-      else setDeleteError('מחיקת הקבוצה נכשלה, נסו שוב');
+      setDeleteError(formatDeleteError(String(e?.message || '')));
     } finally {
       setDeleting(false);
     }
@@ -725,6 +768,7 @@ export default function OrganizerOrderHub({
           onUpdateParticipant={onUpdateParticipant}
           onDeleteOrganizerGroup={onDeleteOrganizerGroup}
           onVerifySketchForEdit={onVerifySketchForEdit}
+          onCheckGroupDeletable={onCheckGroupDeletable}
         />
       )}
 
@@ -889,7 +933,7 @@ export default function OrganizerOrderHub({
                           <button
                             type="button"
                             onClick={() => askDelete(p)}
-                            disabled={within48h}
+                            disabled={within48h || deleteChecking === p._id}
                             title={within48h ? 'לא ניתן למחוק בתוך 48 שעות מהסדנה' : 'מחיקת קבוצה'}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
                               within48h
@@ -1138,6 +1182,54 @@ export default function OrganizerOrderHub({
                 className="w-full flex items-center justify-center gap-2 bg-[#5E2F88] hover:bg-[#7B3DB0] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-[15px] transition-colors"
               >
                 {creating ? 'שומר...' : (<><Send className="w-4 h-4" /> שמירה ושליחה</>)}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete blocked — sketch in preparation/ready */}
+      <AnimatePresence>
+        {deleteBlockedInfo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setDeleteBlockedInfo(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 relative"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="w-11 h-11 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-2">
+                  <Lock className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-[19px] font-bold text-[#581E83]">לא ניתן למחוק את הקבוצה</h3>
+                <p className="text-[14px] text-[#464646]/80 mt-2">
+                  {deleteBlockedInfo.generic ? (
+                    'לא הצלחנו לאמת את סטטוס הסקיצות. נסו שוב.'
+                  ) : (
+                    <>
+                      בקבוצה <strong>"{deleteBlockedInfo.groupName}"</strong> יש סקיצה בסטטוס{' '}
+                      <span className="font-semibold text-[#581E83]">"{getSketchStatusLabel(deleteBlockedInfo.status)}"</span>.
+                      לא ניתן למחוק את הקבוצה כל עוד סקיצה בסטטוס זה.
+                    </>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteBlockedInfo(null)}
+                className="w-full border-2 border-[#e8e8e8] text-[#464646] font-medium py-2.5 rounded-xl text-[14px] hover:bg-[#fafafa] transition-colors"
+              >
+                סגירה
               </button>
             </motion.div>
           </motion.div>

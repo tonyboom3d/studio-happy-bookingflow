@@ -285,6 +285,14 @@ export default function PostPaymentHub({
     return result;
   }, [localOrder?._id, sendAndWait]);
 
+  const handleCheckGroupDeletable = useCallback(async (opts) => {
+    try {
+      return await sendAndWait('CHECK_GROUP_DELETABLE', opts || {});
+    } catch (e) {
+      return { canDelete: false, error: e?.message || 'CHECK_FAILED' };
+    }
+  }, [sendAndWait]);
+
   // Legacy fallback: backfill share tokens for any groups created before tokens
   // were stored on the record (so their links can be rebuilt).
   useEffect(() => {
@@ -674,6 +682,7 @@ export default function PostPaymentHub({
           onSubmitFeedback={handleSubmitFeedback}
           onCheckRateLimit={handleCheckRateLimit}
           onVerifySketchForEdit={handleVerifySketchForEdit}
+          onCheckGroupDeletable={handleCheckGroupDeletable}
         />
       </div>
     );

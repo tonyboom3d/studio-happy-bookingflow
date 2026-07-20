@@ -75,6 +75,7 @@ export default function OrganizerSelfSelectionView({
   onUpdateParticipant,
   onDeleteOrganizerGroup,
   onVerifySketchForEdit,
+  onCheckGroupDeletable,
 }) {
   const [cards, setCards] = useState(() => buildInitialCards(participants, selections));
   const [setupOpen, setSetupOpen] = useState(false);
@@ -109,6 +110,8 @@ export default function OrganizerSelfSelectionView({
   const [deleteConfirmIdx, setDeleteConfirmIdx] = useState(null);
   const [deletingCard, setDeletingCard] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [deleteBlockedInfo, setDeleteBlockedInfo] = useState(null);
+  const [deleteCheckingIdx, setDeleteCheckingIdx] = useState(null);
 
   // Group name editing
   const [editingNameIdx, setEditingNameIdx] = useState(null);
@@ -518,6 +521,50 @@ export default function OrganizerSelfSelectionView({
     setExpandedCards(prev => ({ ...prev, [idx]: !prev[idx] }));
   };
 
+  const askDeleteCard = async (idx) => {
+    const card = cards[idx];
+    if (!card) return;
+    setDeleteError('');
+
+    const localLocked = card.sketches.find((s) => isLockedStatus(s.sketchStatus));
+    if (onCheckGroupDeletable) {
+      setDeleteCheckingIdx(idx);
+      try {
+        const check = await onCheckGroupDeletable({
+          participantId: card.participantId || null,
+          orderId: order._id,
+          participantName: card.name,
+          rugIndexes: card.sketches.map((s) => s.rugIndex).filter((i) => i != null),
+        });
+        if (!check?.canDelete) {
+          setDeleteBlockedInfo({
+            groupName: card.name,
+            status: check?.lockedSketchStatus || localLocked?.sketchStatus || 'בהכנה',
+          });
+          return;
+        }
+      } catch {
+        setDeleteBlockedInfo({ groupName: card.name, generic: true });
+        return;
+      } finally {
+        setDeleteCheckingIdx(null);
+      }
+    } else if (localLocked) {
+      setDeleteBlockedInfo({ groupName: card.name, status: localLocked.sketchStatus });
+      return;
+    }
+
+    setDeleteConfirmIdx(idx);
+  };
+
+  const formatDeleteError = (msg) => {
+    if (String(msg).includes('DELETE_LOCKED_SKETCH_STATUS:')) {
+      const status = String(msg).split('DELETE_LOCKED_SKETCH_STATUS:')[1];
+      return `לא ניתן למחוק — יש סקיצה בסטטוס "${getSketchStatusLabel(status)}"`;
+    }
+    return 'מחיקת הקבוצה נכשלה, נסו שוב';
+  };
+
   const deleteCard = async (idx) => {
     const card = cards[idx];
     if (!card) return;
@@ -536,7 +583,7 @@ export default function OrganizerSelfSelectionView({
       setCards(prev => prev.filter((_, i) => i !== idx));
       setDeleteConfirmIdx(null);
     } catch (e) {
-      setDeleteError('מחיקת הקבוצה נכשלה, נסו שוב');
+      setDeleteError(formatDeleteError(e?.message || ''));
     } finally {
       setDeletingCard(false);
     }
@@ -679,11 +726,14 @@ export default function OrganizerSelfSelectionView({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDeleteConfirmIdx(idx)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  onClick={() => askDeleteCard(idx)}
+                  disabled={deleteCheckingIdx === idx}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
                   title="מחיקת קבוצה"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  {deleteCheckingIdx === idx
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Trash2 className="w-3.5 h-3.5" />}
                 </button>
                 <button
                   type="button"
@@ -1197,6 +1247,54 @@ export default function OrganizerSelfSelectionView({
             </motion.div>
           );
         })()}
+      </AnimatePresence>
+
+      {/* Delete blocked — sketch in preparation/ready */}
+      <AnimatePresence>
+        {deleteBlockedInfo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setDeleteBlockedInfo(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 relative"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="w-11 h-11 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-2">
+                  <Lock className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-[19px] font-bold text-[#581E83]">לא ניתן למחוק את הקבוצה</h3>
+                <p className="text-[14px] text-[#464646]/80 mt-2">
+                  {deleteBlockedInfo.generic ? (
+                    'לא הצלחנו לאמת את סטטוס הסקיצות. נסו שוב.'
+                  ) : (
+                    <>
+                      בקבוצה <strong>"{deleteBlockedInfo.groupName}"</strong> יש סקיצה בסטטוס{' '}
+                      <span className="font-semibold text-[#581E83]">"{getSketchStatusLabel(deleteBlockedInfo.status)}"</span>.
+                      לא ניתן למחוק את הקבוצה כל עוד סקיצה בסטטוס זה.
+                    </>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteBlockedInfo(null)}
+                className="w-full border-2 border-[#e8e8e8] text-[#464646] font-medium py-2.5 rounded-xl text-[14px] hover:bg-[#fafafa] transition-colors"
+              >
+                סגירה
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Delete Confirmation Modal */}
