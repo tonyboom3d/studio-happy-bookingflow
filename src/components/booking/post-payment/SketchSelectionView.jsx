@@ -89,14 +89,15 @@ export default function SketchSelectionView({
     }
   }, [existingSelections]);
 
-  const daysUntilWorkshop = useMemo(() => {
-    if (!workshopStart) return 999;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const ws = new Date(workshopStart);
-    ws.setHours(0, 0, 0, 0);
-    return Math.floor((ws - today) / (1000 * 60 * 60 * 24));
-  }, [workshopStart]);
+  // A selection is treated as "final" once we're close to the real editing
+  // deadline (per the 3-policy sketch editing window), rather than a fixed
+  // calendar-day count before the workshop — this stays accurate regardless
+  // of which policy tier the order falls under.
+  const NEAR_DEADLINE_THRESHOLD_MS = 6 * 60 * 60 * 1000;
+  const isNearDeadline = useMemo(() => {
+    if (!deadlineAt) return false;
+    return new Date(deadlineAt).getTime() - Date.now() <= NEAR_DEADLINE_THRESHOLD_MS;
+  }, [deadlineAt]);
 
   const openCatalogForSlot = useCallback(async (slotIndex) => {
     if (isReadOnly) return;
@@ -336,7 +337,7 @@ export default function SketchSelectionView({
           const displaySize = sel ? getSelectionDisplaySize(sel) : (pending?.canvasSize || '60x60');
           const isLocked = sel && (
             sketchStatus !== 'Changeable' ||
-            (daysUntilWorkshop <= 6 && sel.confirmedAt)
+            (isNearDeadline && sel.confirmedAt)
           );
 
           return (
@@ -493,7 +494,7 @@ export default function SketchSelectionView({
         deadlineAt={deadlineAt}
         requireName={requireName}
         existingName={participantNames[pendingProduct?.rugIndex] || ''}
-        daysUntilWorkshop={daysUntilWorkshop}
+        isFinal={isNearDeadline}
         skipNameStep={!!editOnlyMode}
       />
 

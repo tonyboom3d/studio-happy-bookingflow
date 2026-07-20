@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Baby, CreditCard } from 'lucide-react';
+import { Loader2, Baby, CreditCard, Calendar, MapPin, UserCheck, User, Mail, Phone, MessageSquare } from 'lucide-react';
+import { format } from 'date-fns';
+import { he } from 'date-fns/locale';
 import { readCatalogCache, writeCatalogCache } from '@/lib/utils';
 import OrganizerOrderHub from './OrganizerOrderHub';
 import SketchSelectionView from './SketchSelectionView';
@@ -80,6 +82,7 @@ export default function PostPaymentHub({
     if (participantContext?.order) {
       setLocalOrder((prev) => (prev ? { ...prev, ...participantContext.order } : participantContext.order));
     }
+    if (participantContext?.ecomSummary) setEcomSummary(participantContext.ecomSummary);
   }, [participantContext]);
 
   useEffect(() => {
@@ -655,6 +658,24 @@ export default function PostPaymentHub({
       s => !s.participantId || s.participantId === verifiedParticipant._id
     );
 
+    // Workshop schedule, address, and organizer contact info must always be
+    // visible to any participant with a valid link — independent of any
+    // organizer-controlled share/price setting.
+    const displayAddress = 'הדובדבן 7, קריית אונו - קומה 3';
+    const workshopDate = localOrder?.workshopStart
+      ? format(new Date(localOrder.workshopStart), 'EEEE, d בMMMM yyyy', { locale: he })
+      : null;
+    const workshopStartTime = localOrder?.workshopStart
+      ? format(new Date(localOrder.workshopStart), 'HH:mm')
+      : null;
+    const workshopEndTime = localOrder?.workshopStart
+      ? format(new Date(new Date(localOrder.workshopStart).getTime() + 4 * 60 * 60 * 1000), 'HH:mm')
+      : null;
+    const formatPhone = (phone) => {
+      const digits = String(phone).replace(/\D/g, '');
+      return digits.length === 10 ? `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}` : phone;
+    };
+
     return (
       <div className="max-w-2xl mx-auto p-4 md:p-6" dir="rtl">
         {paymentOverlay}
@@ -687,6 +708,71 @@ export default function PostPaymentHub({
             </div>
           )}
         </motion.div>
+
+        {/* Workshop schedule + organizer details — always shown to participants */}
+        <div className="bg-white rounded-2xl border border-[#e8e8e8] p-3.5 shadow-sm space-y-2.5 mb-4">
+          <div className="sm:grid sm:grid-cols-2 sm:gap-4">
+            <div className="space-y-2">
+              {workshopDate && (
+                <div className="flex items-start gap-1.5 text-[15px] text-[#464646]">
+                  <Calendar className="w-4 h-4 text-[#5E2F88] shrink-0 mt-0.5" />
+                  <span>
+                    {workshopDate}
+                    {workshopStartTime && (
+                      <span className="text-[#5E2F88] font-medium mr-1.5">
+                        בשעה {workshopStartTime}{workshopEndTime && ` - ${workshopEndTime}`}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-start gap-1.5 text-[15px] text-[#464646]">
+                <MapPin className="w-4 h-4 text-[#5E2F88] shrink-0 mt-0.5" />
+                <span>{displayAddress}</span>
+              </div>
+              {(localOrder?.adults != null || localOrder?.rugCount != null) && (
+                <div className="flex items-center gap-1.5 text-[15px] text-[#464646]">
+                  <UserCheck className="w-4 h-4 text-[#5E2F88] shrink-0" />
+                  <span className="truncate">
+                    {localOrder.adults} {localOrder.adults === 1 ? 'מבוגר' : 'מבוגרים'}
+                    {localOrder.children > 0 && ` + ${localOrder.children} ${localOrder.children === 1 ? 'ילד' : 'ילדים'}`}
+                    {' · '}{localOrder.rugCount} {localOrder.rugCount === 1 ? 'שטיח' : 'שטיחים'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {ecomSummary && (ecomSummary.buyerName || ecomSummary.buyerEmail || ecomSummary.buyerPhone) && (
+              <div className="sm:border-r sm:border-[#e8e8e8] sm:pr-4 mt-2.5 sm:mt-0 space-y-1.5">
+                <h4 className="text-[15px] font-semibold text-[#581E83] mb-1">פרטי המזמין</h4>
+                {ecomSummary.buyerName && (
+                  <div className="flex items-center gap-2 text-[15px] text-[#464646]">
+                    <User className="w-4 h-4 text-[#5E2F88] shrink-0" />
+                    <span className="font-medium">{ecomSummary.buyerName}</span>
+                  </div>
+                )}
+                {ecomSummary.buyerEmail && (
+                  <div className="flex items-center gap-2 text-[15px] text-[#464646]">
+                    <Mail className="w-4 h-4 text-[#5E2F88] shrink-0" />
+                    <span dir="ltr" className="text-left truncate">{ecomSummary.buyerEmail}</span>
+                  </div>
+                )}
+                {ecomSummary.buyerPhone && (
+                  <div className="flex items-center gap-2 text-[15px] text-[#464646]">
+                    <Phone className="w-4 h-4 text-[#5E2F88] shrink-0" />
+                    <span dir="ltr" className="font-medium">{formatPhone(ecomSummary.buyerPhone)}</span>
+                  </div>
+                )}
+                {ecomSummary.organizerNotes && (
+                  <div className="flex items-start gap-2 text-[15px] text-[#464646]">
+                    <MessageSquare className="w-4 h-4 text-[#5E2F88] shrink-0 mt-0.5" />
+                    <span className="whitespace-pre-wrap">{ecomSummary.organizerNotes}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
 
         <DeadlineCountdown
           deadlineAt={localOrder.deadlineAt}

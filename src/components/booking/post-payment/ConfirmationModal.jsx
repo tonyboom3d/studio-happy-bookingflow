@@ -13,7 +13,7 @@ export default function ConfirmationModal({
   deadlineAt,
   requireName,
   existingName,
-  daysUntilWorkshop,
+  isFinal = false,
   skipNameStep = false,
   initialStep = 'size',
 }) {
@@ -56,7 +56,6 @@ export default function ConfirmationModal({
   }, [countdown]);
 
   const isExpired = deadlineAt && new Date(deadlineAt) < new Date();
-  const isFinal = daysUntilWorkshop <= 6;
   const nameValid = !requireName || participantName.trim().length >= 2;
 
   const handleSizeSelect = (size) => {
@@ -200,10 +199,10 @@ export default function ConfirmationModal({
                 )}
               </div>
               {isFinal ? (
-                <p className="text-sm text-orange-700 mb-4">הסדנה בעוד 6 ימים או פחות. לאחר האישור הבחירה תהיה <strong>סופית ולא ניתנת לשינוי</strong>.</p>
+                <p className="text-sm text-orange-700 mb-4">המועד האחרון לשינוי בחירה מתקרב. לאחר האישור הבחירה תהיה <strong>סופית ולא ניתנת לשינוי</strong>.</p>
               ) : (
                 <p className="text-sm text-[#464646]/70 mb-4">
-                  {selectedSize === '90x90' ? 'הבחירה תישמר רק לאחר השלמת תשלום התוספת.' : 'ניתן לשנות את בחירתכם עד 6 ימים לפני מועד הסדנה.'}
+                  {selectedSize === '90x90' ? 'הבחירה תישמר רק לאחר השלמת תשלום התוספת.' : 'ניתן לשנות את בחירתכם עד למועד האחרון שנקבע לעריכה.'}
                 </p>
               )}
               <div className="flex gap-3 w-full">
