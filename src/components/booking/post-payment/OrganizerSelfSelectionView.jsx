@@ -340,11 +340,27 @@ export default function OrganizerSelfSelectionView({
     }
   };
 
-  const getNextRugIndex = useCallback((currentCards) => {
-    const src = currentCards || cards;
+  const getNextRugIndexForCard = useCallback((card, currentCards) => {
+    if (!card) return 0;
+
+    if (card.participantId) {
+      const used = new Set(
+        card.sketches.map((s) => s.rugIndex).filter((i) => i != null)
+      );
+      for (let idx = 0; idx < card.adults; idx++) {
+        if (!used.has(idx)) return idx;
+      }
+      return card.adults;
+    }
+
+    // Legacy groups without participantId — global slot across the order.
     const used = new Set();
-    src.forEach(c => c.sketches.forEach(s => used.add(s.rugIndex)));
-    (selections || []).forEach(s => used.add(s.rugIndex));
+    (currentCards || cards).forEach((c) => {
+      c.sketches.forEach((s) => {
+        if (s.rugIndex != null) used.add(s.rugIndex);
+      });
+    });
+    (selections || []).forEach((s) => used.add(s.rugIndex));
     let idx = 0;
     while (used.has(idx)) idx++;
     return idx;
@@ -353,7 +369,8 @@ export default function OrganizerSelfSelectionView({
   const handleAISketchApproved = useCallback((sketch) => {
     if (aiModalCardIdx == null) return;
     setCards(prev => {
-      const rugIndex = getNextRugIndex(prev);
+      const card = prev[aiModalCardIdx];
+      const rugIndex = getNextRugIndexForCard(card, prev);
       return prev.map((c, i) => {
         if (i !== aiModalCardIdx) return c;
         return {
@@ -377,14 +394,14 @@ export default function OrganizerSelfSelectionView({
     setReviewCardIdx(aiModalCardIdx);
     setReviewError('');
     setReviewOpen(true);
-  }, [aiModalCardIdx, getNextRugIndex]);
+  }, [aiModalCardIdx, getNextRugIndexForCard]);
 
   const handleCatalogPick = (product) => {
     if (catalogCardIdx == null) return;
     setCards(prev => {
       const card = prev[catalogCardIdx];
       if (!card || card.sketches.length >= card.adults) return prev;
-      const rugIndex = getNextRugIndex(prev);
+      const rugIndex = getNextRugIndexForCard(card, prev);
       return prev.map((c, i) => {
         if (i !== catalogCardIdx) return c;
         return {
@@ -577,6 +594,9 @@ export default function OrganizerSelfSelectionView({
       if (msg.includes('LOCKED_DESIGN_MINIMUM')) {
         const min = msg.split(':').pop();
         setReviewError(`לא ניתן להוריד מתחת ל-${min} עותקים מאושרים של עיצוב זה`);
+      } else if (msg.includes('QUOTA_EXCEEDED')) {
+        const limit = msg.split(':').pop();
+        setReviewError(`חריגה ממכסת השטיחים בקבוצה (מקסימום ${limit})`);
       } else {
         setReviewError('שמירת הבחירות נכשלה, נסו שוב');
       }
