@@ -7,6 +7,14 @@ import SketchCatalogSheet from './SketchCatalogSheet';
 import AISketchModal from './AISketchModal';
 import EnlargeableSketchImage from './EnlargeableSketchImage';
 import { isAiTestModeEnabled, getSelectionDisplaySize, selectionWants90Upgrade } from '@/lib/utils';
+import {
+  SKETCH_STATUS,
+  getSketchStatusLabel,
+  getSketchStatusBadgeStyle,
+  isEditableSketchStatus,
+  isLockedStatus,
+  normalizeSketchStatus,
+} from '@/lib/sketchStatus';
 
 export default function SketchSelectionView({
   rugSlots,
@@ -226,19 +234,11 @@ export default function SketchSelectionView({
     }
   }, [rugSlots, selectionsMap, pendingUpgrades, isExpired, doPayAndSave]);
 
-  const getSketchStatusLabel = (sketchStatus) => {
-    if (sketchStatus === 'Ready') return 'מוכנה';
-    if (sketchStatus === 'In preparation') return 'בהכנה';
-    return 'ניתן לשינוי';
-  };
-
-  const [sizePaymentAlert, setSizePaymentAlert] = useState(false);
-
   const handleEditAction = useCallback((action, slotIndex) => {
     const sel = selectionsMap[slotIndex];
     if (action === 'sketch' || action === 'size') {
-      const status = sel?.sketchStatus || 'Changeable';
-      if (status !== 'Changeable') {
+      const status = normalizeSketchStatus(sel?.sketchStatus);
+      if (!isEditableSketchStatus(status)) {
         setEditSlot(null);
         setStatusError({ slot: slotIndex, status });
         return;
@@ -265,6 +265,8 @@ export default function SketchSelectionView({
       setEditNameSlot(slotIndex);
     }
   }, [openCatalogForSlot, selectionsMap, pendingUpgrades, participantNames]);
+
+  const [sizePaymentAlert, setSizePaymentAlert] = useState(false);
 
   const handleSaveEditName = useCallback(() => {
     if (editNameSlot == null || editNameValue.trim().length < 2) return;
@@ -331,14 +333,16 @@ export default function SketchSelectionView({
           const display = sel || pending;
           const needsUpgradePayment = selectionWants90Upgrade(sel) || !!pending;
           const name = participantNames[slot.rugIndex] || sel?.participantName || slot.participantName;
-          const sketchStatus = sel?.sketchStatus || 'Changeable';
+          const sketchStatus = normalizeSketchStatus(sel?.sketchStatus);
           const sizePaidLock = sel?.upgradePaymentStatus === 'paid';
           const awaitingApproval = selectionWants90Upgrade(sel) && sel?.upgradePaymentStatus === 'pending-payment-approval';
           const displaySize = sel ? getSelectionDisplaySize(sel) : (pending?.canvasSize || '60x60');
+          const staffLocked = sel && isLockedStatus(sketchStatus);
           const isLocked = sel && (
-            sketchStatus !== 'Changeable' ||
+            staffLocked ||
             (isNearDeadline && sel.confirmedAt)
           );
+          const statusBadgeStyle = getSketchStatusBadgeStyle(sketchStatus);
 
           return (
             <div
@@ -361,7 +365,12 @@ export default function SketchSelectionView({
                   </div>
                 </div>
 
-                {isLocked && (
+                {staffLocked && (
+                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${statusBadgeStyle.bg} ${statusBadgeStyle.text}`}>
+                    {getSketchStatusLabel(sketchStatus)}
+                  </span>
+                )}
+                {isLocked && !staffLocked && (
                   <span className="text-[11px] font-bold bg-[#5E2F88] text-white px-2.5 py-1 rounded-full">נעול</span>
                 )}
                 {sel && !isLocked && awaitingApproval && (
@@ -369,12 +378,8 @@ export default function SketchSelectionView({
                     <Clock className="w-3 h-3" />ממתין לאישור תשלום
                   </span>
                 )}
-                {sel && !isLocked && !awaitingApproval && (
-                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
-                    sketchStatus === 'In preparation' ? 'bg-blue-100 text-blue-700' :
-                    sketchStatus === 'Ready' ? 'bg-green-100 text-green-700' :
-                    'bg-[#f5f0fa] text-[#5E2F88]'
-                  }`}>
+                {sel && !isLocked && !awaitingApproval && sketchStatus === SKETCH_STATUS.OPEN && (
+                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${statusBadgeStyle.bg} ${statusBadgeStyle.text}`}>
                     {getSketchStatusLabel(sketchStatus)}
                   </span>
                 )}

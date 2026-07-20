@@ -17,17 +17,29 @@ import OrganizerSelfSelectionView from './OrganizerSelfSelectionView';
 import EnlargeableSketchImage from './EnlargeableSketchImage';
 import { getSelectionDisplaySize, selectionWants90Upgrade } from '@/lib/utils';
 import { isEditingWindowClosed } from '@/lib/sketchEditingPolicy';
-import { isLockedStatus, normalizeSketchStatus } from '@/lib/sketchStatus';
+import {
+  isLockedStatus,
+  normalizeSketchStatus,
+  SKETCH_STATUS,
+  getSketchStatusShortLabel,
+  getSketchStatusBadgeStyle,
+} from '@/lib/sketchStatus';
 
 function getSelectionStatusBadge(sel, editingWindowClosed) {
-  const status = sel.sketchStatus || '';
+  const status = normalizeSketchStatus(sel.sketchStatus);
   const upgrade = sel.upgradePaymentStatus || null;
   const is90 = getSelectionDisplaySize(sel) === '90x90';
 
-  if (status === 'סקיצה מוכנה' || status === 'Ready')
-    return { label: 'סקיצה מוכנה', bg: 'bg-green-100', text: 'text-green-700', icon: true };
-  if (status === 'In preparation' || status === 'סקיצה בהכנה')
-    return { label: 'סקיצה בהכנה', bg: 'bg-blue-100', text: 'text-blue-700', icon: false };
+  const staffLabel = getSketchStatusShortLabel(status);
+  if (staffLabel) {
+    const style = getSketchStatusBadgeStyle(status);
+    return {
+      label: staffLabel,
+      bg: style.bg,
+      text: style.text,
+      icon: status === SKETCH_STATUS.READY || status === SKETCH_STATUS.REJECTED,
+    };
+  }
   if (editingWindowClosed)
     return { label: 'לא ניתן לשינוי', bg: 'bg-gray-100', text: 'text-gray-600', icon: true };
   if (is90 && upgrade === 'pending-payment-approval')

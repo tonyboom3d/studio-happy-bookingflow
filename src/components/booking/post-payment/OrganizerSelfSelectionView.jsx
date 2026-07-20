@@ -8,16 +8,23 @@ import SketchCatalogSheet from './SketchCatalogSheet';
 import AISketchModal from './AISketchModal';
 import EnlargeableSketchImage from './EnlargeableSketchImage';
 import { isAiTestModeEnabled, getSelectionDisplaySize, selectionWants90Upgrade } from '@/lib/utils';
+import {
+  SKETCH_STATUS,
+  getSketchStatusShortLabel,
+  getSketchStatusBadgeStyle,
+  normalizeSketchStatus,
+} from '@/lib/sketchStatus';
 
 function getSketchStatusBadge(sketch, editingWindowClosed) {
-  const status = sketch.sketchStatus || '';
+  const status = normalizeSketchStatus(sketch.sketchStatus);
   const upgrade = sketch.upgradePaymentStatus || null;
   const is90 = getSelectionDisplaySize(sketch) === '90x90';
 
-  if (status === 'סקיצה מוכנה' || status === 'Ready')
-    return { label: 'סקיצה מוכנה', bg: 'bg-green-100', text: 'text-green-700' };
-  if (status === 'In preparation' || status === 'סקיצה בהכנה')
-    return { label: 'סקיצה בהכנה', bg: 'bg-blue-100', text: 'text-blue-700' };
+  const staffLabel = getSketchStatusShortLabel(status);
+  if (staffLabel) {
+    const style = getSketchStatusBadgeStyle(status);
+    return { label: staffLabel, bg: style.bg, text: style.text };
+  }
   if (editingWindowClosed)
     return { label: 'לא ניתן לשינוי', bg: 'bg-gray-100', text: 'text-gray-600' };
   if (is90 && upgrade === 'pending-payment-approval')
