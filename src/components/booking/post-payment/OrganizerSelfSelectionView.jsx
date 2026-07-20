@@ -359,6 +359,8 @@ export default function OrganizerSelfSelectionView({
   const handleCatalogPick = (product) => {
     if (catalogCardIdx == null) return;
     setCards(prev => {
+      const card = prev[catalogCardIdx];
+      if (!card || card.sketches.length >= card.adults) return prev;
       const rugIndex = getNextRugIndex(prev);
       return prev.map((c, i) => {
         if (i !== catalogCardIdx) return c;
@@ -394,11 +396,27 @@ export default function OrganizerSelfSelectionView({
     return counts;
   }, [catalogCardIdx, cards]);
 
+  const catalogLockedCounts = useMemo(() => {
+    if (catalogCardIdx == null) return {};
+    const card = cards[catalogCardIdx];
+    if (!card) return {};
+    const counts = {};
+    card.sketches.forEach((s) => {
+      if (s.productId && isSketchStaffLocked(s)) {
+        counts[s.productId] = (counts[s.productId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [catalogCardIdx, cards]);
+
   const handleCatalogRemovePick = useCallback((product) => {
     if (catalogCardIdx == null) return;
     setCards(prev => prev.map((c, i) => {
       if (i !== catalogCardIdx) return c;
-      const lastIdx = [...c.sketches].reverse().findIndex(s => s.productId === (product._id || product.id));
+      const pid = product._id || product.id;
+      const lastIdx = [...c.sketches].reverse().findIndex(
+        (s) => s.productId === pid && !isSketchStaffLocked(s)
+      );
       if (lastIdx < 0) return c;
       const realIdx = c.sketches.length - 1 - lastIdx;
       return { ...c, sketches: c.sketches.filter((_, si) => si !== realIdx) };
@@ -1044,6 +1062,7 @@ export default function OrganizerSelfSelectionView({
         readOnly={false}
         keepOpenOnPick={catalogQuota > 1}
         selectedCounts={catalogSelectedCounts}
+        lockedSelectedCounts={catalogLockedCounts}
         maxSelections={catalogQuota}
         totalSelected={catalogPicked}
       />

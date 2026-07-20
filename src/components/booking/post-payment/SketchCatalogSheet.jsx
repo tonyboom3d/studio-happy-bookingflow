@@ -5,9 +5,10 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
 import { cn, getDifficultyLabel, getDifficultyTextClass, isHardDifficulty } from '@/lib/utils';
 
-function ProductCard({ product, isSelected, selectedCount = 0, onPick, onRemove, onZoom, disabled, plusDisabled = false, showQuantity = false }) {
+function ProductCard({ product, isSelected, selectedCount = 0, lockedCount = 0, onPick, onRemove, onZoom, disabled, plusDisabled = false, showQuantity = false }) {
   const difficultyLabel = getDifficultyLabel(product);
   const hard = isHardDifficulty(difficultyLabel);
+  const minusDisabled = selectedCount <= lockedCount;
 
   return (
     <motion.div
@@ -72,7 +73,8 @@ function ProductCard({ product, isSelected, selectedCount = 0, onPick, onRemove,
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onRemove?.(product); }}
-                disabled={selectedCount <= 0}
+                disabled={selectedCount <= 0 || minusDisabled}
+                title={minusDisabled ? 'סקיצה זו נעולה ולא ניתנת לשינוי' : undefined}
                 className="w-7 h-7 rounded-full border border-[#e8e8e8] flex items-center justify-center text-[#5E2F88] hover:bg-[#f5f0fa] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <Minus className="w-3.5 h-3.5" />
@@ -118,6 +120,7 @@ export default function SketchCatalogSheet({
   readOnly = false,
   keepOpenOnPick = false,
   selectedCounts = {},
+  lockedSelectedCounts = {},
   maxSelections = Infinity,
   totalSelected = 0,
 }) {
@@ -245,25 +248,28 @@ export default function SketchCatalogSheet({
               {filteredProducts.map((product) => {
                 const productId = product._id || product.id;
                 const count = selectedCounts[productId] || 0;
+                const lockedCount = lockedSelectedCounts[productId] || 0;
                 const isSelected = keepOpenOnPick ? count > 0 : selectedProductId === productId;
                 const quotaReached = totalSelected >= maxSelections;
+                const fullyLocked = count > 0 && lockedCount >= count;
                 return (
                   <ProductCard
                     key={productId}
                     product={product}
                     isSelected={isSelected}
                     selectedCount={count}
+                    lockedCount={lockedCount}
                     showQuantity={keepOpenOnPick}
                     onPick={(p) => {
-                      if (!readOnly && !quotaReached) {
+                      if (!readOnly && !quotaReached && !fullyLocked) {
                         onPick(p);
                         if (!keepOpenOnPick) onClose();
                       }
                     }}
                     onRemove={onRemovePick}
                     onZoom={setEnlargedImage}
-                    disabled={readOnly || (quotaReached && count === 0)}
-                    plusDisabled={quotaReached}
+                    disabled={readOnly || fullyLocked || (quotaReached && count === 0)}
+                    plusDisabled={quotaReached || fullyLocked}
                   />
                 );
               })}
