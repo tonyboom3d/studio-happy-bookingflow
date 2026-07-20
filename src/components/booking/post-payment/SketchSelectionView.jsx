@@ -109,10 +109,15 @@ export default function SketchSelectionView({
 
   const openCatalogForSlot = useCallback(async (slotIndex) => {
     if (isReadOnly) return;
+    const sel = selectionsMap[slotIndex];
+    if (sel && isLockedStatus(normalizeSketchStatus(sel.sketchStatus))) {
+      setStatusError({ slot: slotIndex, status: normalizeSketchStatus(sel.sketchStatus) });
+      return;
+    }
     if (isExpired) { setDeadlineError(true); return; }
     setSourceChoiceSlot(slotIndex);
     setSourceChoiceOpen(true);
-  }, [isReadOnly, isExpired]);
+  }, [isReadOnly, isExpired, selectionsMap]);
 
   const handleSourceChoice = useCallback(async (source) => {
     setSourceChoiceOpen(false);
@@ -132,6 +137,12 @@ export default function SketchSelectionView({
 
   const handleAISketchApproved = useCallback((sketch) => {
     if (aiModalSlot == null) return;
+    const sel = selectionsMap[aiModalSlot];
+    if (sel && isLockedStatus(normalizeSketchStatus(sel.sketchStatus))) {
+      setStatusError({ slot: aiModalSlot, status: normalizeSketchStatus(sel.sketchStatus) });
+      setAiModalOpen(false);
+      return;
+    }
     if (isExpired) { setDeadlineError(true); return; }
 
     const selection = {
@@ -148,16 +159,32 @@ export default function SketchSelectionView({
 
     onSelectSketch(selection);
     setAiModalOpen(false);
-  }, [aiModalSlot, isExpired, onSelectSketch]);
+  }, [aiModalSlot, isExpired, onSelectSketch, selectionsMap]);
 
   const handleSketchPick = useCallback((product) => {
+    if (catalogForSlot != null) {
+      const sel = selectionsMap[catalogForSlot];
+      if (sel && isLockedStatus(normalizeSketchStatus(sel.sketchStatus))) {
+        setStatusError({ slot: catalogForSlot, status: normalizeSketchStatus(sel.sketchStatus) });
+        setCatalogOpen(false);
+        return;
+      }
+    }
     if (isExpired) { setDeadlineError(true); return; }
     setPendingProduct({ ...product, rugIndex: catalogForSlot });
     setCatalogOpen(false);
     setShowModal(true);
-  }, [catalogForSlot, isExpired]);
+  }, [catalogForSlot, isExpired, selectionsMap]);
 
   const handleModalConfirm = useCallback(async (size, participantName) => {
+    if (pendingProduct?.rugIndex != null) {
+      const sel = selectionsMap[pendingProduct.rugIndex];
+      if (sel && isLockedStatus(normalizeSketchStatus(sel.sketchStatus))) {
+        setStatusError({ slot: pendingProduct.rugIndex, status: normalizeSketchStatus(sel.sketchStatus) });
+        setShowModal(false);
+        return;
+      }
+    }
     if (isExpired) { setDeadlineError(true); setShowModal(false); return; }
 
     const selection = {
@@ -190,7 +217,7 @@ export default function SketchSelectionView({
     setShowModal(false);
     setPendingProduct(null);
     setEditOnlyMode(null);
-  }, [pendingProduct, isExpired, onSelectSketch, pendingUpgrades]);
+  }, [pendingProduct, isExpired, onSelectSketch, pendingUpgrades, selectionsMap]);
 
   const buildUpgradePayload = useCallback(() => {
     const upgrades = (existingSelections || [])
@@ -378,7 +405,12 @@ export default function SketchSelectionView({
                     <Clock className="w-3 h-3" />ממתין לאישור תשלום
                   </span>
                 )}
-                {sel && !isLocked && !awaitingApproval && sketchStatus === SKETCH_STATUS.OPEN && (
+                {sel && !isLocked && !awaitingApproval && !staffLocked && sketchStatus === SKETCH_STATUS.OPEN && (
+                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${statusBadgeStyle.bg} ${statusBadgeStyle.text}`}>
+                    {getSketchStatusLabel(sketchStatus)}
+                  </span>
+                )}
+                {sel && !staffLocked && sketchStatus === SKETCH_STATUS.REJECTED && (
                   <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${statusBadgeStyle.bg} ${statusBadgeStyle.text}`}>
                     {getSketchStatusLabel(sketchStatus)}
                   </span>

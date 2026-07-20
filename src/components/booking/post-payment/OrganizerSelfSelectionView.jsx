@@ -12,9 +12,32 @@ import {
   SKETCH_STATUS,
   getSketchStatusShortLabel,
   getSketchStatusBadgeStyle,
+  getSketchStatusLabel,
+  isLockedStatus,
   normalizeSketchStatus,
 } from '@/lib/sketchStatus';
 
+function isSketchStaffLocked(sketch) {
+  return sketch && isLockedStatus(sketch.sketchStatus);
+}
+
+function mapSelectionToSketch(s) {
+  return {
+    productId: s.productId,
+    title: s.productSnapshot?.title || s.title || 'סקיצה',
+    image: s.productSnapshot?.image || null,
+    size: getSelectionDisplaySize(s),
+    source: s.source || 'catalog',
+    rugIndex: s.rugIndex,
+    sketchStatus: normalizeSketchStatus(s.sketchStatus),
+    upgradePaymentStatus: s.upgradePaymentStatus || null,
+    ...(s.source === 'ai' ? {
+      aiOriginalImage: s.aiOriginalImage || null,
+      aiColors: s.aiColors || null,
+      aiTaskId: s.aiTaskId || null,
+    } : {}),
+  };
+}
 function getSketchStatusBadge(sketch, editingWindowClosed) {
   const status = normalizeSketchStatus(sketch.sketchStatus);
   const upgrade = sketch.upgradePaymentStatus || null;
@@ -153,22 +176,28 @@ export default function OrganizerSelfSelectionView({
     });
   }, [participants, selections]);
 
-  function mapSelectionToSketch(s) {
-    return {
-      productId: s.productId,
-      title: s.productSnapshot?.title || s.title || 'סקיצה',
-      image: s.productSnapshot?.image || null,
-      size: getSelectionDisplaySize(s),
-      source: s.source || 'catalog',
-      rugIndex: s.rugIndex,
-      upgradePaymentStatus: s.upgradePaymentStatus || null,
-      ...(s.source === 'ai' ? {
-        aiOriginalImage: s.aiOriginalImage || null,
-        aiColors: s.aiColors || null,
-        aiTaskId: s.aiTaskId || null,
-      } : {}),
-    };
-  }
+  // Keep sketchStatus / payment state in sync when dashboard or server updates selections.
+  useEffect(() => {
+    if (!selections?.length) return;
+    setCards((prev) => prev.map((card) => ({
+      ...card,
+      sketches: card.sketches.map((sketch) => {
+        const server = selections.find((s) => (
+          s.rugIndex === sketch.rugIndex && (
+            (card.participantId && s.participantId === card.participantId)
+            || (!card.participantId && s.participantName === card.name)
+          )
+        ));
+        if (!server) return sketch;
+        return {
+          ...sketch,
+          sketchStatus: normalizeSketchStatus(server.sketchStatus),
+          upgradePaymentStatus: server.upgradePaymentStatus ?? sketch.upgradePaymentStatus,
+          size: getSelectionDisplaySize(server),
+        };
+      }),
+    })));
+  }, [selections]);
 
   // Groups are persisted immediately as WorkshopParticipants records (created
   // via onCreateGroup with mode='organizer') so a group's name/adults/children
@@ -308,6 +337,7 @@ export default function OrganizerSelfSelectionView({
             size: sketch.canvasSize || '60x60',
             source: 'ai',
             rugIndex,
+            sketchStatus: SKETCH_STATUS.OPEN,
             aiOriginalImage: sketch.aiOriginalImage || null,
             aiColors: sketch.aiColors || null,
             aiTaskId: sketch.aiTaskId || null,
@@ -336,6 +366,7 @@ export default function OrganizerSelfSelectionView({
             size: '60x60',
             source: 'catalog',
             rugIndex,
+            sketchStatus: SKETCH_STATUS.OPEN,
           }],
         };
       });
@@ -389,6 +420,11 @@ export default function OrganizerSelfSelectionView({
   };
 
   const updateSketchSize = (cardIdx, sketchIdx, newSize) => {
+    const sketch = cards[cardIdx]?.sketches[sketchIdx];
+    if (isSketchStaffLocked(sketch)) {
+      setReviewError(`הסקיצה בסטטוס "${getSketchStatusLabel(sketch.sketchStatus)}" ולא ניתנת לשינוי`);
+      return;
+    }
     setCards(prev => prev.map((c, i) => {
       if (i !== cardIdx) return c;
       const updated = [...c.sketches];
@@ -398,6 +434,11 @@ export default function OrganizerSelfSelectionView({
   };
 
   const removeSketch = (cardIdx, sketchIdx) => {
+    const sketch = cards[cardIdx]?.sketches[sketchIdx];
+    if (isSketchStaffLocked(sketch)) {
+      setReviewError(`הסקיצה בסטטוס "${getSketchStatusLabel(sketch.sketchStatus)}" ולא ניתנת לשינוי`);
+      return;
+    }
     setCards(prev => prev.map((c, i) => {
       if (i !== cardIdx) return c;
       const updated = c.sketches.filter((_, si) => si !== sketchIdx);
@@ -417,6 +458,7 @@ export default function OrganizerSelfSelectionView({
 
     try {
       for (const sketch of card.sketches) {
+        if (isSketchStaffLocked(sketch)) continue;
         const selData = {
           rugIndex: sketch.rugIndex,
           productId: sketch.productId,
@@ -692,7 +734,7 @@ export default function OrganizerSelfSelectionView({
                                 {sketch.size === '90x90' ? '90×90 ס"מ' : '60×60 ס"מ'}
                               </span>
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${badge.bg} ${badge.text}`}>
-                                {(badge.label === 'לא ניתן לשינוי' || badge.label === 'סקיצה מוכנה') && <Lock className="w-2.5 h-2.5" />}
+                                {(badge.label === 'לא ניתן לשינוי' || badge.label === 'סקיצה מוכנה' || badge.label === 'סקיצה בהכנה') && <Lock className="w-2.5 h-2.5" />}
                                 {badge.label}
                               </span>
                             </div>
@@ -1023,7 +1065,10 @@ export default function OrganizerSelfSelectionView({
 
                 {card.sketches.length > 0 && (
                   <div className="space-y-2.5">
-                    {card.sketches.map((sketch, si) => (
+                    {card.sketches.map((sketch, si) => {
+                      const locked = isSketchStaffLocked(sketch);
+                      const badge = getSketchStatusBadge(sketch, editingWindowClosed);
+                      return (
                       <div key={si} className="flex items-center gap-2.5 bg-[#fafafa] rounded-xl p-3">
                         {sketch.image ? (
                           <EnlargeableSketchImage
@@ -1045,6 +1090,12 @@ export default function OrganizerSelfSelectionView({
                             }`}>
                               {sketch.source === 'ai' ? 'AI' : 'קטלוג'}
                             </span>
+                            {locked ? (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${badge.bg} ${badge.text}`}>
+                                <Lock className="w-2.5 h-2.5" />
+                                {badge.label}
+                              </span>
+                            ) : (
                             <select
                               value={sketch.size}
                               onChange={(e) => updateSketchSize(reviewCardIdx, si, e.target.value)}
@@ -1053,8 +1104,10 @@ export default function OrganizerSelfSelectionView({
                               <option value="60x60">60×60 ס"מ</option>
                               <option value="90x90">90×90 ס"מ (+₪299)</option>
                             </select>
+                            )}
                           </div>
                         </div>
+                        {!locked && (
                         <button
                           type="button"
                           onClick={() => removeSketch(reviewCardIdx, si)}
@@ -1062,8 +1115,9 @@ export default function OrganizerSelfSelectionView({
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
+                        )}
                       </div>
-                    ))}
+                    );})}
                   </div>
                 )}
 
