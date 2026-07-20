@@ -24,6 +24,7 @@ import {
   getSketchStatusShortLabel,
   getSketchStatusBadgeStyle,
   getSketchStatusLabel,
+  findLockedInGroup,
 } from '@/lib/sketchStatus';
 
 function getSelectionStatusBadge(sel, editingWindowClosed) {
@@ -103,7 +104,6 @@ export default function OrganizerOrderHub({
   const [deleteFor, setDeleteFor] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteBlockedInfo, setDeleteBlockedInfo] = useState(null);
-  const [deleteChecking, setDeleteChecking] = useState(null);
   const [deleteError, setDeleteError] = useState('');
 
   // Mode switch warning
@@ -383,39 +383,14 @@ export default function OrganizerOrderHub({
     }
   };
 
-  const askDelete = async (p) => {
+  const askDelete = (p) => {
     if (within48h) return;
     setDeleteError('');
 
-    if (onCheckGroupDeletable) {
-      setDeleteChecking(p._id);
-      try {
-        const check = await onCheckGroupDeletable({ participantId: p._id });
-        if (!check?.canDelete) {
-          const status = check?.lockedSketchStatus;
-          setDeleteBlockedInfo({
-            groupName: p.name,
-            status: status || 'בהכנה',
-          });
-          return;
-        }
-      } catch {
-        setDeleteBlockedInfo({ groupName: p.name, status: null, generic: true });
-        return;
-      } finally {
-        setDeleteChecking(null);
-      }
-    } else {
-      const locked = (selections || [])
-        .filter((s) => s.participantId === p._id)
-        .find((s) => isLockedStatus(s.sketchStatus));
-      if (locked) {
-        setDeleteBlockedInfo({
-          groupName: p.name,
-          status: locked.sketchStatus,
-        });
-        return;
-      }
+    const localLocked = findLockedInGroup(selections, { participantId: p._id });
+    if (localLocked) {
+      setDeleteBlockedInfo({ groupName: p.name, status: localLocked });
+      return;
     }
 
     setDeleteFor(p);
@@ -431,9 +406,21 @@ export default function OrganizerOrderHub({
   };
 
   const confirmDelete = async () => {
+    if (!deleteFor) return;
     setDeleting(true);
     setDeleteError('');
     try {
+      if (onCheckGroupDeletable) {
+        const check = await onCheckGroupDeletable({ participantId: deleteFor._id });
+        if (!check?.canDelete) {
+          setDeleteFor(null);
+          setDeleteBlockedInfo({
+            groupName: deleteFor.name,
+            status: check?.lockedSketchStatus || 'בהכנה',
+          });
+          return;
+        }
+      }
       await onDeleteGroup(deleteFor._id);
       setDeleteFor(null);
     } catch (e) {
@@ -933,7 +920,7 @@ export default function OrganizerOrderHub({
                           <button
                             type="button"
                             onClick={() => askDelete(p)}
-                            disabled={within48h || deleteChecking === p._id}
+                            disabled={within48h}
                             title={within48h ? 'לא ניתן למחוק בתוך 48 שעות מהסדנה' : 'מחיקת קבוצה'}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
                               within48h

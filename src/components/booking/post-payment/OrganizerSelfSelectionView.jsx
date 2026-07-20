@@ -15,6 +15,7 @@ import {
   getSketchStatusLabel,
   isLockedStatus,
   normalizeSketchStatus,
+  findLockedInGroup,
 } from '@/lib/sketchStatus';
 
 function isSketchStaffLocked(sketch) {
@@ -111,7 +112,6 @@ export default function OrganizerSelfSelectionView({
   const [deletingCard, setDeletingCard] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [deleteBlockedInfo, setDeleteBlockedInfo] = useState(null);
-  const [deleteCheckingIdx, setDeleteCheckingIdx] = useState(null);
 
   // Group name editing
   const [editingNameIdx, setEditingNameIdx] = useState(null);
@@ -539,36 +539,25 @@ export default function OrganizerSelfSelectionView({
     setExpandedCards(prev => ({ ...prev, [idx]: !prev[idx] }));
   };
 
-  const askDeleteCard = async (idx) => {
+  const groupDeleteOpts = (card) => ({
+    participantId: card.participantId || null,
+    orderId: order._id,
+    participantName: card.name,
+    rugIndexes: card.sketches.map((s) => s.rugIndex).filter((i) => i != null),
+  });
+
+  const askDeleteCard = (idx) => {
     const card = cards[idx];
     if (!card) return;
     setDeleteError('');
 
-    const localLocked = card.sketches.find((s) => isLockedStatus(s.sketchStatus));
-    if (onCheckGroupDeletable) {
-      setDeleteCheckingIdx(idx);
-      try {
-        const check = await onCheckGroupDeletable({
-          participantId: card.participantId || null,
-          orderId: order._id,
-          participantName: card.name,
-          rugIndexes: card.sketches.map((s) => s.rugIndex).filter((i) => i != null),
-        });
-        if (!check?.canDelete) {
-          setDeleteBlockedInfo({
-            groupName: card.name,
-            status: check?.lockedSketchStatus || localLocked?.sketchStatus || 'בהכנה',
-          });
-          return;
-        }
-      } catch {
-        setDeleteBlockedInfo({ groupName: card.name, generic: true });
-        return;
-      } finally {
-        setDeleteCheckingIdx(null);
-      }
-    } else if (localLocked) {
-      setDeleteBlockedInfo({ groupName: card.name, status: localLocked.sketchStatus });
+    const localLocked = findLockedInGroup(selections, groupDeleteOpts(card))
+      || card.sketches.find((s) => isLockedStatus(s.sketchStatus))?.sketchStatus;
+    if (localLocked) {
+      setDeleteBlockedInfo({
+        groupName: card.name,
+        status: normalizeSketchStatus(localLocked),
+      });
       return;
     }
 
@@ -590,6 +579,17 @@ export default function OrganizerSelfSelectionView({
     setDeletingCard(true);
     setDeleteError('');
     try {
+      if (onCheckGroupDeletable) {
+        const check = await onCheckGroupDeletable(groupDeleteOpts(card));
+        if (!check?.canDelete) {
+          setDeleteConfirmIdx(null);
+          setDeleteBlockedInfo({
+            groupName: card.name,
+            status: check?.lockedSketchStatus || 'בהכנה',
+          });
+          return;
+        }
+      }
       if (onDeleteOrganizerGroup) {
         const rugIndexes = card.sketches.map(s => s.rugIndex).filter(i => i != null);
         await onDeleteOrganizerGroup({
@@ -745,13 +745,10 @@ export default function OrganizerSelfSelectionView({
                 <button
                   type="button"
                   onClick={() => askDeleteCard(idx)}
-                  disabled={deleteCheckingIdx === idx}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                   title="מחיקת קבוצה"
                 >
-                  {deleteCheckingIdx === idx
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <Trash2 className="w-3.5 h-3.5" />}
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   type="button"

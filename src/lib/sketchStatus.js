@@ -35,6 +35,26 @@ export function hasLockedSelection(selections) {
   return (selections || []).some((sel) => isLockedStatus(sel?.sketchStatus));
 }
 
+/** Find locked sketch status for a participant / organizer group from local selections. */
+export function findLockedInGroup(selections, { participantId, participantName, rugIndexes } = {}) {
+  const normalizedName = (participantName || '').trim();
+  const rugSet = new Set((rugIndexes || []).filter((i) => i != null));
+  const locked = (selections || []).find((s) => {
+    const inGroup = (participantId && s.participantId === participantId)
+      || (normalizedName && s.participantName === normalizedName)
+      || (rugSet.size > 0 && rugSet.has(s.rugIndex));
+    return inGroup && isLockedStatus(s.sketchStatus);
+  });
+  return locked ? normalizeSketchStatus(locked.sketchStatus) : null;
+}
+
+export function groupDeletableCacheKey(opts = {}) {
+  const { participantId, orderId, participantName, rugIndexes } = opts;
+  if (participantId) return `p:${participantId}`;
+  const rugs = (rugIndexes || []).filter((i) => i != null).sort((a, b) => a - b).join(',');
+  return `o:${orderId || ''}:${(participantName || '').trim()}:${rugs}`;
+}
+
 export function getSketchStatusLabel(status) {
   const normalized = normalizeSketchStatus(status);
   if (normalized === SKETCH_STATUS.READY) return 'מוכנה';

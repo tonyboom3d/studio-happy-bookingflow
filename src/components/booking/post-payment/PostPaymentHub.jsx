@@ -4,6 +4,7 @@ import { Loader2, Baby, CreditCard, Calendar, MapPin, UserCheck, User, Mail, Pho
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { readCatalogCache, writeCatalogCache } from '@/lib/utils';
+import { findLockedInGroup, groupDeletableCacheKey } from '@/lib/sketchStatus';
 import OrganizerOrderHub from './OrganizerOrderHub';
 import SketchSelectionView from './SketchSelectionView';
 import InvalidLinkMessage from './InvalidLinkMessage';
@@ -57,6 +58,26 @@ export default function PostPaymentHub({
   const paymentListenerRef = useRef(false);
   const sketchSavePromisesRef = useRef(new Map());
   const activeSketchSavesRef = useRef(0);
+  const groupDeletableCacheRef = useRef(new Map());
+  const GROUP_DELETABLE_CACHE_MS = 60_000;
+
+  const mergeSketchLocks = useCallback((locks) => {
+    if (!locks?.length) return;
+    const lockMap = new Map();
+    locks.forEach((lock) => {
+      const key = lock.participantId
+        ? `p:${lock.participantId}:${lock.rugIndex}`
+        : `n:${lock.participantName || ''}:${lock.rugIndex}`;
+      lockMap.set(key, lock.sketchStatus);
+    });
+    setLocalSelections((prev) => prev.map((sel) => {
+      const key = sel.participantId
+        ? `p:${sel.participantId}:${sel.rugIndex}`
+        : `n:${sel.participantName || ''}:${sel.rugIndex}`;
+      const status = lockMap.get(key);
+      return status ? { ...sel, sketchStatus: status } : sel;
+    }));
+  }, []);
 
   const applyCatalog = useCallback((products) => {
     if (!products?.length) return;
@@ -70,7 +91,8 @@ export default function PostPaymentHub({
     if (orderContext?.participants) setLocalParticipants(orderContext.participants);
     if (orderContext?.selections) setLocalSelections(orderContext.selections);
     if (orderContext?.catalog?.length) applyCatalog(orderContext.catalog);
-  }, [orderContext, applyCatalog]);
+    if (orderContext?.sketchLocks?.length) mergeSketchLocks(orderContext.sketchLocks);
+  }, [orderContext, applyCatalog, mergeSketchLocks]);
 
   useEffect(() => {
     if (ecomSummaryProp) setEcomSummary(ecomSummaryProp);
@@ -260,6 +282,7 @@ export default function PostPaymentHub({
     const result = await sendAndWait('DELETE_PARTICIPANT_GROUP', { participantId });
     if (result?.error) throw new Error(result.error);
     if (!result?.success) throw new Error('Delete failed');
+    groupDeletableCacheRef.current.delete(groupDeletableCacheKey({ participantId }));
     setLocalParticipants(prev => prev.filter(p => p._id !== participantId));
     setLocalSelections(prev => prev.filter(s => s.participantId !== participantId));
     return result;
@@ -272,6 +295,12 @@ export default function PostPaymentHub({
     const result = await sendAndWait('DELETE_ORGANIZER_GROUP', { orderId, participantName, rugIndexes, participantId });
     if (result?.error) throw new Error(result.error);
     if (!result?.success) throw new Error('Delete failed');
+    groupDeletableCacheRef.current.delete(groupDeletableCacheKey({
+      orderId,
+      participantName,
+      rugIndexes,
+      participantId,
+    }));
     const rugSet = new Set(rugIndexes || []);
     setLocalSelections(prev => prev.filter(s => {
       if (participantId && s.participantId === participantId) return false;
@@ -285,13 +314,44 @@ export default function PostPaymentHub({
     return result;
   }, [localOrder?._id, sendAndWait]);
 
-  const handleCheckGroupDeletable = useCallback(async (opts) => {
+  const handleCheckGroupDeletable = useCallback(async (opts, { selections: selectionsOverride } = {}) => {
+    const selections = selectionsOverride || localSelections;
+    const localLocked = findLockedInGroup(selections, opts || {});
+    if (localLocked) {
+      return { canDelete: false, lockedSketchStatus: localLocked, source: 'local' };
+    }
+
+    const cacheKey = groupDeletableCacheKey(opts || {});
+    const cached = groupDeletableCacheRef.current.get(cacheKey);
+    if (cached && Date.now() - cached.ts < GROUP_DELETABLE_CACHE_MS) {
+      return cached.result;
+    }
+
     try {
-      return await sendAndWait('CHECK_GROUP_DELETABLE', opts || {});
+      const result = await sendAndWait('CHECK_GROUP_DELETABLE', opts || {});
+      groupDeletableCacheRef.current.set(cacheKey, { result, ts: Date.now() });
+      return result;
     } catch (e) {
       return { canDelete: false, error: e?.message || 'CHECK_FAILED' };
     }
-  }, [sendAndWait]);
+  }, [localSelections, sendAndWait]);
+
+  // Background refresh of sketch lock statuses (dashboard may have updated CMS).
+  useEffect(() => {
+    const orderId = localOrder?._id;
+    if (!orderId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await sendAndWait('CHECK_EDITING_ALLOWED', {
+          orderId,
+          participantId: verifiedParticipant?._id || null,
+        });
+        if (!cancelled && result?.sketchLocks?.length) mergeSketchLocks(result.sketchLocks);
+      } catch (_) {}
+    })();
+    return () => { cancelled = true; };
+  }, [localOrder?._id, verifiedParticipant?._id, sendAndWait, mergeSketchLocks]);
 
   // Legacy fallback: backfill share tokens for any groups created before tokens
   // were stored on the record (so their links can be rebuilt).
