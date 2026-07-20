@@ -77,6 +77,7 @@ export default function OrganizerOrderHub({
   onSaveApprovedSketch,
   onSubmitFeedback,
   onCheckRateLimit,
+  onVerifySketchForEdit,
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [orderSwitcherOpen, setOrderSwitcherOpen] = useState(false);
@@ -723,6 +724,7 @@ export default function OrganizerOrderHub({
           onCreateGroup={onCreateGroup}
           onUpdateParticipant={onUpdateParticipant}
           onDeleteOrganizerGroup={onDeleteOrganizerGroup}
+          onVerifySketchForEdit={onVerifySketchForEdit}
         />
       )}
 

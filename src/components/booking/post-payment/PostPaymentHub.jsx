@@ -384,6 +384,33 @@ export default function PostPaymentHub({
     return savePromise;
   }, [localOrder?._id, verifiedParticipant, ecomSummary, sendAndWait]);
 
+  const mergeFreshSelection = useCallback((freshSelection) => {
+    if (!freshSelection) return;
+    setLocalSelections((prev) => {
+      const filtered = prev.filter((s) => !(
+        s.rugIndex === freshSelection.rugIndex
+        && (s.participantId || null) === (freshSelection.participantId || null)
+      ));
+      return [...filtered, freshSelection];
+    });
+  }, []);
+
+  const handleVerifySketchForEdit = useCallback(async (rugIndex, participantId = null) => {
+    if (!localOrder?._id) return { canEdit: false, error: 'NO_ORDER' };
+    const pid = participantId ?? verifiedParticipant?._id ?? null;
+    try {
+      const result = await sendAndWait('VERIFY_SKETCH_FOR_EDIT', {
+        orderId: localOrder._id,
+        rugIndex,
+        participantId: pid,
+      });
+      if (result?.selection) mergeFreshSelection(result.selection);
+      return result;
+    } catch (e) {
+      return { canEdit: false, error: e?.message || 'VERIFY_FAILED' };
+    }
+  }, [localOrder?._id, verifiedParticipant?._id, sendAndWait, mergeFreshSelection]);
+
   useEffect(() => {
     if (paymentListenerRef.current) return;
     paymentListenerRef.current = true;
@@ -646,6 +673,7 @@ export default function PostPaymentHub({
           onSaveApprovedSketch={handleSaveApprovedSketch}
           onSubmitFeedback={handleSubmitFeedback}
           onCheckRateLimit={handleCheckRateLimit}
+          onVerifySketchForEdit={handleVerifySketchForEdit}
         />
       </div>
     );
@@ -817,6 +845,7 @@ export default function PostPaymentHub({
           onSaveApprovedSketch={handleSaveApprovedSketch}
           onSubmitFeedback={handleSubmitFeedback}
           onCheckRateLimit={handleCheckRateLimit}
+          onVerifySketchForEdit={(rugIndex) => handleVerifySketchForEdit(rugIndex, verifiedParticipant._id)}
         />
       </div>
     );

@@ -74,6 +74,7 @@ export default function OrganizerSelfSelectionView({
   onCreateGroup,
   onUpdateParticipant,
   onDeleteOrganizerGroup,
+  onVerifySketchForEdit,
 }) {
   const [cards, setCards] = useState(() => buildInitialCards(participants, selections));
   const [setupOpen, setSetupOpen] = useState(false);
@@ -96,6 +97,7 @@ export default function OrganizerSelfSelectionView({
   const [reviewCardIdx, setReviewCardIdx] = useState(null);
   const [reviewError, setReviewError] = useState('');
   const [reviewSaving, setReviewSaving] = useState(false);
+  const [reviewVerifying, setReviewVerifying] = useState(false);
 
   // Expanded cards
   const [expandedCards, setExpandedCards] = useState({});
@@ -407,9 +409,35 @@ export default function OrganizerSelfSelectionView({
     setReviewOpen(true);
   };
 
-  const openReview = (cardIdx) => {
-    setReviewCardIdx(cardIdx);
+  const openReview = async (cardIdx) => {
+    const card = cards[cardIdx];
     setReviewError('');
+
+    if (onVerifySketchForEdit && card?.sketches?.length) {
+      setReviewVerifying(true);
+      try {
+        for (const sketch of card.sketches) {
+          const localStatus = normalizeSketchStatus(sketch.sketchStatus);
+          const result = await onVerifySketchForEdit(sketch.rugIndex, card.participantId || null);
+          const freshStatus = normalizeSketchStatus(
+            result?.sketchStatus ?? result?.selection?.sketchStatus ?? localStatus
+          );
+          if (result?.found && (result?.isStatusLocked || isLockedStatus(freshStatus))) {
+            setReviewError(
+              localStatus !== freshStatus
+                ? `סקיצה "${sketch.title}" עודכנה לסטטוס "${getSketchStatusLabel(freshStatus)}" ולא ניתנת לעריכה.`
+                : `סקיצה "${sketch.title}" בסטטוס "${getSketchStatusLabel(freshStatus)}" ולא ניתנת לעריכה.`
+            );
+          }
+        }
+      } catch {
+        setReviewError('לא הצלחנו לאמת את סטטוס הסקיצות. נסו שוב.');
+      } finally {
+        setReviewVerifying(false);
+      }
+    }
+
+    setReviewCardIdx(cardIdx);
     setReviewOpen(true);
   };
 
@@ -643,9 +671,10 @@ export default function OrganizerSelfSelectionView({
                 <button
                   type="button"
                   onClick={() => openReview(idx)}
-                  className="flex items-center gap-1 text-[11px] font-medium text-[#5E2F88] bg-[#f5f0fa] hover:bg-[#ebe0f5] px-2 py-1 rounded-lg transition-colors"
+                  disabled={reviewVerifying}
+                  className="flex items-center gap-1 text-[11px] font-medium text-[#5E2F88] bg-[#f5f0fa] hover:bg-[#ebe0f5] px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
                 >
-                  <Pencil className="w-3 h-3" />
+                  {reviewVerifying ? <Loader2 className="w-3 h-3 animate-spin" /> : <Pencil className="w-3 h-3" />}
                   עריכה
                 </button>
                 <button

@@ -34,6 +34,7 @@ export default function SketchSelectionView({
   onSaveApprovedSketch,
   onSubmitFeedback,
   onCheckRateLimit,
+  onVerifySketchForEdit,
 }) {
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [catalogForSlot, setCatalogForSlot] = useState(null);
@@ -56,6 +57,7 @@ export default function SketchSelectionView({
   const [incompleteWarning, setIncompleteWarning] = useState(null);
   const [statusError, setStatusError] = useState(null);
   const [editOnlyMode, setEditOnlyMode] = useState(null);
+  const [editVerifying, setEditVerifying] = useState(null);
 
   const requireName = (totalRugCount || rugSlots.length) > 2;
   const isExpired = deadlineAt && new Date(deadlineAt) < new Date();
@@ -261,13 +263,65 @@ export default function SketchSelectionView({
     }
   }, [rugSlots, selectionsMap, pendingUpgrades, isExpired, doPayAndSave]);
 
-  const handleEditAction = useCallback((action, slotIndex) => {
+  const showStatusBlocked = useCallback((slotIndex, freshStatus, localStatus) => {
+    setStatusError({
+      slot: slotIndex,
+      status: freshStatus,
+      stale: localStatus != null && freshStatus !== localStatus,
+    });
+  }, []);
+
+  const verifySlotEditable = useCallback(async (slotIndex) => {
+    const localStatus = normalizeSketchStatus(selectionsMap[slotIndex]?.sketchStatus);
+    if (!onVerifySketchForEdit) {
+      if (isLockedStatus(localStatus)) {
+        showStatusBlocked(slotIndex, localStatus, localStatus);
+        return false;
+      }
+      return true;
+    }
+    setEditVerifying(slotIndex);
+    try {
+      const result = await onVerifySketchForEdit(slotIndex);
+      const freshStatus = normalizeSketchStatus(
+        result?.sketchStatus ?? result?.selection?.sketchStatus ?? localStatus
+      );
+      if (!result?.canEdit) {
+        if (result?.isStatusLocked || isLockedStatus(freshStatus)) {
+          showStatusBlocked(slotIndex, freshStatus, localStatus);
+        } else if (result?.editingWindowAllowed === false) {
+          setDeadlineError(true);
+        } else {
+          showStatusBlocked(slotIndex, freshStatus, localStatus);
+        }
+        return false;
+      }
+      return true;
+    } catch {
+      showStatusBlocked(slotIndex, localStatus, localStatus);
+      return false;
+    } finally {
+      setEditVerifying(null);
+    }
+  }, [selectionsMap, onVerifySketchForEdit, showStatusBlocked]);
+
+  const handleOpenEdit = useCallback(async (slotIndex) => {
+    const ok = await verifySlotEditable(slotIndex);
+    if (ok) setEditSlot(slotIndex);
+  }, [verifySlotEditable]);
+
+  const handleEditAction = useCallback(async (action, slotIndex) => {
     const sel = selectionsMap[slotIndex];
     if (action === 'sketch' || action === 'size') {
-      const status = normalizeSketchStatus(sel?.sketchStatus);
-      if (!isEditableSketchStatus(status)) {
+      const ok = await verifySlotEditable(slotIndex);
+      if (!ok) {
         setEditSlot(null);
-        setStatusError({ slot: slotIndex, status });
+        return;
+      }
+      const status = normalizeSketchStatus(sel?.sketchStatus);
+      if (!isEditableSketchStatus(status) && isLockedStatus(status)) {
+        setEditSlot(null);
+        showStatusBlocked(slotIndex, status, status);
         return;
       }
     }
@@ -291,7 +345,7 @@ export default function SketchSelectionView({
       setEditNameValue(participantNames[slotIndex] || '');
       setEditNameSlot(slotIndex);
     }
-  }, [openCatalogForSlot, selectionsMap, pendingUpgrades, participantNames]);
+  }, [openCatalogForSlot, selectionsMap, pendingUpgrades, participantNames, verifySlotEditable, showStatusBlocked]);
 
   const [sizePaymentAlert, setSizePaymentAlert] = useState(false);
 
@@ -445,10 +499,13 @@ export default function SketchSelectionView({
                   {(!isLocked || sizePaidLock) && !isReadOnly && !isExpired && (
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setEditSlot(slot.rugIndex); }}
-                      className="flex items-center gap-1 text-xs text-[#5E2F88] hover:text-[#7B3DB0] font-medium bg-white border border-[#5E2F88]/20 rounded-lg px-2.5 py-1.5 transition-colors shrink-0"
+                      disabled={editVerifying === slot.rugIndex}
+                      onClick={(e) => { e.stopPropagation(); handleOpenEdit(slot.rugIndex); }}
+                      className="flex items-center gap-1 text-xs text-[#5E2F88] hover:text-[#7B3DB0] font-medium bg-white border border-[#5E2F88]/20 rounded-lg px-2.5 py-1.5 transition-colors shrink-0 disabled:opacity-50"
                     >
-                      <Pencil className="w-3 h-3" />
+                      {editVerifying === slot.rugIndex
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : <Pencil className="w-3 h-3" />}
                       עריכה
                     </button>
                   )}
@@ -730,6 +787,9 @@ export default function SketchSelectionView({
               <div className="text-center">
                 <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-2" />
                 <h3 className="text-[17px] font-bold text-[#581E83]">לא ניתן לערוך</h3>
+                {statusError.stale && (
+                  <p className="text-xs text-orange-600 font-medium mt-2">הסטטוס עודכן מהשרת.</p>
+                )}
                 <p className="text-sm text-[#464646]/70 mt-2">
                   הסקיצה בסטטוס "{getSketchStatusLabel(statusError.status)}" ולא ניתנת לשינוי.
                 </p>
