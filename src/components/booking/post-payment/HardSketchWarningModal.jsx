@@ -1,8 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X } from 'lucide-react';
 
 export default function HardSketchWarningModal({ open, onClose, onConfirm, productTitle }) {
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+
+  useEffect(() => {
+    if (open) setDontShowAgain(false);
+  }, [open]);
+
   return (
     <AnimatePresence>
       {open && (
@@ -55,6 +61,18 @@ export default function HardSketchWarningModal({ open, onClose, onConfirm, produ
               </p>
             </div>
 
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={dontShowAgain}
+                onChange={(e) => setDontShowAgain(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-[#e8e8e8] text-[#5E2F88] focus:ring-[#5E2F88]"
+              />
+              <span className="text-[13px] text-[#464646] leading-snug">
+                אוקי הבנתי, אל תציג שוב
+              </span>
+            </label>
+
             <div className="flex flex-col-reverse sm:flex-row gap-2.5 pt-1">
               <button
                 type="button"
@@ -65,7 +83,7 @@ export default function HardSketchWarningModal({ open, onClose, onConfirm, produ
               </button>
               <button
                 type="button"
-                onClick={onConfirm}
+                onClick={() => onConfirm(dontShowAgain)}
                 className="flex-1 py-2.5 rounded-xl bg-[#5E2F88] hover:bg-[#7B3DB0] text-white text-[14px] font-semibold transition-colors"
               >
                 מאשר/ת את הבחירה

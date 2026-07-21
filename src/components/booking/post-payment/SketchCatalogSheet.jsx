@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { X, Check, ZoomIn, Search, ChevronDown, AlertTriangle, Plus, Minus } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
-import { cn, getDifficultyLabel, getDifficultyTextClass, isHardDifficulty } from '@/lib/utils';
+import { cn, getDifficultyLabel, getDifficultyTextClass, isHardDifficulty, isHardSketchWarningDismissed, dismissHardSketchWarning } from '@/lib/utils';
 import HardSketchWarningModal from './HardSketchWarningModal';
 
 function ProductCard({ product, isSelected, selectedCount = 0, lockedCount = 0, onPick, onRemove, onZoom, disabled, plusDisabled = false, showQuantity = false }) {
@@ -139,8 +139,7 @@ export default function SketchCatalogSheet({
     const quotaReached = totalSelected >= maxSelections;
     if (quotaReached && count === 0) return;
     onPick(product);
-    if (!keepOpenOnPick) onClose();
-  }, [readOnly, selectedCounts, totalSelected, maxSelections, onPick, keepOpenOnPick, onClose]);
+  }, [readOnly, selectedCounts, totalSelected, maxSelections, onPick]);
 
   const attemptPick = useCallback((product) => {
     if (readOnly) return;
@@ -150,15 +149,16 @@ export default function SketchCatalogSheet({
     if (quotaReached && count === 0) return;
 
     const label = getDifficultyLabel(product);
-    if (isHardDifficulty(label)) {
+    if (isHardDifficulty(label) && !isHardSketchWarningDismissed()) {
       setHardWarningProduct(product);
       return;
     }
     proceedPick(product);
   }, [readOnly, selectedCounts, totalSelected, maxSelections, proceedPick]);
 
-  const confirmHardPick = useCallback(() => {
+  const confirmHardPick = useCallback((dontShowAgain) => {
     if (!hardWarningProduct) return;
+    if (dontShowAgain) dismissHardSketchWarning();
     const product = hardWarningProduct;
     setHardWarningProduct(null);
     proceedPick(product);
@@ -217,6 +217,7 @@ export default function SketchCatalogSheet({
   }, [safeCatalog, debouncedSearch, difficultyFilter]);
 
   return (
+    <>
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <SheetContent
         side="right"
@@ -347,13 +348,14 @@ export default function SketchCatalogSheet({
           </div>
         </DialogContent>
       </Dialog>
-
-      <HardSketchWarningModal
-        open={!!hardWarningProduct}
-        productTitle={hardWarningProduct?.title}
-        onClose={() => setHardWarningProduct(null)}
-        onConfirm={confirmHardPick}
-      />
     </Sheet>
+
+    <HardSketchWarningModal
+      open={!!hardWarningProduct}
+      productTitle={hardWarningProduct?.title}
+      onClose={() => setHardWarningProduct(null)}
+      onConfirm={confirmHardPick}
+    />
+    </>
   );
 }

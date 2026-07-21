@@ -1235,7 +1235,7 @@ export default function OrganizerSelfSelectionView({
         onRemovePick={handleCatalogRemovePick}
         slotLabel={catalogRemaining > 0 ? `נותרו ${catalogRemaining} סקיצות לבחירה` : 'כל הסקיצות נבחרו'}
         readOnly={false}
-        keepOpenOnPick={catalogQuota > 1}
+        keepOpenOnPick
         selectedCounts={catalogSelectedCounts}
         lockedSelectedCounts={catalogLockedCounts}
         maxSelections={catalogQuota}

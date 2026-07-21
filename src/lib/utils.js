@@ -61,6 +61,24 @@ export function isHardDifficulty(label) {
   return l === 'קשה' || l === 'hard' || l === 'מאתגר';
 }
 
+const HARD_SKETCH_WARNING_KEY = 'studio_happy_hard_sketch_warning_ack';
+
+export function isHardSketchWarningDismissed() {
+  if (typeof window === 'undefined') return false;
+  try {
+    return localStorage.getItem(HARD_SKETCH_WARNING_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function dismissHardSketchWarning() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(HARD_SKETCH_WARNING_KEY, '1');
+  } catch {}
+}
+
 /** Authoritative stored size in CMS — 60x60 until upgrade is paid. */
 export function getSelectionStoredSize(sel) {
   return sel?.canvasSize || '60x60';

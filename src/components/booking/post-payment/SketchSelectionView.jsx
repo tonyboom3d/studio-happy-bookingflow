@@ -187,7 +187,6 @@ export default function SketchSelectionView({
     }
     if (isExpired) { setDeadlineError(true); return; }
     setPendingProduct({ ...product, rugIndex: catalogForSlot });
-    setCatalogOpen(false);
     setShowModal(true);
   }, [catalogForSlot, isExpired, selectionsMap]);
 
@@ -248,6 +247,7 @@ export default function SketchSelectionView({
     setShowModal(false);
     setPendingProduct(null);
     setEditOnlyMode(null);
+    setCatalogOpen(false);
   }, [pendingProduct, isExpired, onSelectSketch, pendingUpgrades, selectionsMap, existingSelections]);
 
   const buildUpgradePayload = useCallback(() => {
