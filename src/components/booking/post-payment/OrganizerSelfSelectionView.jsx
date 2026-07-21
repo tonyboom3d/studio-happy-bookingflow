@@ -632,6 +632,7 @@ export default function OrganizerSelfSelectionView({
         if (isSketchStaffLocked(sketch)) continue;
 
         let image = sketch.image;
+        let wixFileUrl = sketch.wixFileUrl || null;
         let aiOriginalImage = sketch.aiOriginalImage;
         let aiTaskId = sketch.aiTaskId;
         let aiColors = sketch.aiColors;
@@ -643,6 +644,7 @@ export default function OrganizerSelfSelectionView({
             sketch.aiColors || 'AUTO',
           );
           if (saved?.sketchUrl) image = saved.sketchUrl;
+          if (saved?.wixFileUrl) wixFileUrl = saved.wixFileUrl;
           if (saved?.originalUrl) aiOriginalImage = saved.originalUrl;
           if (saved?.taskId) aiTaskId = saved.taskId;
           if (saved?.colors) aiColors = saved.colors;
@@ -651,7 +653,11 @@ export default function OrganizerSelfSelectionView({
         const selData = {
           rugIndex: sketch.rugIndex,
           productId: sketch.productId,
-          productSnapshot: { title: sketch.title, image },
+          productSnapshot: {
+            title: sketch.title,
+            image,
+            ...(wixFileUrl ? { wixFileUrl } : {}),
+          },
           canvasSize: sketch.size || '60x60',
           participantId: card.participantId || null,
           participantName: card.name,
