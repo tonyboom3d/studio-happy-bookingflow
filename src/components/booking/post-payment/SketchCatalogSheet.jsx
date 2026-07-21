@@ -4,6 +4,7 @@ import { X, Check, ZoomIn, Search, ChevronDown, AlertTriangle, Plus, Minus } fro
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
 import { cn, getDifficultyLabel, getDifficultyTextClass, isHardDifficulty } from '@/lib/utils';
+import HardSketchWarningModal from './HardSketchWarningModal';
 
 function ProductCard({ product, isSelected, selectedCount = 0, lockedCount = 0, onPick, onRemove, onZoom, disabled, plusDisabled = false, showQuantity = false }) {
   const difficultyLabel = getDifficultyLabel(product);
@@ -128,7 +129,40 @@ export default function SketchCatalogSheet({
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('');
+  const [hardWarningProduct, setHardWarningProduct] = useState(null);
   const searchTimerRef = useRef(null);
+
+  const proceedPick = useCallback((product) => {
+    if (readOnly) return;
+    const productId = product._id || product.id;
+    const count = selectedCounts[productId] || 0;
+    const quotaReached = totalSelected >= maxSelections;
+    if (quotaReached && count === 0) return;
+    onPick(product);
+    if (!keepOpenOnPick) onClose();
+  }, [readOnly, selectedCounts, totalSelected, maxSelections, onPick, keepOpenOnPick, onClose]);
+
+  const attemptPick = useCallback((product) => {
+    if (readOnly) return;
+    const productId = product._id || product.id;
+    const count = selectedCounts[productId] || 0;
+    const quotaReached = totalSelected >= maxSelections;
+    if (quotaReached && count === 0) return;
+
+    const label = getDifficultyLabel(product);
+    if (isHardDifficulty(label)) {
+      setHardWarningProduct(product);
+      return;
+    }
+    proceedPick(product);
+  }, [readOnly, selectedCounts, totalSelected, maxSelections, proceedPick]);
+
+  const confirmHardPick = useCallback(() => {
+    if (!hardWarningProduct) return;
+    const product = hardWarningProduct;
+    setHardWarningProduct(null);
+    proceedPick(product);
+  }, [hardWarningProduct, proceedPick]);
 
   const handleSearchChange = useCallback((value) => {
     setSearchText(value);
@@ -145,6 +179,8 @@ export default function SketchCatalogSheet({
       setSearchText('');
       setDebouncedSearch('');
       setDifficultyFilter('');
+    } else {
+      setHardWarningProduct(null);
     }
   }, [isOpen]);
 
@@ -259,12 +295,7 @@ export default function SketchCatalogSheet({
                     selectedCount={count}
                     lockedCount={lockedCount}
                     showQuantity={keepOpenOnPick}
-                    onPick={(p) => {
-                      if (!readOnly && !quotaReached) {
-                        onPick(p);
-                        if (!keepOpenOnPick) onClose();
-                      }
-                    }}
+                    onPick={attemptPick}
                     onRemove={onRemovePick}
                     onZoom={setEnlargedImage}
                     disabled={readOnly || (quotaReached && count === 0)}
@@ -316,6 +347,13 @@ export default function SketchCatalogSheet({
           </div>
         </DialogContent>
       </Dialog>
+
+      <HardSketchWarningModal
+        open={!!hardWarningProduct}
+        productTitle={hardWarningProduct?.title}
+        onClose={() => setHardWarningProduct(null)}
+        onConfirm={confirmHardPick}
+      />
     </Sheet>
   );
 }
