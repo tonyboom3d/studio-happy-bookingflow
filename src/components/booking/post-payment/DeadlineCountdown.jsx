@@ -55,11 +55,8 @@ export default function DeadlineCountdown({ deadlineAt, workshopStart, rugCount 
   const isPluralSketches = rugCount > 1;
   const pronoun = isPluralPeople ? 'לכם' : 'לך';
   const sketchLabel = isPluralSketches ? 'לבחירת סקיצות' : 'לבחירת סקיצה';
-  const sketchNoun = isPluralSketches ? 'סקיצות' : 'סקיצה';
-  const chooseVerb = isPluralPeople ? 'תספיקו לבחור' : 'תספיק לבחור';
-  const receiveVerb = isPluralPeople ? 'תוכלו לצייר' : 'תוכל לצייר';
 
-  const fallbackMessage = `אם לא ${chooseVerb} ${sketchNoun} עד המועד האחרון, במהלך הסדנה ${receiveVerb} על סקיצה חלקה — מיועדת ליצירה עצמית.`;
+  const fallbackMessage = 'במידה ולא תיבחר סקיצה על המועד האחרון, תחכה לכם סקיצה חלקה מיועדת ליצירה עצמית.';
 
   const showTimer = daysUntilWorkshop !== null && daysUntilWorkshop <= 15 && remaining;
 
@@ -101,7 +98,7 @@ export default function DeadlineCountdown({ deadlineAt, workshopStart, rugCount 
   return (
     <div className="space-y-2" dir="rtl">
       {timerBlock}
-      <p className="text-center text-[11px] sm:text-xs text-[#464646]/65 leading-relaxed px-1">
+      <p className="text-center text-[11px] sm:text-xs text-red-600 font-medium leading-relaxed px-1">
         {fallbackMessage}
       </p>
     </div>

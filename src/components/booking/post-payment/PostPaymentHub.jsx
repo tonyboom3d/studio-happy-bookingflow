@@ -38,6 +38,11 @@ export default function PostPaymentHub({
   const [orderHistory, setOrderHistory] = useState(orderHistoryProp || []);
   const [switchingOrder, setSwitchingOrder] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  // Session-wide 90x90 sketch capacity (shared across every order booked into
+  // the same workshop session — max 5 slots total, physically constrained).
+  const [session90, setSession90] = useState(
+    orderContext?.session90 || participantContext?.session90 || null
+  );
 
   // Share links are derived directly from each group's stable plaintext token so
   // they survive refreshes and never get re-minted (which would break shared links).
@@ -92,6 +97,7 @@ export default function PostPaymentHub({
     if (orderContext?.selections) setLocalSelections(orderContext.selections);
     if (orderContext?.catalog?.length) applyCatalog(orderContext.catalog);
     if (orderContext?.sketchLocks?.length) mergeSketchLocks(orderContext.sketchLocks);
+    if (orderContext?.session90) setSession90(orderContext.session90);
   }, [orderContext, applyCatalog, mergeSketchLocks]);
 
   useEffect(() => {
@@ -109,7 +115,24 @@ export default function PostPaymentHub({
       setLocalOrder((prev) => (prev ? { ...prev, ...participantContext.order } : participantContext.order));
     }
     if (participantContext?.ecomSummary) setEcomSummary(participantContext.ecomSummary);
+    if (participantContext?.session90) setSession90(participantContext.session90);
   }, [participantContext]);
+
+  // Optimistically bump the session-wide 90x90 usage count right after a
+  // successful reservation, so the UI reflects "sold out" immediately
+  // instead of waiting for the next periodic ORDER_CONTEXT refresh.
+  const bumpSession90Used = useCallback((count = 1) => {
+    setSession90((prev) => {
+      if (!prev) return prev;
+      const used = prev.used + count;
+      return {
+        ...prev,
+        used,
+        remaining: Math.max(0, prev.limit - used),
+        soldOut: used >= prev.limit,
+      };
+    });
+  }, []);
 
   useEffect(() => {
     if (initialCatalog?.length) applyCatalog(initialCatalog);

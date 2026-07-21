@@ -36,6 +36,7 @@ export default function SketchSelectionView({
   onSubmitFeedback,
   onCheckRateLimit,
   onVerifySketchForEdit,
+  session90 = null,
 }) {
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [catalogForSlot, setCatalogForSlot] = useState(null);
@@ -406,6 +407,14 @@ export default function SketchSelectionView({
     Object.keys(pendingUpgrades).forEach((k) => slots.add(Number(k)));
     return slots.size;
   }, [existingSelections, pendingUpgrades]);
+
+  // Only block picking a NEW 90x90 slot when the session is sold out — a
+  // slot that already holds a 90x90 reservation (paid or pending) may still
+  // be re-confirmed/edited.
+  const pendingSlotAlready90 = pendingProduct?.rugIndex != null && (
+    selectionWants90Upgrade(selectionsMap[pendingProduct.rugIndex]) || !!pendingUpgrades[pendingProduct.rugIndex]
+  );
+  const size90Disabled = !!session90?.soldOut && !pendingSlotAlready90;
 
   const slotLabel = catalogForSlot != null
     ? (rugSlots.length > 1 ? `בחירת עיצוב לשטיח ${catalogForSlot + 1}` : 'בחירת עיצוב לשטיח')

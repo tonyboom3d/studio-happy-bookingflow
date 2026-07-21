@@ -16,6 +16,7 @@ export default function ConfirmationModal({
   isFinal = false,
   skipNameStep = false,
   initialStep = 'size',
+  size90Disabled = false,
 }) {
   const [step, setStep] = useState(initialStep);
   const [selectedSize, setSelectedSize] = useState(null);
@@ -24,6 +25,7 @@ export default function ConfirmationModal({
   const [confirmed, setConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [saveErrorMessage, setSaveErrorMessage] = useState('');
   const [deadlineError, setDeadlineError] = useState(false);
   const hasDelayedRef = useRef(false);
 
@@ -40,6 +42,7 @@ export default function ConfirmationModal({
       setConfirmed(false);
       setSaving(false);
       setSaveError(false);
+      setSaveErrorMessage('');
       setDeadlineError(false);
     }
   }, [open, existingName, initialStep]);
@@ -59,6 +62,7 @@ export default function ConfirmationModal({
   const nameValid = !requireName || participantName.trim().length >= 2;
 
   const handleSizeSelect = (size) => {
+    if (size === '90x90' && size90Disabled) return;
     setSelectedSize(size);
     setStep((requireName && !skipNameStep) ? 'name' : 'confirm');
   };
@@ -71,6 +75,7 @@ export default function ConfirmationModal({
     if (isExpired) { setDeadlineError(true); return; }
     if (saving) return;
     setSaveError(false);
+    setSaveErrorMessage('');
     setSaving(true);
     try {
       await onConfirm(
@@ -82,7 +87,11 @@ export default function ConfirmationModal({
         hasDelayedRef.current = true;
         try { sessionStorage.setItem(DELAY_KEY, '1'); } catch (_) {}
       }
-    } catch (_) {
+    } catch (err) {
+      const msg = String(err?.message || '');
+      if (msg.startsWith('SESSION_SKETCH_90_SOLD_OUT')) {
+        setSaveErrorMessage('כל הסקיצות בגודל 90×90 לסדנה זו נתפסו. ניתן לבחור בגודל 60×60.');
+      }
       setSaveError(true);
     } finally {
       setSaving(false);
@@ -113,7 +122,7 @@ export default function ConfirmationModal({
           {saveError && !saving && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-3 w-full mb-3 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
-              <p className="text-sm text-red-700 text-right">השמירה נכשלה. נסו שוב.</p>
+              <p className="text-sm text-red-700 text-right">{saveErrorMessage || 'השמירה נכשלה. נסו שוב.'}</p>
             </div>
           )}
 
@@ -151,13 +160,20 @@ export default function ConfirmationModal({
                 </button>
                 <button
                   type="button"
+                  disabled={size90Disabled}
                   onClick={() => handleSizeSelect('90x90')}
-                  className="w-full flex items-center gap-3 p-3.5 rounded-xl border-2 border-[#e8e8e8] bg-white hover:border-orange-400 hover:bg-orange-50 transition-all text-right"
+                  className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-right ${
+                    size90Disabled
+                      ? 'border-[#e8e8e8] bg-gray-50 opacity-60 cursor-not-allowed'
+                      : 'border-[#e8e8e8] bg-white hover:border-orange-400 hover:bg-orange-50'
+                  }`}
                 >
                   <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center shrink-0 text-sm font-bold text-orange-700">90</div>
                   <div className="flex-1">
                     <p className="text-[15px] font-semibold text-[#581E83]">90×90 ס״מ</p>
-                    <p className="text-xs text-orange-600 font-medium">תוספת ₪299</p>
+                    <p className="text-xs text-orange-600 font-medium">
+                      {size90Disabled ? 'אין מקום פנוי בסדנה זו' : 'תוספת ₪299'}
+                    </p>
                   </div>
                 </button>
               </div>
