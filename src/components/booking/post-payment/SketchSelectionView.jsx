@@ -437,6 +437,13 @@ export default function SketchSelectionView({
         )}
       </AnimatePresence>
 
+      {session90?.soldOut && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-orange-500 shrink-0" />
+          <p className="text-sm text-orange-700">כל הסקיצות בגודל 90×90 לסדנה זו נתפסו — ניתן לבחור בגודל 60×60.</p>
+        </div>
+      )}
+
       {catalogLoading && (
         <div className="flex items-center justify-center gap-2 py-4 text-sm text-[#5E2F88]">
           <Loader2 className="w-4 h-4 animate-spin" />
@@ -627,6 +634,7 @@ export default function SketchSelectionView({
         existingName={participantNames[pendingProduct?.rugIndex] || ''}
         isFinal={isNearDeadline}
         skipNameStep={!!editOnlyMode}
+        size90Disabled={size90Disabled}
       />
 
       {/* Edit action modal */}

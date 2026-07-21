@@ -58,6 +58,7 @@ export default function PostPaymentHub({
     return readCatalogCache() || [];
   });
   const [paymentStatus, setPaymentStatus] = useState(null);
+  const [paymentErrorMessage, setPaymentErrorMessage] = useState('');
   const catalogCacheRef = useRef(catalog?.length ? catalog : readCatalogCache());
   const catalogFetchPromiseRef = useRef(null);
   const paymentListenerRef = useRef(false);
@@ -446,6 +447,10 @@ export default function PostPaymentHub({
           || verifiedParticipant?.rawPhone
           || ecomSummary?.buyerPhone
           || null;
+        const prevSel = localSelections.find(s => (
+          s.rugIndex === selection.rugIndex && (s.participantId || null) === (participantId || null)
+        ));
+        const alreadyReserved90 = prevSel && (prevSel.canvasSize === '90x90' || prevSel.requestedCanvasSize === '90x90');
         const result = await sendAndWait('SAVE_SKETCH_SELECTION', {
           orderId: localOrder._id,
           ...selection,
@@ -463,6 +468,11 @@ export default function PostPaymentHub({
             return [...filtered, result.selection];
           });
         }
+        // A brand-new 90x90 reservation just claimed a session-wide slot —
+        // reflect it immediately without waiting for the next context refresh.
+        if (selection.canvasSize === '90x90' && !alreadyReserved90) {
+          bumpSession90Used(1);
+        }
         return result;
       } finally {
         sketchSavePromisesRef.current.delete(saveKey);
@@ -473,7 +483,7 @@ export default function PostPaymentHub({
 
     sketchSavePromisesRef.current.set(saveKey, savePromise);
     return savePromise;
-  }, [localOrder?._id, verifiedParticipant, ecomSummary, sendAndWait]);
+  }, [localOrder?._id, verifiedParticipant, ecomSummary, sendAndWait, localSelections, bumpSession90Used]);
 
   const handleDeleteSketchSelection = useCallback(async ({ rugIndex, participantId, participantName }) => {
     const result = await sendAndWait('DELETE_SKETCH_SELECTION', {
@@ -537,8 +547,14 @@ export default function PostPaymentHub({
           setPaymentStatus('pending');
           setTimeout(() => setPaymentStatus(null), 4000);
         } else {
+          const msgText = String(msg.error || '');
+          setPaymentErrorMessage(
+            msgText.startsWith('SESSION_SKETCH_90_SOLD_OUT')
+              ? 'כל הסקיצות בגודל 90×90 לסדנה זו נתפסו. ניתן לבחור בגודל 60×60.'
+              : ''
+          );
           setPaymentStatus('failed');
-          setTimeout(() => setPaymentStatus(null), 3000);
+          setTimeout(() => { setPaymentStatus(null); setPaymentErrorMessage(''); }, 4000);
         }
         setIsSaving(false);
       }
@@ -739,8 +755,8 @@ export default function PostPaymentHub({
           <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
             <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </div>
-          <p className="text-lg font-bold text-red-700">התשלום לא הושלם</p>
-          <p className="mt-1 text-sm text-[#464646]/70">ניתן לנסות שוב</p>
+          <p className="text-lg font-bold text-red-700">{paymentErrorMessage ? 'לא ניתן להשלים את הבחירה' : 'התשלום לא הושלם'}</p>
+          <p className="mt-1 text-sm text-[#464646]/70">{paymentErrorMessage || 'ניתן לנסות שוב'}</p>
         </motion.div>
       )}
     </AnimatePresence>
@@ -782,6 +798,7 @@ export default function PostPaymentHub({
           onCheckRateLimit={handleCheckRateLimit}
           onVerifySketchForEdit={handleVerifySketchForEdit}
           onCheckGroupDeletable={handleCheckGroupDeletable}
+          session90={session90}
         />
       </div>
     );
@@ -954,6 +971,7 @@ export default function PostPaymentHub({
           onSubmitFeedback={handleSubmitFeedback}
           onCheckRateLimit={handleCheckRateLimit}
           onVerifySketchForEdit={(rugIndex) => handleVerifySketchForEdit(rugIndex, verifiedParticipant._id)}
+          session90={session90}
         />
       </div>
     );

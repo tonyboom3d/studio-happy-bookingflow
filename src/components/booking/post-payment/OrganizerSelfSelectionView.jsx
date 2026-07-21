@@ -99,6 +99,7 @@ export default function OrganizerSelfSelectionView({
   onDeleteOrganizerGroup,
   onVerifySketchForEdit,
   onCheckGroupDeletable,
+  session90 = null,
 }) {
   const [cards, setCards] = useState(() => buildInitialCards(participants, selections));
   const [setupOpen, setSetupOpen] = useState(false);
@@ -573,6 +574,10 @@ export default function OrganizerSelfSelectionView({
       setReviewError(`הסקיצה בסטטוס "${getSketchStatusLabel(sketch.sketchStatus)}" ולא ניתנת לשינוי`);
       return;
     }
+    if (newSize === '90x90' && sketch?.size !== '90x90' && session90?.soldOut) {
+      setReviewError('כל הסקיצות בגודל 90×90 לסדנה זו נתפסו. ניתן לבחור בגודל 60×60.');
+      return;
+    }
     setCards(prev => prev.map((c, i) => {
       if (i !== cardIdx) return c;
       const updated = [...c.sketches];
@@ -684,7 +689,9 @@ export default function OrganizerSelfSelectionView({
       setExpandedCards(prev => ({ ...prev, [reviewCardIdx]: true }));
     } catch (e) {
       const msg = String(e?.message || '');
-      if (msg.includes('LOCKED_DESIGN_MINIMUM')) {
+      if (msg.includes('SESSION_SKETCH_90_SOLD_OUT')) {
+        setReviewError('כל הסקיצות בגודל 90×90 לסדנה זו נתפסו. ניתן לבחור בגודל 60×60.');
+      } else if (msg.includes('LOCKED_DESIGN_MINIMUM')) {
         const min = msg.split(':').pop();
         setReviewError(`לא ניתן להוריד מתחת ל-${min} עותקים מאושרים של עיצוב זה`);
       } else if (msg.includes('QUOTA_EXCEEDED')) {
@@ -1373,7 +1380,14 @@ export default function OrganizerSelfSelectionView({
                               className="text-[12px] border border-[#e8e8e8] rounded-lg px-2 py-1 bg-white text-[#464646] focus:outline-none focus:border-[#5E2F88]"
                             >
                               <option value="60x60">60×60 ס"מ</option>
-                              <option value="90x90">90×90 ס"מ (+₪299)</option>
+                              <option
+                                value="90x90"
+                                disabled={sketch.size !== '90x90' && !!session90?.soldOut}
+                              >
+                                {sketch.size !== '90x90' && session90?.soldOut
+                                  ? '90×90 ס"מ (אין מקום פנוי)'
+                                  : '90×90 ס"מ (+₪299)'}
+                              </option>
                             </select>
                             )}
                           </div>

@@ -82,6 +82,7 @@ export default function OrganizerOrderHub({
   onCheckRateLimit,
   onVerifySketchForEdit,
   onCheckGroupDeletable,
+  session90,
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [orderSwitcherOpen, setOrderSwitcherOpen] = useState(false);
@@ -758,6 +759,7 @@ export default function OrganizerOrderHub({
           onDeleteOrganizerGroup={onDeleteOrganizerGroup}
           onVerifySketchForEdit={onVerifySketchForEdit}
           onCheckGroupDeletable={onCheckGroupDeletable}
+          session90={session90}
         />
       )}
 
