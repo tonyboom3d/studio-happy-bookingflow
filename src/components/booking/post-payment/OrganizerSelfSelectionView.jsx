@@ -63,7 +63,12 @@ function mapSelectionToSketch(s) {
 function getSketchStatusBadge(sketch, editingWindowClosed) {
   const status = normalizeSketchStatus(sketch.sketchStatus);
   const upgrade = sketch.upgradePaymentStatus || null;
-  const is90 = getSelectionDisplaySize(sketch) === '90x90';
+  // Use the locally-tracked `size` (kept in sync by updateSketchSize) rather
+  // than getSelectionDisplaySize(sketch), which relies on stale
+  // upgradePaymentStatus/requestedCanvasSize fields that aren't cleared until
+  // the change is actually saved — otherwise a sketch reverted to 60x60
+  // before payment would still show "לא שולמה".
+  const is90 = sketch.size === '90x90';
 
   const staffLabel = getSketchStatusShortLabel(status);
   if (staffLabel) {
