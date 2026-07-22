@@ -87,18 +87,39 @@ export default function PostPaymentHub({
     }));
   }, []);
 
-  const applyCatalog = useCallback((products) => {
-    if (!products?.length) return;
-    catalogCacheRef.current = products;
-    writeCatalogCache(products);
-    setCatalog(products);
+  const applyCatalog = useCallback((products, source = 'unknown') => {
+    const list = Array.isArray(products) ? products : [];
+    const sample = list.slice(0, 3).map((p) => ({
+      _id: p?._id,
+      title: p?.title,
+      difficulty: p?.difficulty,
+      hasImage: !!p?.image,
+      imagePrefix: p?.image ? String(p.image).slice(0, 80) : null,
+      hasWixFileUrl: !!p?.wixFileUrl,
+      wixFileUrlPrefix: p?.wixFileUrl ? String(p.wixFileUrl).slice(0, 80) : null,
+    }));
+    const withoutImage = list.filter((p) => !p?.image).length;
+    console.log('[CatalogDebug] applyCatalog', {
+      source,
+      count: list.length,
+      withoutImage,
+      sample,
+      rawFirstItem: list[0] || null,
+    });
+    if (!list.length) {
+      console.warn('[CatalogDebug] applyCatalog skipped — empty products array', { source });
+      return;
+    }
+    catalogCacheRef.current = list;
+    writeCatalogCache(list);
+    setCatalog(list);
   }, []);
 
   useEffect(() => {
     if (orderContext?.order) setLocalOrder(orderContext.order);
     if (orderContext?.participants) setLocalParticipants(orderContext.participants);
     if (orderContext?.selections) setLocalSelections(orderContext.selections);
-    if (orderContext?.catalog?.length) applyCatalog(orderContext.catalog);
+    if (orderContext?.catalog?.length) applyCatalog(orderContext.catalog, 'orderContext.catalog');
     if (orderContext?.sketchLocks?.length) mergeSketchLocks(orderContext.sketchLocks);
     if (orderContext?.session90) setSession90(orderContext.session90);
   }, [orderContext, applyCatalog, mergeSketchLocks]);
@@ -149,7 +170,7 @@ export default function PostPaymentHub({
   }, []);
 
   useEffect(() => {
-    if (initialCatalog?.length) applyCatalog(initialCatalog);
+    if (initialCatalog?.length) applyCatalog(initialCatalog, 'initialCatalog');
   }, [initialCatalog, applyCatalog]);
 
   const sendAndWait = useCallback((type, data) => {
@@ -167,16 +188,29 @@ export default function PostPaymentHub({
     }
 
     catalogFetchPromiseRef.current = (async () => {
+      const orderId = localOrder?._id || verifiedParticipant?.orderId;
+      console.log('[CatalogDebug] FETCH_CATALOG start', { orderId });
       try {
-        const orderId = localOrder?._id || verifiedParticipant?.orderId;
         const result = await sendAndWait('FETCH_CATALOG', { orderId });
+        console.log('[CatalogDebug] FETCH_CATALOG response', {
+          orderId,
+          resultKeys: result ? Object.keys(result) : null,
+          productsIsArray: Array.isArray(result?.products),
+          productsCount: result?.products?.length ?? 0,
+          error: result?.error || null,
+          rawResult: result,
+        });
         if (result?.products?.length) {
-          applyCatalog(result.products);
+          applyCatalog(result.products, 'FETCH_CATALOG');
           return result.products;
         }
+        console.warn('[CatalogDebug] FETCH_CATALOG — no products in response', { orderId, result });
       } catch (e) {
-        console.error('Failed to fetch catalog:', e);
+        console.error('[CatalogDebug] FETCH_CATALOG failed:', e);
       }
+      console.log('[CatalogDebug] FETCH_CATALOG fallback to cache', {
+        cacheCount: catalogCacheRef.current?.length ?? 0,
+      });
       return catalogCacheRef.current || null;
     })();
 
@@ -188,16 +222,27 @@ export default function PostPaymentHub({
   }, [sendAndWait, applyCatalog, localOrder?._id, verifiedParticipant?.orderId]);
 
   const handleFetchCatalog = useCallback(async () => {
-    if (catalog?.length) return catalog;
+    console.log('[CatalogDebug] handleFetchCatalog', {
+      catalogStateCount: catalog?.length ?? 0,
+      cacheRefCount: catalogCacheRef.current?.length ?? 0,
+      sessionCacheCount: readCatalogCache()?.length ?? 0,
+    });
+    if (catalog?.length) {
+      console.log('[CatalogDebug] handleFetchCatalog — using catalog state', { count: catalog.length });
+      return catalog;
+    }
     if (catalogCacheRef.current?.length) {
+      console.log('[CatalogDebug] handleFetchCatalog — using catalogCacheRef', { count: catalogCacheRef.current.length });
       setCatalog(catalogCacheRef.current);
       return catalogCacheRef.current;
     }
     const cached = readCatalogCache();
     if (cached?.length) {
-      applyCatalog(cached);
+      console.log('[CatalogDebug] handleFetchCatalog — using sessionStorage cache', { count: cached.length });
+      applyCatalog(cached, 'sessionStorage');
       return cached;
     }
+    console.log('[CatalogDebug] handleFetchCatalog — fetching from server');
     return fetchCatalogFromServer();
   }, [catalog, applyCatalog, fetchCatalogFromServer]);
 
