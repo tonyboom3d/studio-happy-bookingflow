@@ -144,7 +144,7 @@ function getMinPriceForDate(slots, servicePricing) {
 
 const TOOLTIP_EDGE_MARGIN = 8;
 
-function DayTooltip({ slots, servicePricing, holiday, closingSoon, allBlocked, isVisible, isMobile }) {
+function DayTooltip({ slots, servicePricing, holiday, closingSoon, allBlocked, isVisible, isMobile, stackTimes = false }) {
   const wrapperRef = useRef(null);
   const [offsetX, setOffsetX] = useState(0);
 
@@ -173,7 +173,8 @@ function DayTooltip({ slots, servicePricing, holiday, closingSoon, allBlocked, i
 
   const minPrice = getMinPriceForDate(slots, servicePricing);
   const times = slots.map(slot => getSlotTimeRange(slot)).sort();
-  const uniqueTimes = [...new Set(times)].slice(0, 3);
+  const uniqueTimes = [...new Set(times)];
+  const displayTimes = stackTimes ? uniqueTimes : uniqueTimes.slice(0, 3);
 
   return (
     <div
@@ -220,7 +221,15 @@ function DayTooltip({ slots, servicePricing, holiday, closingSoon, allBlocked, i
           )}
           <div className="flex items-start gap-1.5 text-[#464646]">
             <Clock className={cn('shrink-0', isMobile ? 'w-4 h-4 mt-0.5' : 'w-4 h-4')} />
-            <span className="break-words">{uniqueTimes.join(' | ')}</span>
+            {stackTimes ? (
+              <div className="flex flex-col gap-0.5">
+                {displayTimes.map((time) => (
+                  <span key={time} className="break-words">{time}</span>
+                ))}
+              </div>
+            ) : (
+              <span className="break-words">{displayTimes.join(' | ')}</span>
+            )}
           </div>
         </div>
 
@@ -238,7 +247,8 @@ export default function TimeSlotsSection({
   setSelectedSlot,
   availableSlots = [],
   servicePricing,
-  onContinue
+  onContinue,
+  stackTimeSlots = false,
 }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [today] = useState(() => startOfDay(new Date()));
@@ -445,6 +455,7 @@ export default function TimeSlotsSection({
                       allBlocked={allBlocked}
                       isVisible={true}
                       isMobile={isMobile}
+                      stackTimes={stackTimeSlots}
                     />
                   )}
                 </AnimatePresence>
@@ -503,7 +514,7 @@ export default function TimeSlotsSection({
                   <X className="w-3.5 h-3.5 text-[#581E83]" />
                 </button>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className={cn('gap-2', stackTimeSlots ? 'flex flex-col' : 'flex flex-wrap')}>
                 {timePickerSlots.map((slot, idx) => {
                   const isThisSlotSelected = selectedSlot?.sessionId === slot.sessionId;
                   const blocked = isSlotBlocked(slot);
@@ -515,6 +526,7 @@ export default function TimeSlotsSection({
                       onClick={() => handleTimeSelect(slot)}
                       className={cn(
                         "relative px-4 py-2 rounded-lg border font-medium transition-colors",
+                        stackTimeSlots && "w-full text-center",
                         blocked
                           ? "border-red-300 bg-red-50 text-red-400 cursor-not-allowed"
                           : isThisSlotSelected

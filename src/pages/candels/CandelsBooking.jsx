@@ -403,6 +403,7 @@ export default function CandelsBooking() {
                     availableSlots={wixSlots}
                     servicePricing={servicePricing}
                     onContinue={() => completeSection(1)}
+                    stackTimeSlots
                   />
                 )}
                 {section.id === 2 && (

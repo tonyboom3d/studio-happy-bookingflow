@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { addLog } from '@/components/VersionLogger';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -120,7 +120,14 @@ export default function CupCatalogDrawer({
   const [enlargedImage, setEnlargedImage] = useState(null);
   const productsContainerRef = useRef(null);
 
-  const products = wixProducts && wixProducts.length > 0 ? wixProducts : FALLBACK_PRODUCTS;
+  const products = useMemo(() => {
+    const list = wixProducts && wixProducts.length > 0 ? wixProducts : FALLBACK_PRODUCTS;
+    return [...list].sort((a, b) => {
+      const priceA = Number(a.price) || 0;
+      const priceB = Number(b.price) || 0;
+      return priceA - priceB;
+    });
+  }, [wixProducts]);
 
   const totalItems = cart.reduce((sum, p) => sum + (p.quantity || 1), 0);
 

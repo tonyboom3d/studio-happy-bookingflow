@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Minus, Plus, Users, Baby, MessageCircle, AlertTriangle } from 'lucide-react';
+import { Minus, Plus, Users, Baby, MessageCircle, AlertTriangle, Flame } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Candles workshop ("סדנת נרות") participants step.
@@ -174,7 +174,7 @@ export default function CandelsParticipantsSection({
 
             {/* נרות — באמצע עם הסבר מתחת */}
             <div className="flex flex-col items-center gap-1">
-              <span className="text-lg leading-none">🕯️</span>
+              <Flame className="w-5 h-5 text-[#581E83]" />
               <span className="text-[20px] font-bold text-[#581E83]">{totalCandles}</span>
               <span className="text-[16px] text-[#464646]/60">{totalCandles === 1 ? 'נר' : 'נרות'}</span>
               {children > 0 && (
