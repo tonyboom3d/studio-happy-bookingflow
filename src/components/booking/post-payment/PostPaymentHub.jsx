@@ -137,6 +137,17 @@ export default function PostPaymentHub({
     });
   }, []);
 
+  const mergeFreshSelection = useCallback((freshSelection) => {
+    if (!freshSelection) return;
+    setLocalSelections((prev) => {
+      const filtered = prev.filter((s) => !(
+        s.rugIndex === freshSelection.rugIndex
+        && (s.participantId || null) === (freshSelection.participantId || null)
+      ));
+      return [...filtered, freshSelection];
+    });
+  }, []);
+
   useEffect(() => {
     if (initialCatalog?.length) applyCatalog(initialCatalog);
   }, [initialCatalog, applyCatalog]);
@@ -518,17 +529,6 @@ export default function PostPaymentHub({
     )));
     return result;
   }, [localOrder?._id, sendAndWait]);
-
-  const mergeFreshSelection = useCallback((freshSelection) => {
-    if (!freshSelection) return;
-    setLocalSelections((prev) => {
-      const filtered = prev.filter((s) => !(
-        s.rugIndex === freshSelection.rugIndex
-        && (s.participantId || null) === (freshSelection.participantId || null)
-      ));
-      return [...filtered, freshSelection];
-    });
-  }, []);
 
   const handleVerifySketchForEdit = useCallback(async (rugIndex, participantId = null) => {
     if (!localOrder?._id) return { canEdit: false, error: 'NO_ORDER' };
