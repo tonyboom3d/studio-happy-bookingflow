@@ -225,7 +225,11 @@ export default function SketchCatalogSheet({
       <SheetContent
         side="right"
         hideCloseButton
-        className="flex h-full max-h-[100dvh] w-full flex-col overflow-hidden p-0 sm:max-w-xl"
+        overlayClassName={hardWarningProduct ? 'pointer-events-none !z-[150]' : undefined}
+        className={cn(
+          'flex h-full max-h-[100dvh] w-full flex-col overflow-hidden p-0 sm:max-w-xl',
+          hardWarningProduct && 'pointer-events-none !z-[150]',
+        )}
         style={{ backgroundColor: '#E4C1F9' }}
       >
         <SheetHeader className="flex flex-col shrink-0 space-y-0 border-b border-[#e8e8e8] bg-white px-4 py-3 sticky top-0 z-10">

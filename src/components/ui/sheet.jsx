@@ -45,9 +45,9 @@ const sheetVariants = cva(
 )
 
 const SheetContent = React.forwardRef(
-  ({ side = "right", className, children, hideCloseButton, ...props }, ref) => (
+  ({ side = "right", className, children, hideCloseButton, overlayClassName, ...props }, ref) => (
     <SheetPortal>
-      <SheetOverlay />
+      <SheetOverlay className={overlayClassName} />
       <SheetPrimitive.Content
         ref={ref}
         aria-describedby={undefined}

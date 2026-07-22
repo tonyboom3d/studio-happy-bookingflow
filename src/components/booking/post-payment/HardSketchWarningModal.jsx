@@ -31,7 +31,8 @@ export default function HardSketchWarningModal({ open, onClose, onConfirm, produ
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 !z-[9998] flex items-center justify-center bg-black/60 p-4"
+          style={{ zIndex: 9998 }}
           onPointerDown={(e) => e.stopPropagation()}
         >
           <motion.div
@@ -39,7 +40,8 @@ export default function HardSketchWarningModal({ open, onClose, onConfirm, produ
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 16 }}
             transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-            className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-5 space-y-4 relative"
+            className="relative !z-[9999] bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-5 space-y-4"
+            style={{ zIndex: 9999 }}
             dir="rtl"
             role="dialog"
             aria-modal="true"
