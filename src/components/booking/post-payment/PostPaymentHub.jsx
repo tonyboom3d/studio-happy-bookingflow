@@ -6,6 +6,7 @@ import { he } from 'date-fns/locale';
 import { readCatalogCache, writeCatalogCache } from '@/lib/utils';
 import { findLockedInGroup, groupDeletableCacheKey } from '@/lib/sketchStatus';
 import OrganizerOrderHub from './OrganizerOrderHub';
+import CandelsThankYou from '../../candels/CandelsThankYou';
 import SketchSelectionView from './SketchSelectionView';
 import InvalidLinkMessage from './InvalidLinkMessage';
 import OrderLoadError from './OrderLoadError';
@@ -45,6 +46,10 @@ export default function PostPaymentHub({
   const [session90, setSession90] = useState(
     orderContext?.session90 || participantContext?.session90 || null
   );
+  // Candles ("סדנת נרות") orders render a summary-only Thank You view instead
+  // of the full Tufting organizer hub (no sketch/group features).
+  const [isCandles, setIsCandles] = useState(!!orderContext?.isCandles);
+  const [selectedProducts, setSelectedProducts] = useState(orderContext?.selectedProducts || []);
 
   // Share links are derived directly from each group's stable plaintext token so
   // they survive refreshes and never get re-minted (which would break shared links).
@@ -101,6 +106,8 @@ export default function PostPaymentHub({
     if (orderContext?.catalog?.length) applyCatalog(orderContext.catalog);
     if (orderContext?.sketchLocks?.length) mergeSketchLocks(orderContext.sketchLocks);
     if (orderContext?.session90) setSession90(orderContext.session90);
+    if (orderContext?.isCandles !== undefined) setIsCandles(!!orderContext.isCandles);
+    if (orderContext?.selectedProducts) setSelectedProducts(orderContext.selectedProducts);
   }, [orderContext, applyCatalog, mergeSketchLocks]);
 
   useEffect(() => {
@@ -804,6 +811,23 @@ export default function PostPaymentHub({
       )}
     </AnimatePresence>
   );
+
+  // Organizer view — candles orders get a summary-only Thank You view (no sketch/group features)
+  if (role === 'organizer' && isCandles) {
+    return (
+      <div className="max-w-2xl mx-auto p-4 md:p-6">
+        {paymentOverlay}
+        <CandelsThankYou
+          order={localOrder}
+          ecomSummary={ecomSummary}
+          orderHistory={orderHistory}
+          selectedProducts={selectedProducts}
+          onSwitchOrder={handleSwitchOrder}
+          isSwitchingOrder={switchingOrder}
+        />
+      </div>
+    );
+  }
 
   // Organizer view
   if (role === 'organizer') {
