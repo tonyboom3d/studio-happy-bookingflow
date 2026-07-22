@@ -56,7 +56,7 @@ export default function DeadlineCountdown({ deadlineAt, workshopStart, rugCount 
   const pronoun = isPluralPeople ? 'לכם' : 'לך';
   const sketchLabel = isPluralSketches ? 'לבחירת סקיצות' : 'לבחירת סקיצה';
 
-  const fallbackMessage = 'במידה ולא תיבחר סקיצה על המועד האחרון, תחכה לכם סקיצה חלקה מיועדת ליצירה עצמית.';
+  const fallbackMessage = 'במידה ולא תיבחר סקיצה עד המועד האחרון, תחכה לכם סקיצה חלקה מיועדת ליצירה עצמית.';
 
   const showTimer = daysUntilWorkshop !== null && daysUntilWorkshop <= 15 && remaining;
 

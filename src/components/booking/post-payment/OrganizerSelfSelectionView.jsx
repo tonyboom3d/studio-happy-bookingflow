@@ -851,6 +851,8 @@ export default function OrganizerSelfSelectionView({
           </div>
           <p className="text-[12px] text-orange-700/70 mb-2.5">
             שטיחים אלו נשמרו בגודל 60×60 ויעודכנו ל-90×90 רק לאחר השלמת התשלום
+            <br />
+            סקיצה בגודל 90×90 עשויה לקחת יותר זמן לביצוע
           </p>
           <button
             type="button"
