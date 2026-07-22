@@ -131,6 +131,7 @@ export default function SketchCatalogSheet({
   const [difficultyFilter, setDifficultyFilter] = useState('');
   const [hardWarningProduct, setHardWarningProduct] = useState(null);
   const searchTimerRef = useRef(null);
+  const catalogLocked = !!hardWarningProduct;
 
   const proceedPick = useCallback((product) => {
     if (readOnly) return;
@@ -142,7 +143,7 @@ export default function SketchCatalogSheet({
   }, [readOnly, selectedCounts, totalSelected, maxSelections, onPick]);
 
   const attemptPick = useCallback((product) => {
-    if (readOnly) return;
+    if (readOnly || catalogLocked) return;
     const productId = product._id || product.id;
     const count = selectedCounts[productId] || 0;
     const quotaReached = totalSelected >= maxSelections;
@@ -154,7 +155,7 @@ export default function SketchCatalogSheet({
       return;
     }
     proceedPick(product);
-  }, [readOnly, selectedCounts, totalSelected, maxSelections, proceedPick]);
+  }, [readOnly, catalogLocked, selectedCounts, totalSelected, maxSelections, proceedPick]);
 
   const confirmHardPick = useCallback((dontShowAgain) => {
     if (!hardWarningProduct) return;
@@ -173,6 +174,10 @@ export default function SketchCatalogSheet({
   useEffect(() => () => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
   }, []);
+
+  useEffect(() => {
+    if (hardWarningProduct) setEnlargedImage(null);
+  }, [hardWarningProduct]);
 
   useEffect(() => {
     if (isOpen) {
@@ -232,12 +237,19 @@ export default function SketchCatalogSheet({
         )}
         style={{ backgroundColor: '#E4C1F9' }}
       >
-        <SheetHeader className="flex flex-col shrink-0 space-y-0 border-b border-[#e8e8e8] bg-white px-4 py-3 sticky top-0 z-10">
+        <SheetHeader
+          className={cn(
+            'flex flex-col shrink-0 space-y-0 border-b border-[#e8e8e8] bg-white px-4 py-3 sticky top-0 z-10',
+            catalogLocked && 'pointer-events-none opacity-60',
+          )}
+          {...(catalogLocked ? { inert: '' } : {})}
+        >
           <div className="flex items-center justify-between mb-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f5f5f5] text-[#581E83] hover:bg-[#e8e8e8] transition-colors"
+              disabled={catalogLocked}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f5f5f5] text-[#581E83] hover:bg-[#e8e8e8] transition-colors disabled:opacity-40 disabled:pointer-events-none"
               aria-label="סגור קטלוג"
             >
               <X className="h-5 w-5" />
@@ -259,6 +271,7 @@ export default function SketchCatalogSheet({
                 type="text"
                 value={searchText}
                 onChange={(e) => handleSearchChange(e.target.value)}
+                disabled={catalogLocked}
                 placeholder="חיפוש עיצוב..."
                 className="w-full h-9 pr-8 pl-3 rounded-lg border border-[#e8e8e8] text-sm text-[#464646] placeholder:text-[#464646]/40 focus:outline-none focus:border-[#5E2F88] transition-colors"
                 dir="rtl"
@@ -269,7 +282,8 @@ export default function SketchCatalogSheet({
               <select
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
-                className="h-9 pl-7 pr-3 rounded-lg border border-[#e8e8e8] text-sm text-[#464646] bg-white appearance-none focus:outline-none focus:border-[#5E2F88] transition-colors cursor-pointer"
+                disabled={catalogLocked}
+                className="h-9 pl-7 pr-3 rounded-lg border border-[#e8e8e8] text-sm text-[#464646] bg-white appearance-none focus:outline-none focus:border-[#5E2F88] transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                 dir="rtl"
               >
                 <option value="">כל הרמות</option>
@@ -282,7 +296,10 @@ export default function SketchCatalogSheet({
           </div>
         </SheetHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 sm:p-4">
+        <div
+          className={cn('min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 sm:p-4', catalogLocked && 'pointer-events-none')}
+          {...(catalogLocked ? { inert: '' } : {})}
+        >
           {filteredProducts.length === 0 ? (
             <p className="text-center text-sm text-[#464646] py-8">
               לא נמצאו עיצובים תואמים לחיפוש שלך
@@ -305,8 +322,8 @@ export default function SketchCatalogSheet({
                     showQuantity={keepOpenOnPick}
                     onPick={attemptPick}
                     onRemove={onRemovePick}
-                    onZoom={setEnlargedImage}
-                    disabled={readOnly || (quotaReached && count === 0)}
+                    onZoom={catalogLocked ? undefined : setEnlargedImage}
+                    disabled={readOnly || catalogLocked || (quotaReached && count === 0)}
                     plusDisabled={quotaReached}
                   />
                 );
@@ -326,7 +343,8 @@ export default function SketchCatalogSheet({
             <button
               type="button"
               onClick={onClose}
-              className="w-full flex items-center justify-center gap-2 bg-[#5E2F88] hover:bg-[#7B3DB0] text-white font-semibold py-3 rounded-xl text-[15px] transition-colors"
+              disabled={catalogLocked}
+              className="w-full flex items-center justify-center gap-2 bg-[#5E2F88] hover:bg-[#7B3DB0] text-white font-semibold py-3 rounded-xl text-[15px] transition-colors disabled:opacity-40 disabled:pointer-events-none"
             >
               <Check className="w-4 h-4" />
               זהו, סיימתי לבחור
@@ -335,7 +353,7 @@ export default function SketchCatalogSheet({
         )}
       </SheetContent>
 
-      <Dialog open={!!enlargedImage} onOpenChange={(open) => { if (!open) setEnlargedImage(null); }}>
+      <Dialog open={!!enlargedImage && !catalogLocked} onOpenChange={(open) => { if (!open) setEnlargedImage(null); }}>
         <DialogContent
           hideCloseButton
           className="z-[300] w-[calc(100vw-1rem)] max-w-[min(100vw-1rem,42rem)] max-h-[92dvh] p-2 sm:p-4 border-none bg-transparent shadow-none"

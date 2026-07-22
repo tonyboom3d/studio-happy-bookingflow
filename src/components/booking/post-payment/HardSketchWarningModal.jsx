@@ -1,10 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 
+const BLOCKED_OUTSIDE_EVENTS = [
+  'pointerdown',
+  'pointerup',
+  'click',
+  'touchstart',
+  'touchend',
+  'mousedown',
+  'mouseup',
+];
+
 export default function HardSketchWarningModal({ open, onClose, onConfirm, productTitle }) {
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  const modalRef = useRef(null);
 
   useEffect(() => {
     if (open) setDontShowAgain(false);
@@ -22,18 +33,43 @@ export default function HardSketchWarningModal({ open, onClose, onConfirm, produ
     return () => document.removeEventListener('keydown', blockEscape, true);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const blockOutside = (e) => {
+      if (!modalRef.current?.contains(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    BLOCKED_OUTSIDE_EVENTS.forEach((type) => {
+      document.addEventListener(type, blockOutside, true);
+    });
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      BLOCKED_OUTSIDE_EVENTS.forEach((type) => {
+        document.removeEventListener(type, blockOutside, true);
+      });
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
+
   if (typeof document === 'undefined') return null;
 
   return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
+          ref={modalRef}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 !z-[9998] flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 !z-[9998] flex items-center justify-center bg-black/60 p-4 pointer-events-auto"
           style={{ zIndex: 9998 }}
-          onPointerDown={(e) => e.stopPropagation()}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.92, y: 16 }}
@@ -46,7 +82,6 @@ export default function HardSketchWarningModal({ open, onClose, onConfirm, produ
             role="dialog"
             aria-modal="true"
             aria-labelledby="hard-sketch-warning-title"
-            onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col items-center text-center pt-1">
               <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-3">
