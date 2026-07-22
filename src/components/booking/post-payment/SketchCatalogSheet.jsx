@@ -211,9 +211,7 @@ export default function SketchCatalogSheet({
       );
     }
 
-    return result.sort((a, b) =>
-      (a.title || '').toString().localeCompare((b.title || '').toString(), 'he')
-    );
+    return result;
   }, [safeCatalog, debouncedSearch, difficultyFilter]);
 
   return (

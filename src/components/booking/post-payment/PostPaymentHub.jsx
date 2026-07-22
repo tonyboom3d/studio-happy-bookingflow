@@ -157,7 +157,8 @@ export default function PostPaymentHub({
 
     catalogFetchPromiseRef.current = (async () => {
       try {
-        const result = await sendAndWait('FETCH_CATALOG', {});
+        const orderId = localOrder?._id || verifiedParticipant?.orderId;
+        const result = await sendAndWait('FETCH_CATALOG', { orderId });
         if (result?.products?.length) {
           applyCatalog(result.products);
           return result.products;
@@ -173,7 +174,7 @@ export default function PostPaymentHub({
     } finally {
       catalogFetchPromiseRef.current = null;
     }
-  }, [sendAndWait, applyCatalog]);
+  }, [sendAndWait, applyCatalog, localOrder?._id, verifiedParticipant?.orderId]);
 
   const handleFetchCatalog = useCallback(async () => {
     if (catalog?.length) return catalog;

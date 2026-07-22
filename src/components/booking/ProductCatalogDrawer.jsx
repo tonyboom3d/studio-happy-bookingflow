@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn, getDifficultyLabel, getDifficultyTextClass, isHardDifficulty } from '@/lib/utils';
 
 const FALLBACK_PRODUCTS = [
-  { id: 'fallback-1', title: 'טוען שטיחים...', difficulty: '', image: null, favorites: false }
+  { id: 'fallback-1', title: 'טוען שטיחים...', difficulty: '', image: null }
 ];
 
 function ProductGridCard({ product, isSelected, onClick, onZoom, quantity, onQuantityChange, canIncrease }) {
@@ -172,7 +172,6 @@ export default function ProductCatalogDrawer({
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('');
-  const [showFavorites, setShowFavorites] = useState(false);
   const productsContainerRef = useRef(null);
   const searchTimerRef = useRef(null);
 
@@ -206,10 +205,6 @@ export default function ProductCatalogDrawer({
   const filteredProducts = useMemo(() => {
     let result = [...products];
 
-    if (showFavorites) {
-      result = result.filter(p => p.favorites === true);
-    }
-
     if (difficultyFilter) {
       result = result.filter(p => getDifficultyLabel(p) === difficultyFilter);
     }
@@ -222,12 +217,8 @@ export default function ProductCatalogDrawer({
       );
     }
 
-    return result.sort((a, b) => {
-      const ta = (a.title || '').toString();
-      const tb = (b.title || '').toString();
-      return ta.localeCompare(tb, 'he');
-    });
-  }, [products, debouncedSearch, difficultyFilter, showFavorites]);
+    return result;
+  }, [products, debouncedSearch, difficultyFilter]);
 
   const totalItems = cart.reduce((sum, p) => sum + (p.quantity || 1), 0);
 
@@ -248,15 +239,7 @@ export default function ProductCatalogDrawer({
     }
   };
 
-  const handleFavoritesClick = () => {
-    setShowFavorites(true);
-    setSearchText('');
-    setDebouncedSearch('');
-    setDifficultyFilter('');
-  };
-
   const clearFilters = () => {
-    setShowFavorites(false);
     setSearchText('');
     setDebouncedSearch('');
     setDifficultyFilter('');
@@ -342,20 +325,6 @@ export default function ProductCatalogDrawer({
               <ChevronDown className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#464646]/50 pointer-events-none" />
             </div>
           </div>
-
-          {/* מועדפים פעיל */}
-          {showFavorites && (
-            <div className="flex items-center justify-between mt-2 bg-[#5E2F88]/10 rounded-lg px-3 py-1.5">
-              <span className="text-xs text-[#581E83] font-medium">מציג הכי WOW!</span>
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="text-xs text-[#5E2F88] underline hover:no-underline"
-              >
-                הצג הכל
-              </button>
-            </div>
-          )}
         </SheetHeader>
 
         {/* מובייל: סיכום + המשך */}
@@ -390,15 +359,7 @@ export default function ProductCatalogDrawer({
               <p className="text-[16px] text-[#464646] mb-6 text-center">
                 לא נמצאו עיצובים תואמים לחיפוש שלך
               </p>
-              <div className="grid grid-cols-2 gap-4 w-full max-w-lg">
-                {/* WOW Card */}
-                <VideoCard
-                  title="!הכי WOW"
-                  subtitle="ביחרו ממגון עיצובים מובחרים."
-                  videoUrl="https://video.wixstatic.com/video/6b73e9_089ed022593f497f89d40b07a4e725b5/480p/mp4/file.mp4"
-                  onClick={handleFavoritesClick}
-                  videoOffsetY={40}
-                />
+              <div className="grid grid-cols-1 gap-4 w-full max-w-lg">
                 {/* AI Card */}
                 <VideoCard
                   title="AI"
