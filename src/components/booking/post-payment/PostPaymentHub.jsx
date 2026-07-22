@@ -21,6 +21,8 @@ export default function PostPaymentHub({
   catalog: initialCatalog,
   onSendMessage,
   isLoading,
+  isSlowLoading,
+  onRetryLoad,
   orderError,
   groupInfo,
   adminOtpRequired,
@@ -456,8 +458,24 @@ export default function PostPaymentHub({
           ...selection,
           participantId,
           phoneNumber,
+          expectedUpdatedDate: prevSel?._updatedDate || null,
         });
-        if (result?.error) throw new Error(result.error);
+        if (result?.error) {
+          // Someone else (staff status change, another tab) changed this
+          // sketch since we last loaded it — pull the fresh row instead of
+          // silently failing on stale data.
+          if (String(result.error).startsWith('CONFLICT')) {
+            try {
+              const fresh = await sendAndWait('VERIFY_SKETCH_FOR_EDIT', {
+                orderId: localOrder._id,
+                rugIndex: selection.rugIndex,
+                participantId,
+              });
+              if (fresh?.selection) mergeFreshSelection(fresh.selection);
+            } catch (_) {}
+          }
+          throw new Error(result.error);
+        }
         if (!result?.selection) throw new Error('Save failed');
         if (result?.selection) {
           setLocalSelections(prev => {
@@ -483,7 +501,7 @@ export default function PostPaymentHub({
 
     sketchSavePromisesRef.current.set(saveKey, savePromise);
     return savePromise;
-  }, [localOrder?._id, verifiedParticipant, ecomSummary, sendAndWait, localSelections, bumpSession90Used]);
+  }, [localOrder?._id, verifiedParticipant, ecomSummary, sendAndWait, localSelections, bumpSession90Used, mergeFreshSelection]);
 
   const handleDeleteSketchSelection = useCallback(async ({ rugIndex, participantId, participantName }) => {
     const result = await sendAndWait('DELETE_SKETCH_SELECTION', {
@@ -676,9 +694,34 @@ export default function PostPaymentHub({
 
   if (isLoading) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center">
-        <Loader2 className="w-10 h-10 text-[#5E2F88] animate-spin" />
-        <p className="mt-3 text-sm text-[#581E83]">טוען פרטי הזמנה...</p>
+      <div className="min-h-[60vh] w-full max-w-2xl mx-auto px-4 py-8" dir="rtl">
+        <div className="flex flex-col items-center justify-center mb-6">
+          <Loader2 className="w-9 h-9 text-[#5E2F88] animate-spin" />
+          <p className="mt-3 text-sm font-medium text-[#581E83]">טוען פרטי הזמנה...</p>
+          {isSlowLoading && (
+            <div className="mt-3 flex flex-col items-center gap-2">
+              <p className="text-xs text-[#581E83]/70">הטעינה מתעכבת מהצפוי...</p>
+              {onRetryLoad && (
+                <button
+                  type="button"
+                  onClick={onRetryLoad}
+                  className="text-xs font-semibold text-[#5E2F88] underline underline-offset-2"
+                >
+                  נסו לרענן
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="space-y-4 animate-pulse">
+          <div className="h-24 rounded-2xl bg-[#5E2F88]/10" />
+          <div className="h-4 w-2/3 rounded bg-[#5E2F88]/10" />
+          <div className="h-4 w-1/2 rounded bg-[#5E2F88]/10" />
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <div className="h-20 rounded-xl bg-[#5E2F88]/10" />
+            <div className="h-20 rounded-xl bg-[#5E2F88]/10" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -828,6 +871,9 @@ export default function PostPaymentHub({
     );
 
     // Only this group's own selections (keyed by participantId) feed the view.
+    // The backend (verifyAccessToken) already excludes legacy no-participantId
+    // rows from multi-group orders, so this fallback only ever applies to
+    // genuinely single-group legacy orders.
     const mySelections = (localSelections || []).filter(
       s => !s.participantId || s.participantId === verifiedParticipant._id
     );

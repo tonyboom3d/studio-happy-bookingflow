@@ -647,6 +647,34 @@ export default function AISketchModal({
     setError(null);
 
     if (deferSketchPersistence) {
+      // The SketchSelections row itself stays deferred until confirmReview,
+      // but upload the media to Wix Media right now instead of holding only
+      // the in-memory base64/data URL for the whole review session — a tab
+      // crash/refresh before confirming otherwise loses the generated image
+      // with no way to recover it.
+      if (onSaveApprovedSketch) {
+        try {
+          const originalInput = originalMediaUrl || imageBase64;
+          const saved = await onSaveApprovedSketch(originalInput, sketchUrl, 'AUTO');
+          onApprove({
+            source: 'ai',
+            productId: null,
+            title: 'עיצוב מותאם אישית (AI)',
+            image: saved?.sketchUrl || sketchUrl,
+            wixFileUrl: saved?.wixFileUrl || null,
+            aiOriginalImage: saved?.originalUrl || originalMediaUrl || imageBase64,
+            aiColors: saved?.colors || 'AUTO',
+            aiTaskId: saved?.taskId || null,
+            canvasSize: '60x60',
+            pendingMediaUpload: false,
+          });
+          onClose();
+          return;
+        } catch (err) {
+          console.error('[AISketchModal] immediate media upload failed, deferring to confirmReview:', err);
+          // Fall through — keep the in-memory draft so confirmReview retries the upload.
+        }
+      }
       onApprove({
         source: 'ai',
         productId: null,

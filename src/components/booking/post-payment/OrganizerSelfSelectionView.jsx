@@ -243,27 +243,34 @@ export default function OrganizerSelfSelectionView({
   }, [participants, selections]);
 
   // Keep sketchStatus / payment state in sync when dashboard or server updates selections.
+  // Skip the card currently open in the review modal — its sketches may
+  // hold unsaved local edits (size changes via updateSketchSize, catalog/AI
+  // picks) that a background ORDER_CONTEXT refresh must not clobber while
+  // the user is mid-edit. That card gets reconciled once the modal closes.
   useEffect(() => {
     if (!selections?.length) return;
-    setCards((prev) => prev.map((card) => ({
-      ...card,
-      sketches: card.sketches.map((sketch) => {
-        const server = selections.find((s) => (
-          s.rugIndex === sketch.rugIndex && (
-            (card.participantId && s.participantId === card.participantId)
-            || (!card.participantId && s.participantName === card.name)
-          )
-        ));
-        if (!server) return sketch;
-        return {
-          ...sketch,
-          sketchStatus: normalizeSketchStatus(server.sketchStatus),
-          upgradePaymentStatus: server.upgradePaymentStatus ?? sketch.upgradePaymentStatus,
-          size: getSelectionDisplaySize(server),
-        };
-      }),
-    })));
-  }, [selections]);
+    setCards((prev) => prev.map((card, idx) => {
+      if (reviewOpen && idx === reviewCardIdx) return card;
+      return {
+        ...card,
+        sketches: card.sketches.map((sketch) => {
+          const server = selections.find((s) => (
+            s.rugIndex === sketch.rugIndex && (
+              (card.participantId && s.participantId === card.participantId)
+              || (!card.participantId && s.participantName === card.name)
+            )
+          ));
+          if (!server) return sketch;
+          return {
+            ...sketch,
+            sketchStatus: normalizeSketchStatus(server.sketchStatus),
+            upgradePaymentStatus: server.upgradePaymentStatus ?? sketch.upgradePaymentStatus,
+            size: getSelectionDisplaySize(server),
+          };
+        }),
+      };
+    }));
+  }, [selections, reviewOpen, reviewCardIdx]);
 
   // Groups are persisted immediately as WorkshopParticipants records (created
   // via onCreateGroup with mode='organizer') so a group's name/adults/children
@@ -626,72 +633,119 @@ export default function OrganizerSelfSelectionView({
       const currentRugIndexes = new Set(card.sketches.map((s) => s.rugIndex));
       const serverSelections = getServerSelectionsForCard(card);
 
+      // Verify-first: re-check every sketch we're about to touch against the
+      // authoritative CMS state before mutating anything, so a status change
+      // made elsewhere (staff, another tab) is caught up front instead of
+      // failing mid-batch after some saves/deletes already went through.
+      if (onVerifySketchForEdit) {
+        const toVerify = card.sketches.filter((s) => !isSketchStaffLocked(s));
+        const verifyResults = await Promise.all(toVerify.map((s) => (
+          onVerifySketchForEdit(s.rugIndex, card.participantId || null).catch(() => null)
+        )));
+        const blocked = verifyResults.find((r) => r && r.canEdit === false);
+        if (blocked) {
+          setReviewError('אחת הסקיצות עודכנה על ידי הצוות בזמן העריכה — הנתונים רועננו, בדקו ונסו שוב');
+          setReviewSaving(false);
+          return;
+        }
+      }
+
+      // Saves before deletes: if a save fails partway through, we don't want
+      // to have already deleted rows for rugs the user is removing — that
+      // would destroy data with nothing to show for it. Deletions only run
+      // once every save in this batch has succeeded.
+      const saveFailures = [];
+      const succeededRugIndexes = new Set();
+      for (const sketch of card.sketches) {
+        if (isSketchStaffLocked(sketch)) {
+          succeededRugIndexes.add(sketch.rugIndex);
+          continue;
+        }
+
+        try {
+          let image = sketch.image;
+          let wixFileUrl = sketch.wixFileUrl || null;
+          let aiOriginalImage = sketch.aiOriginalImage;
+          let aiTaskId = sketch.aiTaskId;
+          let aiColors = sketch.aiColors;
+
+          if (sketch.source === 'ai' && sketch.pendingMediaUpload && onSaveApprovedSketch) {
+            const saved = await onSaveApprovedSketch(
+              sketch.aiOriginalImage || image,
+              sketch.image,
+              sketch.aiColors || 'AUTO',
+            );
+            if (saved?.sketchUrl) image = saved.sketchUrl;
+            if (saved?.wixFileUrl) wixFileUrl = saved.wixFileUrl;
+            if (saved?.originalUrl) aiOriginalImage = saved.originalUrl;
+            if (saved?.taskId) aiTaskId = saved.taskId;
+            if (saved?.colors) aiColors = saved.colors;
+          }
+
+          const selData = {
+            rugIndex: sketch.rugIndex,
+            productId: sketch.productId,
+            productSnapshot: {
+              title: sketch.title,
+              image,
+              ...(wixFileUrl ? { wixFileUrl } : {}),
+            },
+            canvasSize: sketch.size || '60x60',
+            participantId: card.participantId || null,
+            participantName: card.name,
+            ...(sketch.source === 'ai' ? {
+              source: 'ai',
+              aiOriginalImage,
+              aiColors,
+              aiTaskId,
+            } : {}),
+          };
+          await onSelectSketch(selData);
+          succeededRugIndexes.add(sketch.rugIndex);
+        } catch (saveErr) {
+          saveFailures.push({ rugIndex: sketch.rugIndex, error: saveErr });
+        }
+      }
+
       if (onDeleteSketchSelection) {
         for (const serverSel of serverSelections) {
           if (currentRugIndexes.has(serverSel.rugIndex)) continue;
           if (isLockedStatus(serverSel.sketchStatus)) continue;
-          await onDeleteSketchSelection({
-            rugIndex: serverSel.rugIndex,
-            participantId: card.participantId || null,
-            participantName: card.name,
-          });
+          try {
+            await onDeleteSketchSelection({
+              rugIndex: serverSel.rugIndex,
+              participantId: card.participantId || null,
+              participantName: card.name,
+            });
+          } catch (deleteErr) {
+            saveFailures.push({ rugIndex: serverSel.rugIndex, error: deleteErr });
+          }
         }
       }
 
-      for (const sketch of card.sketches) {
-        if (isSketchStaffLocked(sketch)) continue;
-
-        let image = sketch.image;
-        let wixFileUrl = sketch.wixFileUrl || null;
-        let aiOriginalImage = sketch.aiOriginalImage;
-        let aiTaskId = sketch.aiTaskId;
-        let aiColors = sketch.aiColors;
-
-        if (sketch.source === 'ai' && sketch.pendingMediaUpload && onSaveApprovedSketch) {
-          const saved = await onSaveApprovedSketch(
-            sketch.aiOriginalImage || image,
-            sketch.image,
-            sketch.aiColors || 'AUTO',
-          );
-          if (saved?.sketchUrl) image = saved.sketchUrl;
-          if (saved?.wixFileUrl) wixFileUrl = saved.wixFileUrl;
-          if (saved?.originalUrl) aiOriginalImage = saved.originalUrl;
-          if (saved?.taskId) aiTaskId = saved.taskId;
-          if (saved?.colors) aiColors = saved.colors;
-        }
-
-        const selData = {
-          rugIndex: sketch.rugIndex,
-          productId: sketch.productId,
-          productSnapshot: {
-            title: sketch.title,
-            image,
-            ...(wixFileUrl ? { wixFileUrl } : {}),
-          },
-          canvasSize: sketch.size || '60x60',
-          participantId: card.participantId || null,
-          participantName: card.name,
-          ...(sketch.source === 'ai' ? {
-            source: 'ai',
-            aiOriginalImage,
-            aiColors,
-            aiTaskId,
-          } : {}),
-        };
-        await onSelectSketch(selData);
-      }
-
-      clearEditSnapshot();
+      // Only cards whose sketches all saved successfully get their draft
+      // state cleared/closed — anything that failed stays as an unsaved
+      // local draft so the user can see exactly what still needs retrying,
+      // instead of an all-or-nothing rollback that loses their edits.
       setCards((prev) => prev.map((c, i) => {
         if (i !== reviewCardIdx) return c;
         return {
           ...c,
-          sketches: c.sketches.map((s) => ({ ...s, pendingMediaUpload: false })),
+          sketches: c.sketches.map((s) => (
+            succeededRugIndexes.has(s.rugIndex) ? { ...s, pendingMediaUpload: false } : s
+          )),
         };
       }));
-      setReviewOpen(false);
-      setEditingNameIdx(null);
-      setExpandedCards(prev => ({ ...prev, [reviewCardIdx]: true }));
+
+      if (saveFailures.length === 0) {
+        clearEditSnapshot();
+        setReviewOpen(false);
+        setEditingNameIdx(null);
+        setExpandedCards(prev => ({ ...prev, [reviewCardIdx]: true }));
+      } else {
+        const failedNums = saveFailures.map((f) => f.rugIndex + 1).join(', ');
+        setReviewError(`נשמרו ${succeededRugIndexes.size} מתוך ${card.sketches.length} סקיצות. סקיצה/ות ${failedNums} לא נשמרו — נסו שוב.`);
+      }
     } catch (e) {
       const msg = String(e?.message || '');
       if (msg.includes('SESSION_SKETCH_90_SOLD_OUT')) {

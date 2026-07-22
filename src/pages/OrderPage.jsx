@@ -4,7 +4,6 @@ import PostPaymentHub from '@/components/booking/post-payment/PostPaymentHub';
 import {
   subscribeToWix,
   sendWithCallback,
-  requestOrderContext,
   verifyParticipantAccess,
   getWixData,
   notifyIframeReady,
@@ -25,6 +24,7 @@ export default function OrderPage() {
   const [groupInfo, setGroupInfo] = useState(null);
   const [adminOtpRequired, setAdminOtpRequired] = useState(false);
   const [adminOrderId, setAdminOrderId] = useState(null);
+  const [isSlowLoading, setIsSlowLoading] = useState(false);
 
   useEffect(() => {
     const cached = getWixData();
@@ -51,6 +51,9 @@ export default function OrderPage() {
     }
 
     const unsubscribe = subscribeToWix((data) => {
+      if (data.orderContext || data.participantContext || data.orderError || data.tokenAccess) {
+        setIsSlowLoading(false);
+      }
       if (data.products?.length) {
         setCatalog(data.products);
         writeCatalogCache(data.products);
@@ -107,26 +110,43 @@ export default function OrderPage() {
 
     if (token) {
       verifyParticipantAccess(token, '');
-    } else {
-      const sessionOrderId = sessionStorage.getItem('workshop_order_id');
-      if (sessionOrderId) {
-        requestOrderContext({ orderId: sessionOrderId });
-      }
     }
+    // Note: the organizer/order path no longer calls requestOrderContext()
+    // directly here — notifyIframeReady() below already sends the cached
+    // sessionStorage orderId as part of IFRAME_READY, and Velo's IFRAME_READY
+    // handler uses that same id as its fallback if it doesn't already have a
+    // pending payload in flight. Calling both caused two parallel
+    // getOrderContext() CMS fetches on every revisit.
 
     if (isInWix()) {
       notifyIframeReady();
     }
 
-    const timeout = setTimeout(() => {
-      setIsLoading(false);
+    // At 10s, keep the loading state but surface a "still working" hint with
+    // a retry action instead of dropping straight into an invalid/blank
+    // state — Velo's CMS resolve retries (up to ~4.5s) plus network latency
+    // can occasionally exceed 10s under load. Only give up and clear the
+    // loading state at 20s if truly nothing arrived by then.
+    const slowTimeout = setTimeout(() => {
+      setIsSlowLoading(true);
     }, 10000);
+    const hardTimeout = setTimeout(() => {
+      setIsLoading(false);
+    }, 20000);
 
     return () => {
       unsubscribe();
-      clearTimeout(timeout);
+      clearTimeout(slowTimeout);
+      clearTimeout(hardTimeout);
     };
   }, [token]);
+
+  const handleRetryLoad = useCallback(() => {
+    setIsSlowLoading(false);
+    if (isInWix()) {
+      notifyIframeReady();
+    }
+  }, []);
 
   const handleSendMessage = useCallback((type, data, callback) => {
     if (callback) {
@@ -151,6 +171,8 @@ export default function OrderPage() {
         catalog={catalog || []}
         onSendMessage={handleSendMessage}
         isLoading={isLoading}
+        isSlowLoading={isSlowLoading}
+        onRetryLoad={handleRetryLoad}
         orderError={orderError}
         groupInfo={groupInfo}
         adminOtpRequired={adminOtpRequired}
