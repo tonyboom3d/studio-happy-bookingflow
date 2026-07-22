@@ -13,6 +13,8 @@ const BLOCKED_OUTSIDE_EVENTS = [
   'mouseup',
 ];
 
+const INTERACTIVE_SELECTOR = '[data-hard-warning-interactive="true"]';
+
 export default function HardSketchWarningModal({ open, onClose, onConfirm, productTitle }) {
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const modalRef = useRef(null);
@@ -37,9 +39,16 @@ export default function HardSketchWarningModal({ open, onClose, onConfirm, produ
     if (!open) return;
 
     const blockOutside = (e) => {
-      if (!modalRef.current?.contains(e.target)) {
+      // Only the modal's own checkbox + the two action buttons are allowed
+      // to receive interaction — everything else (backdrop, title, body
+      // text, and anything behind the modal) is blocked.
+      const isAllowed = !!e.target?.closest?.(INTERACTIVE_SELECTOR);
+      if (!isAllowed) {
         e.preventDefault();
         e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') {
+          e.stopImmediatePropagation();
+        }
       }
     };
 
@@ -107,7 +116,10 @@ export default function HardSketchWarningModal({ open, onClose, onConfirm, produ
               </p>
             </div>
 
-            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+            <label
+              data-hard-warning-interactive="true"
+              className="flex items-start gap-2.5 cursor-pointer select-none"
+            >
               <input
                 type="checkbox"
                 checked={dontShowAgain}
@@ -122,6 +134,7 @@ export default function HardSketchWarningModal({ open, onClose, onConfirm, produ
             <div className="flex flex-col-reverse sm:flex-row gap-2.5 pt-1">
               <button
                 type="button"
+                data-hard-warning-interactive="true"
                 onClick={onClose}
                 className="flex-1 py-2.5 rounded-xl border-2 border-[#e8e8e8] text-[14px] font-medium text-[#464646] hover:bg-[#fafafa] transition-colors"
               >
@@ -129,6 +142,7 @@ export default function HardSketchWarningModal({ open, onClose, onConfirm, produ
               </button>
               <button
                 type="button"
+                data-hard-warning-interactive="true"
                 onClick={() => onConfirm(dontShowAgain)}
                 className="flex-1 py-2.5 rounded-xl bg-[#5E2F88] hover:bg-[#7B3DB0] text-white text-[14px] font-semibold transition-colors"
               >
