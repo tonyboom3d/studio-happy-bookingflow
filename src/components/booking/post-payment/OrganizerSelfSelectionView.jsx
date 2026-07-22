@@ -458,7 +458,6 @@ export default function OrganizerSelfSelectionView({
             productId: product._id,
             title: product.title,
             image: product.image,
-            wixFileUrl: product.wixFileUrl || null,
             size: '60x60',
             source: 'catalog',
             rugIndex,

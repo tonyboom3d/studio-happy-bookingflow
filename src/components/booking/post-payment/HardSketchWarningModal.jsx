@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 export default function HardSketchWarningModal({ open, onClose, onConfirm, productTitle }) {
   const [dontShowAgain, setDontShowAgain] = useState(false);
@@ -9,14 +10,29 @@ export default function HardSketchWarningModal({ open, onClose, onConfirm, produ
     if (open) setDontShowAgain(false);
   }, [open]);
 
-  return (
+  useEffect(() => {
+    if (!open) return;
+    const blockEscape = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    document.addEventListener('keydown', blockEscape, true);
+    return () => document.removeEventListener('keydown', blockEscape, true);
+  }, [open]);
+
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[400] flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4"
+          onPointerDown={(e) => e.stopPropagation()}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.92, y: 16 }}
@@ -25,22 +41,16 @@ export default function HardSketchWarningModal({ open, onClose, onConfirm, produ
             transition={{ type: 'spring', damping: 26, stiffness: 320 }}
             className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-5 space-y-4 relative"
             dir="rtl"
-            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="hard-sketch-warning-title"
+            onPointerDown={(e) => e.stopPropagation()}
           >
-            <button
-              type="button"
-              onClick={onClose}
-              className="absolute top-3 left-3 text-[#464646]/50 hover:text-[#464646]"
-              aria-label="סגור"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
             <div className="flex flex-col items-center text-center pt-1">
               <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-3">
                 <AlertTriangle className="w-6 h-6 text-orange-600" />
               </div>
-              <h3 className="text-[17px] font-bold text-[#581E83] leading-snug">
+              <h3 id="hard-sketch-warning-title" className="text-[17px] font-bold text-[#581E83] leading-snug">
                 המלצה חשובה בבחירת הסקיצה
               </h3>
               {productTitle && (
@@ -91,6 +101,7 @@ export default function HardSketchWarningModal({ open, onClose, onConfirm, produ
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

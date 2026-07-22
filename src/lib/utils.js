@@ -19,7 +19,7 @@ export function isAiTestModeEnabled() {
   return false;
 }
 
-const CATALOG_CACHE_KEY = 'studio_happy_catalog_v2';
+const CATALOG_CACHE_KEY = 'studio_happy_catalog_v1';
 
 export function readCatalogCache() {
   if (typeof window === 'undefined') return null;

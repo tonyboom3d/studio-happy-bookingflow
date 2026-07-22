@@ -211,12 +211,17 @@ export default function SketchCatalogSheet({
       );
     }
 
-    return result;
+    return result.sort((a, b) =>
+      (a.title || '').toString().localeCompare((b.title || '').toString(), 'he')
+    );
   }, [safeCatalog, debouncedSearch, difficultyFilter]);
 
   return (
     <>
-    <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Sheet open={isOpen} onOpenChange={(open) => {
+      if (!open && hardWarningProduct) return;
+      if (!open) onClose();
+    }}>
       <SheetContent
         side="right"
         hideCloseButton
