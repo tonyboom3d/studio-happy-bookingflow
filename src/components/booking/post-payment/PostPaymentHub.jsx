@@ -198,6 +198,7 @@ export default function PostPaymentHub({
           productsIsArray: Array.isArray(result?.products),
           productsCount: result?.products?.length ?? 0,
           error: result?.error || null,
+          catalogDebug: result?._catalogDebug || null,
           rawResult: result,
         });
         if (result?.products?.length) {
