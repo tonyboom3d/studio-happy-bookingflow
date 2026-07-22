@@ -87,39 +87,18 @@ export default function PostPaymentHub({
     }));
   }, []);
 
-  const applyCatalog = useCallback((products, source = 'unknown') => {
-    const list = Array.isArray(products) ? products : [];
-    const sample = list.slice(0, 3).map((p) => ({
-      _id: p?._id,
-      title: p?.title,
-      difficulty: p?.difficulty,
-      hasImage: !!p?.image,
-      imagePrefix: p?.image ? String(p.image).slice(0, 80) : null,
-      hasWixFileUrl: !!p?.wixFileUrl,
-      wixFileUrlPrefix: p?.wixFileUrl ? String(p.wixFileUrl).slice(0, 80) : null,
-    }));
-    const withoutImage = list.filter((p) => !p?.image).length;
-    console.log('[CatalogDebug] applyCatalog', {
-      source,
-      count: list.length,
-      withoutImage,
-      sample,
-      rawFirstItem: list[0] || null,
-    });
-    if (!list.length) {
-      console.warn('[CatalogDebug] applyCatalog skipped — empty products array', { source });
-      return;
-    }
-    catalogCacheRef.current = list;
-    writeCatalogCache(list);
-    setCatalog(list);
+  const applyCatalog = useCallback((products) => {
+    if (!products?.length) return;
+    catalogCacheRef.current = products;
+    writeCatalogCache(products);
+    setCatalog(products);
   }, []);
 
   useEffect(() => {
     if (orderContext?.order) setLocalOrder(orderContext.order);
     if (orderContext?.participants) setLocalParticipants(orderContext.participants);
     if (orderContext?.selections) setLocalSelections(orderContext.selections);
-    if (orderContext?.catalog?.length) applyCatalog(orderContext.catalog, 'orderContext.catalog');
+    if (orderContext?.catalog?.length) applyCatalog(orderContext.catalog);
     if (orderContext?.sketchLocks?.length) mergeSketchLocks(orderContext.sketchLocks);
     if (orderContext?.session90) setSession90(orderContext.session90);
   }, [orderContext, applyCatalog, mergeSketchLocks]);
@@ -158,19 +137,8 @@ export default function PostPaymentHub({
     });
   }, []);
 
-  const mergeFreshSelection = useCallback((freshSelection) => {
-    if (!freshSelection) return;
-    setLocalSelections((prev) => {
-      const filtered = prev.filter((s) => !(
-        s.rugIndex === freshSelection.rugIndex
-        && (s.participantId || null) === (freshSelection.participantId || null)
-      ));
-      return [...filtered, freshSelection];
-    });
-  }, []);
-
   useEffect(() => {
-    if (initialCatalog?.length) applyCatalog(initialCatalog, 'initialCatalog');
+    if (initialCatalog?.length) applyCatalog(initialCatalog);
   }, [initialCatalog, applyCatalog]);
 
   const sendAndWait = useCallback((type, data) => {
@@ -182,36 +150,21 @@ export default function PostPaymentHub({
     });
   }, [onSendMessage]);
 
-  const fetchCatalogFromServer = useCallback(async () => {
+  const fetchCatalogFromServer = useCallback(async (serviceId) => {
     if (catalogFetchPromiseRef.current) {
       return catalogFetchPromiseRef.current;
     }
 
     catalogFetchPromiseRef.current = (async () => {
-      const orderId = localOrder?._id || verifiedParticipant?.orderId;
-      console.log('[CatalogDebug] FETCH_CATALOG start', { orderId });
       try {
-        const result = await sendAndWait('FETCH_CATALOG', { orderId });
-        console.log('[CatalogDebug] FETCH_CATALOG response', {
-          orderId,
-          resultKeys: result ? Object.keys(result) : null,
-          productsIsArray: Array.isArray(result?.products),
-          productsCount: result?.products?.length ?? 0,
-          error: result?.error || null,
-          catalogDebug: result?.catalogDebug || null,
-          rawResult: result,
-        });
+        const result = await sendAndWait('FETCH_CATALOG', { serviceId });
         if (result?.products?.length) {
-          applyCatalog(result.products, 'FETCH_CATALOG');
+          applyCatalog(result.products);
           return result.products;
         }
-        console.warn('[CatalogDebug] FETCH_CATALOG — no products in response', { orderId, result });
       } catch (e) {
-        console.error('[CatalogDebug] FETCH_CATALOG failed:', e);
+        console.error('Failed to fetch catalog:', e);
       }
-      console.log('[CatalogDebug] FETCH_CATALOG fallback to cache', {
-        cacheCount: catalogCacheRef.current?.length ?? 0,
-      });
       return catalogCacheRef.current || null;
     })();
 
@@ -220,39 +173,28 @@ export default function PostPaymentHub({
     } finally {
       catalogFetchPromiseRef.current = null;
     }
-  }, [sendAndWait, applyCatalog, localOrder?._id, verifiedParticipant?.orderId]);
+  }, [sendAndWait, applyCatalog]);
 
   const handleFetchCatalog = useCallback(async () => {
-    console.log('[CatalogDebug] handleFetchCatalog', {
-      catalogStateCount: catalog?.length ?? 0,
-      cacheRefCount: catalogCacheRef.current?.length ?? 0,
-      sessionCacheCount: readCatalogCache()?.length ?? 0,
-    });
-    if (catalog?.length) {
-      console.log('[CatalogDebug] handleFetchCatalog — using catalog state', { count: catalog.length });
-      return catalog;
-    }
+    if (catalog?.length) return catalog;
     if (catalogCacheRef.current?.length) {
-      console.log('[CatalogDebug] handleFetchCatalog — using catalogCacheRef', { count: catalogCacheRef.current.length });
       setCatalog(catalogCacheRef.current);
       return catalogCacheRef.current;
     }
     const cached = readCatalogCache();
     if (cached?.length) {
-      console.log('[CatalogDebug] handleFetchCatalog — using sessionStorage cache', { count: cached.length });
-      applyCatalog(cached, 'sessionStorage');
+      applyCatalog(cached);
       return cached;
     }
-    console.log('[CatalogDebug] handleFetchCatalog — fetching from server');
-    return fetchCatalogFromServer();
-  }, [catalog, applyCatalog, fetchCatalogFromServer]);
+    return fetchCatalogFromServer(localOrder?.serviceId);
+  }, [catalog, applyCatalog, fetchCatalogFromServer, localOrder?.serviceId]);
 
   useEffect(() => {
     if (isLoading || orderError) return;
     if (catalog?.length || catalogCacheRef.current?.length) return;
     const hasOrder = localOrder?._id || verifiedParticipant?.orderId;
     if (!hasOrder) return;
-    fetchCatalogFromServer();
+    fetchCatalogFromServer(localOrder?.serviceId);
   }, [isLoading, orderError, localOrder, verifiedParticipant, catalog?.length, fetchCatalogFromServer]);
 
   // --- AI Sketch handlers ---
@@ -575,6 +517,17 @@ export default function PostPaymentHub({
     )));
     return result;
   }, [localOrder?._id, sendAndWait]);
+
+  const mergeFreshSelection = useCallback((freshSelection) => {
+    if (!freshSelection) return;
+    setLocalSelections((prev) => {
+      const filtered = prev.filter((s) => !(
+        s.rugIndex === freshSelection.rugIndex
+        && (s.participantId || null) === (freshSelection.participantId || null)
+      ));
+      return [...filtered, freshSelection];
+    });
+  }, []);
 
   const handleVerifySketchForEdit = useCallback(async (rugIndex, participantId = null) => {
     if (!localOrder?._id) return { canEdit: false, error: 'NO_ORDER' };
