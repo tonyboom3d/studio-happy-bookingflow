@@ -7,9 +7,11 @@ import { he } from 'date-fns/locale';
 import { getSlotLocalDate, getSlotTimeRange } from '@/lib/slotTime';
 
 // Candles workshop ("סדנת נרות") participants step.
-// Minimum age is 4. Ages 4-10 must book as a parent+child ticket (one candle
-// per pair), mirroring the Tufting parent+child logic but with different age
-// labels and "נר/נרות" wording instead of "שטיח/שטיחים".
+// Minimum age is 4. Every child (ages 4-10) books as its own parent+child
+// ticket (one candle per child), and a single adult can accompany up to
+// MAX_CHILDREN_PER_ADULT children. Adults not accompanying children get a
+// solo ticket (one candle each).
+const MAX_CHILDREN_PER_ADULT = 4;
 export default function CandelsParticipantsSection({
   adults,
   setAdults,
@@ -22,17 +24,19 @@ export default function CandelsParticipantsSection({
 }) {
   const [validationError, setValidationError] = useState(null);
 
-  const parentChildPairs = Math.min(adults, children);
-  const soloAdults = adults - parentChildPairs;
-  // מקומות תפוסים: מבוגר ללא ילד = 1, הורה+ילד = 1
-  const spotsUsed = adults;
+  // כל ילד = כרטיס הורה+ילד (נר אחד); מבוגר מלווה עד 4 ילדים
+  const accompanyingAdults = Math.min(adults, Math.ceil(children / MAX_CHILDREN_PER_ADULT));
+  const parentChildPairs = children;
+  const soloAdults = adults - accompanyingAdults;
+  const totalCandles = soloAdults + children; // נר לכל כרטיס (יחיד או הורה+ילד)
+  // מקומות תפוסים: כרטיס יחיד = 1, כרטיס הורה+ילד = 1
+  const spotsUsed = totalCandles;
   const totalParticipants = adults + children;
   const isGroupTooLarge = totalParticipants > 9;
-  const totalCandles = adults; // כל מבוגר = נר (ילד מצטרף להורה)
 
-  // ילדים בלי מספיק מבוגרים
-  const childrenNeedAdult = children > adults;
-  const missingAdults = childrenNeedAdult ? children - adults : 0;
+  // ילדים בלי מספיק מבוגרים מלווים (מבוגר אחד עד 4 ילדים)
+  const childrenNeedAdult = children > adults * MAX_CHILDREN_PER_ADULT;
+  const missingAdults = childrenNeedAdult ? Math.ceil(children / MAX_CHILDREN_PER_ADULT) - adults : 0;
 
   // חריגה מהמקומות הפנויים
   const spotsExceeded = spotsUsed > maxParticipants;
@@ -95,7 +99,7 @@ export default function CandelsParticipantsSection({
 
   const handleContinue = () => {
     if (childrenNeedAdult) {
-      setValidationError(`יש להוסיף ${missingAdults} ${missingAdults === 1 ? 'מבוגר מלווה' : 'מבוגרים מלווים'} — ילדים בגילאי 4-10 חייבים הורה מלווה (כרטיס הורה + ילד)`);
+      setValidationError(`יש להוסיף ${missingAdults} ${missingAdults === 1 ? 'מבוגר מלווה' : 'מבוגרים מלווים'} — כל מבוגר יכול ללוות עד ${MAX_CHILDREN_PER_ADULT} ילדים בגילאי 4-10 (כרטיס הורה + ילד לכל ילד)`);
       return;
     }
     if (spotsExceeded) {
@@ -231,7 +235,7 @@ export default function CandelsParticipantsSection({
               <span className="text-[16px] text-[#464646]/60">{totalCandles === 1 ? 'נר' : 'נרות'}</span>
               {children > 0 && (
                 <span className="text-[14px] text-[#5E2F88]/70 mt-0.5 leading-tight">
-                  הורה + ילד = נר אחד
+                  כל ילד = כרטיס הורה + ילד (נר אחד)
                 </span>
               )}
             </div>

@@ -134,10 +134,12 @@ export default function CandelsBooking() {
     setPrevActiveSection(activeSection);
   }, [activeSection, prevActiveSection]);
 
-  // חישוב מספר יחידות (הורה+ילד = כרטיס אחד, כמו בטאפטינג)
-  const parentChildPairs = Math.min(adults, children);
-  const soloAdults = adults - parentChildPairs;
-  const totalCups = adults; // כל מבוגר = כוס אחת לנר (הורה+ילד מצטרפים לכוס אחת)
+  // חישוב מספר יחידות (נרות): כל ילד = כרטיס הורה+ילד (נר אחד),
+  // מבוגר אחד יכול ללוות עד 4 ילדים. מבוגר שלא מלווה ילדים = כרטיס יחיד (נר אחד).
+  const accompanyingAdults = Math.min(adults, Math.ceil(children / 4));
+  const parentChildPairs = children;
+  const soloAdults = adults - accompanyingAdults;
+  const totalCups = soloAdults + children; // כוס אחת לכל נר (כרטיס יחיד או הורה+ילד)
 
   // מחיר כרטיסים
   const ticketPrice = useMemo(() => {
