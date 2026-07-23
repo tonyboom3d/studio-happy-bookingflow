@@ -260,7 +260,10 @@ export default function CandelsParticipantsSection({
             <div className="mt-3 pt-3 border-t border-[#e8e8e8] space-y-1.5 text-[14px] text-[#464646]">
               {soloAdults > 0 && (
                 <div className="flex justify-between gap-3">
-                  <span>{soloAdults} × כרטיס יחיד</span>
+                  <span className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5" />
+                    {soloAdults} × כרטיס יחיד
+                  </span>
                   <span className="font-medium tabular-nums">₪{soloAdults * soloUnitPrice}</span>
                 </div>
               )}
