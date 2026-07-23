@@ -87,9 +87,12 @@ export default function CandelsOrderSummarySection({
       </div>
 
       {/* סה"כ */}
-      <div className="flex items-center justify-between border-t-2 border-[#5E2F88]/30 pt-3">
-        <span className="font-bold text-lg text-[#581E83]">סה״כ לתשלום</span>
-        <span className="text-2xl font-bold text-[#581E83] tabular-nums">₪{Math.round(totalPrice)}</span>
+      <div className="border-t-2 border-[#5E2F88]/30 pt-3 space-y-1">
+        <div className="flex items-center justify-between">
+          <span className="font-bold text-lg text-[#581E83]">סה״כ לתשלום</span>
+          <span className="text-2xl font-bold text-[#581E83] tabular-nums">₪{Math.round(totalPrice)}</span>
+        </div>
+        <p className="text-sm text-[#464646]/60 text-left">כולל מע״מ 18%</p>
       </div>
 
       {/* כפתור מעבר לתשלום */}

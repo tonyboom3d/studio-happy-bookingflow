@@ -35,10 +35,10 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // Ensure consistent file names for GitHub Pages
-        entryFileNames: 'assets/[name].js',
-        chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/[name].[ext]'
+        // Content hashes so GitHub Pages / browsers pick up new deploys
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]'
       }
     }
   }
