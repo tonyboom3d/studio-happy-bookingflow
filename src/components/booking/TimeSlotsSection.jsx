@@ -23,29 +23,39 @@ import {
 } from 'date-fns';
 import { he } from 'date-fns/locale';
 
-const BOOKING_BLOCK_HOURS = 48;
-const URGENCY_BUFFER_HOURS = 56;
+const DEFAULT_BOOKING_BLOCK_HOURS = 48;
+const URGENCY_BUFFER_EXTRA_HOURS = 8;
 
-function isSlotBlocked(slot) {
+function getUrgencyBufferHours(bookingBlockHours) {
+  return bookingBlockHours >= DEFAULT_BOOKING_BLOCK_HOURS
+    ? bookingBlockHours + URGENCY_BUFFER_EXTRA_HOURS
+    : bookingBlockHours;
+}
+
+function isSlotBlocked(slot, bookingBlockHours = DEFAULT_BOOKING_BLOCK_HOURS) {
   if (!slot?.start?.timestamp) return false;
   const hoursUntilStart = (new Date(slot.start.timestamp).getTime() - Date.now()) / (1000 * 60 * 60);
-  return hoursUntilStart > 0 && hoursUntilStart < BOOKING_BLOCK_HOURS;
+  return hoursUntilStart > 0 && hoursUntilStart < bookingBlockHours;
 }
 
-function isSlotInUrgencyBuffer(slot) {
+function isSlotInUrgencyBuffer(slot, bookingBlockHours = DEFAULT_BOOKING_BLOCK_HOURS) {
   if (!slot?.start?.timestamp) return false;
+  const urgencyBufferHours = getUrgencyBufferHours(bookingBlockHours);
+  if (urgencyBufferHours <= bookingBlockHours) return false;
   const hoursUntilStart = (new Date(slot.start.timestamp).getTime() - Date.now()) / (1000 * 60 * 60);
-  return hoursUntilStart >= BOOKING_BLOCK_HOURS && hoursUntilStart < URGENCY_BUFFER_HOURS;
+  return hoursUntilStart >= bookingBlockHours && hoursUntilStart < urgencyBufferHours;
 }
 
-function isDayBlocked(slots) {
+function isDayBlocked(slots, bookingBlockHours = DEFAULT_BOOKING_BLOCK_HOURS) {
   if (!slots?.length) return false;
-  return slots.every(isSlotBlocked);
+  return slots.every((slot) => isSlotBlocked(slot, bookingBlockHours));
 }
 
-function isDayHasRedDot(slots) {
+function isDayHasRedDot(slots, bookingBlockHours = DEFAULT_BOOKING_BLOCK_HOURS) {
   if (!slots?.length) return false;
-  return slots.some(s => isSlotBlocked(s) || isSlotInUrgencyBuffer(s));
+  return slots.some(
+    (s) => isSlotBlocked(s, bookingBlockHours) || isSlotInUrgencyBuffer(s, bookingBlockHours)
+  );
 }
 
 // חגי ישראל 2024-2027
@@ -90,8 +100,8 @@ function isDayClosingSoon(slots) {
   return slots.some(isSlotClosingSoon);
 }
 
-function getBookableSlots(slots) {
-  return slots.filter(s => !isSlotBlocked(s));
+function getBookableSlots(slots, bookingBlockHours = DEFAULT_BOOKING_BLOCK_HOURS) {
+  return slots.filter((s) => !isSlotBlocked(s, bookingBlockHours));
 }
 
 function getAvailabilityInfo(availableSlots) {
@@ -249,6 +259,7 @@ export default function TimeSlotsSection({
   servicePricing,
   onContinue,
   stackTimeSlots = false,
+  bookingBlockHours = DEFAULT_BOOKING_BLOCK_HOURS,
 }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [today] = useState(() => startOfDay(new Date()));
@@ -288,7 +299,7 @@ export default function TimeSlotsSection({
     if (!availableDates.has(dateStr)) return;
 
     const daySlots = slotsMap.get(dateStr) || [];
-    const bookable = getBookableSlots(daySlots);
+    const bookable = getBookableSlots(daySlots, bookingBlockHours);
 
     if (bookable.length === 0) {
       setBlockedPopup(true);
@@ -304,7 +315,7 @@ export default function TimeSlotsSection({
   };
 
   const handleTimeSelect = (slot) => {
-    if (isSlotBlocked(slot)) {
+    if (isSlotBlocked(slot, bookingBlockHours)) {
       setBlockedPopup(true);
       return;
     }
@@ -393,8 +404,8 @@ export default function TimeSlotsSection({
             const isHoliday = ISRAELI_HOLIDAYS[dateStr];
             const hasMultipleSlots = daySlots.length > 1;
             const closingSoon = hasSlot && isDayClosingSoon(daySlots);
-            const showRedDot = hasSlot && isDayHasRedDot(daySlots);
-            const allBlocked = hasSlot && isDayBlocked(daySlots);
+            const showRedDot = hasSlot && isDayHasRedDot(daySlots, bookingBlockHours);
+            const allBlocked = hasSlot && isDayBlocked(daySlots, bookingBlockHours);
             const isHovered = hoveredDate === dateStr && hasSlot;
 
             return (
@@ -517,8 +528,8 @@ export default function TimeSlotsSection({
               <div className={cn('gap-2', stackTimeSlots ? 'flex flex-col' : 'flex flex-wrap')}>
                 {timePickerSlots.map((slot, idx) => {
                   const isThisSlotSelected = selectedSlot?.sessionId === slot.sessionId;
-                  const blocked = isSlotBlocked(slot);
-                  const urgency = isSlotInUrgencyBuffer(slot);
+                  const blocked = isSlotBlocked(slot, bookingBlockHours);
+                  const urgency = isSlotInUrgencyBuffer(slot, bookingBlockHours);
                   return (
                     <button
                       key={idx}
@@ -593,7 +604,7 @@ export default function TimeSlotsSection({
         </button>
       </div>
 
-      {/* Blocked slot popup — < 48 hours */}
+      {/* Blocked slot popup — within bookingBlockHours of workshop start */}
       <AnimatePresence>
         {blockedPopup && (
           <motion.div
@@ -621,7 +632,9 @@ export default function TimeSlotsSection({
                 </div>
                 <h3 className="text-[17px] font-bold text-[#581E83]">ההזמנה המקוונת סגורה</h3>
                 <p className="text-sm text-[#464646]/70 mt-2 leading-relaxed">
-                  לא ניתן להזמין באופן מקוון סדנה שמתחילה בעוד פחות מ-48 שעות.
+                  {bookingBlockHours === 1
+                    ? 'לא ניתן להזמין באופן מקוון סדנה שמתחילה בעוד פחות מ- 1 שעה.'
+                    : `לא ניתן להזמין באופן מקוון סדנה שמתחילה בעוד פחות מ-${bookingBlockHours} שעות.`}
                 </p>
                 <p className="text-sm text-[#464646]/70 mt-1 leading-relaxed">
                   ניתן להשלים את ההזמנה ישירות מול נציג שלנו בוואטסאפ.

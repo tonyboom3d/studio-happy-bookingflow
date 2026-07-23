@@ -91,7 +91,7 @@ export default function CandelsParticipantsSection({
           <div className="flex items-center justify-center gap-1.5 mb-2">
             <Users className="w-5 h-5 text-[#581E83]" />
             <span className="text-[20px] font-medium text-[#581E83]">מבוגרים</span>
-            <span className="text-[16px] text-[#464646]/50">(7+)</span>
+            {/* <span className="text-[16px] text-[#464646]/50">(7+)</span> */} 
           </div>
           <div className="flex items-center justify-center gap-2">
             <button
@@ -128,7 +128,7 @@ export default function CandelsParticipantsSection({
           <div className="flex items-center justify-center gap-1.5 mb-2">
             <Baby className="w-5 h-5 text-[#581E83]" />
             <span className="text-[20px] font-medium text-[#581E83]">ילדים</span>
-            <span className="text-[16px] text-[#464646]/50">(4-6)</span>
+            <span className="text-[16px] text-[#464646]/50">(4-10)</span>
           </div>
           <div className="flex items-center justify-center gap-2">
             <button

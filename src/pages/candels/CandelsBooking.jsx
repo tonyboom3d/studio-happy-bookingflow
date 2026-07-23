@@ -404,6 +404,7 @@ export default function CandelsBooking() {
                     servicePricing={servicePricing}
                     onContinue={() => completeSection(1)}
                     stackTimeSlots
+                    bookingBlockHours={1}
                   />
                 )}
                 {section.id === 2 && (
