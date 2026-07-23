@@ -7,7 +7,7 @@ import { he } from 'date-fns/locale';
 import { getSlotLocalDate, getSlotTimeRange } from '@/lib/slotTime';
 
 // Candles workshop ("סדנת נרות") participants step.
-// Minimum age is 4. Ages 4-6 must book as a parent+child ticket (one candle
+// Minimum age is 4. Ages 4-10 must book as a parent+child ticket (one candle
 // per pair), mirroring the Tufting parent+child logic but with different age
 // labels and "נר/נרות" wording instead of "שטיח/שטיחים".
 export default function CandelsParticipantsSection({
@@ -95,7 +95,7 @@ export default function CandelsParticipantsSection({
 
   const handleContinue = () => {
     if (childrenNeedAdult) {
-      setValidationError(`יש להוסיף ${missingAdults} ${missingAdults === 1 ? 'מבוגר מלווה' : 'מבוגרים מלווים'} — ילדים בגילאי 4-6 חייבים הורה מלווה (כרטיס הורה + ילד)`);
+      setValidationError(`יש להוסיף ${missingAdults} ${missingAdults === 1 ? 'מבוגר מלווה' : 'מבוגרים מלווים'} — ילדים בגילאי 4-10 חייבים הורה מלווה (כרטיס הורה + ילד)`);
       return;
     }
     if (spotsExceeded) {
