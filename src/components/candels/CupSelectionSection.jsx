@@ -7,12 +7,14 @@ import { getDifficultyLabel } from '@/lib/utils';
 
 // Step 3 of the candles ("סדנת נרות") booking flow: cup selection. Opens the
 // cup catalog and displays the chosen cups (with images + any extra price)
-// once the user finishes picking. One cup per participant slot (parent+child
-// = one cup), same quota logic as Tufting's rug count.
+// once the user finishes picking. One cup per candle/ticket (solo adult or
+// parent+child pair) — totalCups is computed by the parent to match the
+// ticket-pricing logic (each child = its own parent+child ticket, one adult
+// covers up to 4 children).
 export default function CupSelectionSection({
   cart,
   setCart,
-  adults,
+  totalCups,
   onContinue,
   wixProducts,
   updateQuantity
@@ -20,8 +22,6 @@ export default function CupSelectionSection({
   const [showCatalog, setShowCatalog] = useState(false);
   const [validationError, setValidationError] = useState(null);
 
-  // כמות כוסות נדרשת: כל מבוגר = כוס אחת (הורה+ילד מצטרפים לכוס אחת)
-  const totalCups = adults;
   const totalItems = cart.reduce((sum, p) => sum + (p.quantity || 1), 0);
   const cupsWord = totalCups === 1 ? 'כוס' : 'כוסות';
 

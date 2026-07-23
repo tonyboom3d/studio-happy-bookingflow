@@ -425,7 +425,7 @@ export default function CandelsBooking() {
                   <CupSelectionSection
                     cart={cupCart}
                     setCart={setCupCart}
-                    adults={adults}
+                    totalCups={totalCups}
                     onContinue={() => completeSection(3)}
                     wixProducts={wixProducts}
                     updateQuantity={updateCupQuantity}
