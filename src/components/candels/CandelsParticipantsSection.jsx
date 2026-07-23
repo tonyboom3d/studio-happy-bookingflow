@@ -1,7 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Minus, Plus, Users, Baby, MessageCircle, AlertTriangle, Flame } from 'lucide-react';
+import { Minus, Plus, Users, Baby, MessageCircle, AlertTriangle, Flame, Calendar, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { format } from 'date-fns';
+import { he } from 'date-fns/locale';
+import { getSlotLocalDate, getSlotTimeRange } from '@/lib/slotTime';
 
 // Candles workshop ("סדנת נרות") participants step.
 // Minimum age is 4. Ages 4-6 must book as a parent+child ticket (one candle
@@ -34,16 +37,40 @@ export default function CandelsParticipantsSection({
   // חריגה מהמקומות הפנויים
   const spotsExceeded = spotsUsed > maxParticipants;
 
-  const { totalPrice } = useMemo(() => {
-    if (!selectedSlot || !servicePricing) return { totalPrice: 0 };
+  const selectedSlotInfo = useMemo(() => {
+    if (!selectedSlot?.start?.timestamp) return null;
+    const ld = getSlotLocalDate(selectedSlot);
+    if (!ld) return null;
+    const date = new Date(ld.year, ld.monthOfYear - 1, ld.dayOfMonth);
+    return {
+      dateLabel: format(date, 'EEEE, d בMMMM', { locale: he }),
+      timeRange: getSlotTimeRange(selectedSlot),
+    };
+  }, [selectedSlot]);
+
+  const slotPricing = useMemo(() => {
+    if (!selectedSlot?.serviceId || !servicePricing) return null;
     const pricing = servicePricing[selectedSlot.serviceId];
-    if (!pricing) return { totalPrice: 0 };
+    if (!pricing) return null;
+    const solo = pricing.solo || 0;
+    return {
+      solo,
+      parentChild: pricing.parentChild || solo,
+    };
+  }, [selectedSlot, servicePricing]);
 
-    const pricePerAdult = pricing.solo || 0;
-    const parentChildTicketPrice = pricing.parentChild || pricePerAdult;
+  const { totalPrice, soloUnitPrice, parentChildUnitPrice } = useMemo(() => {
+    if (!slotPricing) return { totalPrice: 0, soloUnitPrice: 0, parentChildUnitPrice: 0 };
 
-    return { totalPrice: (soloAdults * pricePerAdult) + (parentChildPairs * parentChildTicketPrice) };
-  }, [selectedSlot, servicePricing, soloAdults, parentChildPairs]);
+    const pricePerAdult = slotPricing.solo;
+    const parentChildTicketPrice = slotPricing.parentChild;
+
+    return {
+      soloUnitPrice: pricePerAdult,
+      parentChildUnitPrice: parentChildTicketPrice,
+      totalPrice: (soloAdults * pricePerAdult) + (parentChildPairs * parentChildTicketPrice),
+    };
+  }, [slotPricing, soloAdults, parentChildPairs]);
 
   const handleAdultsDecrease = () => {
     if (adults > 1) {
@@ -83,6 +110,31 @@ export default function CandelsParticipantsSection({
     <div className="flex flex-col items-center py-4">
       <p className="text-[16px] text-[#464646]/70 mb-1">כמה משתתפים יהיו בסדנה?</p>
       <p className="text-[13px] text-[#464646]/50 mb-4">גיל מינימלי להשתתפות בסדנה: 4</p>
+
+      {selectedSlotInfo && slotPricing && (
+        <div className="w-full max-w-md rounded-xl border border-[#5E2F88]/15 bg-[#5E2F88]/5 p-3 mb-4">
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-[#5E2F88]/80 mb-2">
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5" />
+              {selectedSlotInfo.dateLabel}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" />
+              {selectedSlotInfo.timeRange}
+            </span>
+          </div>
+          <div className="space-y-1.5 text-[15px]">
+            <div className="flex justify-between gap-3">
+              <span className="text-[#464646]/80">כרטיס יחיד</span>
+              <span className="font-semibold text-[#581E83] tabular-nums">₪{slotPricing.solo}</span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span className="text-[#464646]/80">הורה + ילד</span>
+              <span className="font-semibold text-[#581E83] tabular-nums">₪{slotPricing.parentChild}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* מבוגרים + ילדים בשורה אחת */}
       <div className="w-full max-w-md grid grid-cols-2 gap-3 mb-2">
@@ -203,6 +255,26 @@ export default function CandelsParticipantsSection({
               </div>
             )}
           </div>
+
+          {totalPrice > 0 && (soloAdults > 0 || parentChildPairs > 0) && (
+            <div className="mt-3 pt-3 border-t border-[#e8e8e8] space-y-1.5 text-[14px] text-[#464646]">
+              {soloAdults > 0 && (
+                <div className="flex justify-between gap-3">
+                  <span>{soloAdults} × כרטיס יחיד</span>
+                  <span className="font-medium tabular-nums">₪{soloAdults * soloUnitPrice}</span>
+                </div>
+              )}
+              {parentChildPairs > 0 && (
+                <div className="flex justify-between gap-3">
+                  <span className="flex items-center gap-1.5">
+                    <Baby className="w-3.5 h-3.5" />
+                    {parentChildPairs} × הורה + ילד
+                  </span>
+                  <span className="font-medium tabular-nums">₪{parentChildPairs * parentChildUnitPrice}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
