@@ -38,12 +38,50 @@ export function writeCatalogCache(products) {
   } catch {}
 }
 
+/** Parse Wix CMS tags / multi-select values that may arrive as array, JSON string, or double-encoded string. */
+export function parseCmsTagsField(raw) {
+  if (raw == null || raw === '') return '';
+
+  if (Array.isArray(raw)) {
+    const first = raw[0];
+    return typeof first === 'string' ? first.trim() : String(first ?? '').trim();
+  }
+
+  if (typeof raw !== 'string') return String(raw).trim();
+
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+
+  const tryParseArray = (value) => {
+    if (typeof value !== 'string' || !value.startsWith('[')) return '';
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return String(parsed[0]).trim();
+      }
+    } catch {}
+    return '';
+  };
+
+  const fromJson = tryParseArray(trimmed);
+  if (fromJson) return fromJson;
+
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    try {
+      const unquoted = JSON.parse(trimmed);
+      if (typeof unquoted === 'string') {
+        const nested = tryParseArray(unquoted);
+        if (nested) return nested;
+        return unquoted.trim();
+      }
+    } catch {}
+  }
+
+  return trimmed;
+}
+
 export function getDifficultyLabel(product) {
-  const raw = product?.difficulty;
-  if (!raw) return '';
-  if (typeof raw === 'string') return raw;
-  if (Array.isArray(raw)) return raw[0] || '';
-  return '';
+  return parseCmsTagsField(product?.difficulty);
 }
 
 export function getDifficultyTextClass(label) {

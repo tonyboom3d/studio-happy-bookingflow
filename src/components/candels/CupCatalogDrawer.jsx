@@ -5,12 +5,11 @@ import { Button } from '@/components/ui/button';
 import { X, Check, ZoomIn, Minus, Plus, Package } from 'lucide-react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { cn, getDifficultyLabel } from '@/lib/utils';
 
 // Cup catalog for the candles workshop ("סדנת נרות"). Same visual language
-// as the sketches catalog (ProductCatalogDrawer), but with the difficulty
-// badges and filtering section removed — only image + price are shown, and
-// the same cup can be picked multiple times (once per participant slot).
+// as the sketches catalog (ProductCatalogDrawer). Shows image, price, and the
+// cup description from the CMS difficulty (tags) field below the price.
 const FALLBACK_PRODUCTS = [
   { id: 'fallback-1', title: 'טוען כוסות...', image: null, price: 0 }
 ];
@@ -23,6 +22,7 @@ function formatCupPrice(price) {
 
 function CupGridCard({ product, isSelected, onZoom, quantity, onQuantityChange, canIncrease, onToggle }) {
   const price = Number(product.price) || 0;
+  const cupLabel = getDifficultyLabel(product);
 
   return (
     <motion.div
@@ -73,33 +73,40 @@ function CupGridCard({ product, isSelected, onZoom, quantity, onQuantityChange, 
         </div>
 
         <div className="p-2.5 sm:p-3">
-          <div className="flex flex-nowrap items-center justify-between gap-1 min-w-0">
-            <span className={cn(
-              'text-xs sm:text-sm font-medium',
-              price > 0 ? 'text-[#5E2F88]' : 'text-green-600'
-            )}>
-              {formatCupPrice(price)}
-            </span>
-            {isSelected && onQuantityChange && (
-              <div
-                className="flex items-center gap-0.5 sm:gap-1.5 shrink-0"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  onClick={(e) => { e.stopPropagation(); onQuantityChange(product._id || product.id, -1); }}
-                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors"
+          <div className="flex flex-col gap-1 min-w-0">
+            <div className="flex flex-nowrap items-center justify-between gap-1 min-w-0">
+              <span className={cn(
+                'text-xs sm:text-sm font-medium',
+                price > 0 ? 'text-[#5E2F88]' : 'text-green-600'
+              )}>
+                {formatCupPrice(price)}
+              </span>
+              {isSelected && onQuantityChange && (
+                <div
+                  className="flex items-center gap-0.5 sm:gap-1.5 shrink-0"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#581E83]" />
-                </button>
-                <span className="text-xs sm:text-sm font-bold text-[#581E83] min-w-[18px] sm:min-w-[20px] text-center tabular-nums">{quantity || 1}</span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); if (canIncrease) onQuantityChange(product._id || product.id, 1); }}
-                  disabled={!canIncrease}
-                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#581E83]" />
-                </button>
-              </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onQuantityChange(product._id || product.id, -1); }}
+                    className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors"
+                  >
+                    <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#581E83]" />
+                  </button>
+                  <span className="text-xs sm:text-sm font-bold text-[#581E83] min-w-[18px] sm:min-w-[20px] text-center tabular-nums">{quantity || 1}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); if (canIncrease) onQuantityChange(product._id || product.id, 1); }}
+                    disabled={!canIncrease}
+                    className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-[#e8e8e8] bg-white flex items-center justify-center hover:border-[#5E2F88] hover:bg-[#5E2F88]/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#581E83]" />
+                  </button>
+                </div>
+              )}
+            </div>
+            {cupLabel && (
+              <p className="text-[11px] sm:text-xs text-[#464646]/70 leading-snug">
+                {cupLabel}
+              </p>
             )}
           </div>
         </div>

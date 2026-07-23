@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { X, Minus, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CupCatalogDrawer from './CupCatalogDrawer';
+import { getDifficultyLabel } from '@/lib/utils';
 
 // Step 3 of the candles ("סדנת נרות") booking flow: cup selection. Opens the
 // cup catalog and displays the chosen cups (with images + any extra price)
@@ -76,6 +77,7 @@ export default function CupSelectionSection({
               const pid = product._id || product.id;
               const qty = product.quantity || 1;
               const price = Number(product.price) || 0;
+              const cupLabel = getDifficultyLabel(product);
 
               return (
                 <motion.div
@@ -103,6 +105,11 @@ export default function CupSelectionSection({
                           {price > 0 ? `+${price} ₪` : 'כלול במחיר'}
                         </span>
                       </div>
+                      {cupLabel && (
+                        <p className="text-[10px] sm:text-xs text-[#464646]/70 leading-snug truncate">
+                          {cupLabel}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1 sm:gap-2 shrink-0">
