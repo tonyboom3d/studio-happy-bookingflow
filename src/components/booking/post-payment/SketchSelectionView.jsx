@@ -962,6 +962,7 @@ export default function SketchSelectionView({
                       : 'border-[#e8e8e8] bg-gray-50 opacity-70 cursor-not-allowed'
                   }`}
                 >
+                  
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                     aiEnabled ? 'bg-purple-100' : 'bg-gray-100'
                   }`}>
