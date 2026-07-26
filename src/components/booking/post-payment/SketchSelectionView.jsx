@@ -6,7 +6,8 @@ import ConfirmationModal from './ConfirmationModal';
 import SketchCatalogSheet from './SketchCatalogSheet';
 import AISketchModal from './AISketchModal';
 import EnlargeableSketchImage from './EnlargeableSketchImage';
-import { isAiTestModeEnabled, getSelectionDisplaySize, selectionWants90Upgrade } from '@/lib/utils';
+import { getSelectionDisplaySize, selectionWants90Upgrade } from '@/lib/utils';
+import { useAiFeatureEnabled } from '@/hooks/useAiFeatureEnabled';
 import {
   SKETCH_STATUS,
   getSketchStatusLabel,
@@ -63,7 +64,7 @@ export default function SketchSelectionView({
 
   const requireName = (totalRugCount || rugSlots.length) > 2;
   const isExpired = deadlineAt && new Date(deadlineAt) < new Date();
-  const aiEnabled = isAiTestModeEnabled();
+  const { aiEnabled, handleAiButtonClick } = useAiFeatureEnabled();
 
   const selectionsMap = useMemo(() => {
     const map = {};
@@ -954,8 +955,7 @@ export default function SketchSelectionView({
 
                 <button
                   type="button"
-                  disabled={!aiEnabled}
-                  onClick={() => aiEnabled && handleSourceChoice('ai')}
+                  onClick={() => handleAiButtonClick(() => handleSourceChoice('ai'))}
                   className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-right ${
                     aiEnabled
                       ? 'border-[#e8e8e8] bg-white hover:border-purple-300 hover:bg-purple-50'

@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SketchCatalogSheet from './SketchCatalogSheet';
 import AISketchModal from './AISketchModal';
 import EnlargeableSketchImage from './EnlargeableSketchImage';
-import { isAiTestModeEnabled, getSelectionDisplaySize, selectionWants90Upgrade } from '@/lib/utils';
+import { getSelectionDisplaySize, selectionWants90Upgrade } from '@/lib/utils';
+import { useAiFeatureEnabled } from '@/hooks/useAiFeatureEnabled';
 import {
   SKETCH_STATUS,
   getSketchStatusShortLabel,
@@ -190,7 +191,7 @@ export default function OrganizerSelfSelectionView({
   const remainingChildren = Math.max(0, maxChildren - usedChildren);
 
   const totalSelectedSketches = cards.reduce((s, c) => s + c.sketches.length, 0);
-  const aiEnabled = isAiTestModeEnabled();
+  const { aiEnabled, handleAiButtonClick } = useAiFeatureEnabled();
 
   // Bulk 90cm upgrade tracking — based on already-saved selections only, so
   // the banner appears only after the user confirms via "אישור ושמירה", not
@@ -1250,8 +1251,7 @@ export default function OrganizerSelfSelectionView({
 
                 <button
                   type="button"
-                  disabled={!aiEnabled}
-                  onClick={() => aiEnabled && chooseSource('ai')}
+                  onClick={() => handleAiButtonClick(() => chooseSource('ai'))}
                   className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-right relative ${
                     aiEnabled
                       ? 'border-[#e8e8e8] bg-white hover:border-purple-300 hover:bg-purple-50'
