@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Minus, Plus, Users, Baby, MessageCircle, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { validateFirstOrderMinimum } from '@/lib/firstOrderMinimum';
 
 export default function ParticipantsSection({
   adults,
@@ -70,6 +71,11 @@ export default function ParticipantsSection({
     }
     if (spotsExceeded) {
       setValidationError(`נותרו ${maxParticipants} מקומות בלבד בתאריך שנבחר`);
+      return;
+    }
+    const firstOrderError = validateFirstOrderMinimum(adults, selectedSlot);
+    if (firstOrderError) {
+      setValidationError(firstOrderError);
       return;
     }
     setValidationError(null);
@@ -236,7 +242,7 @@ export default function ParticipantsSection({
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -5 }}
-                className="text-xs text-red-600 text-center max-w-[300px]"
+                className="text-xs text-red-600 text-center max-w-md leading-relaxed"
               >
                 {validationError}
               </motion.p>

@@ -156,7 +156,11 @@ function handleWixMessage(event) {
 
         case 'BOOKING_ERROR':
             // Booking failed
-            notifyListeners({ bookingError: data.error });
+            notifyListeners({
+                bookingError: data.error === 'FIRST_ORDER_MIN_TICKETS'
+                    ? 'זוהי ההזמנה הראשונה למועד זה, ולכן נדרשים לפחות 2 כרטיסים כדי לפתוח את הסדנה. אם ברצונכם להזמין כרטיס אחד בלבד, אנא בחרו מועד אחר שכבר נרשמו בו משתתפים, או חפשו תאריך ושעה אחרים.'
+                    : data.error,
+            });
             break;
 
         case 'ORDER_CONTEXT':

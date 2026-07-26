@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { getSlotLocalDate, getSlotTimeRange } from '@/lib/slotTime';
+import { validateFirstOrderMinimum } from '@/lib/firstOrderMinimum';
 
 // Candles workshop ("סדנת נרות") participants step.
 // Minimum age is 4. Every child (ages 4-10) books as its own parent+child
@@ -104,6 +105,11 @@ export default function CandelsParticipantsSection({
     }
     if (spotsExceeded) {
       setValidationError(`נותרו ${maxParticipants} מקומות בלבד בתאריך שנבחר`);
+      return;
+    }
+    const firstOrderError = validateFirstOrderMinimum(totalCandles, selectedSlot);
+    if (firstOrderError) {
+      setValidationError(firstOrderError);
       return;
     }
     setValidationError(null);
@@ -318,7 +324,7 @@ export default function CandelsParticipantsSection({
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -5 }}
-                className="text-xs text-red-600 text-center max-w-[300px]"
+                className="text-xs text-red-600 text-center max-w-md leading-relaxed"
               >
                 {validationError}
               </motion.p>
