@@ -194,7 +194,7 @@ export default function OrganizerSelfSelectionView({
   const remainingChildren = Math.max(0, maxChildren - usedChildren);
 
   const totalSelectedSketches = cards.reduce((s, c) => s + c.sketches.length, 0);
-  const { aiEnabled, registerSecretTap, handleAiButtonClick } = useAiFeatureEnabled();
+  const { aiEnabled, handleAiButtonClick } = useAiFeatureEnabled();
 
   // Bulk 90cm upgrade tracking — based on already-saved selections only, so
   // the banner appears only after the user confirms via "אישור ושמירה", not
@@ -1258,8 +1258,7 @@ export default function OrganizerSelfSelectionView({
 
                 <AiSourceOption
                   aiEnabled={aiEnabled}
-                  onSecretTap={registerSecretTap}
-                  onChoose={() => handleAiButtonClick(() => chooseSource('ai'))}
+                  onClick={() => handleAiButtonClick(() => chooseSource('ai'))}
                 />
               </div>
             </motion.div>

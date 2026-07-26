@@ -65,7 +65,7 @@ export default function SketchSelectionView({
 
   const requireName = (totalRugCount || rugSlots.length) > 2;
   const isExpired = deadlineAt && new Date(deadlineAt) < new Date();
-  const { aiEnabled, registerSecretTap, handleAiButtonClick } = useAiFeatureEnabled();
+  const { aiEnabled, handleAiButtonClick } = useAiFeatureEnabled();
 
   const selectionsMap = useMemo(() => {
     const map = {};
@@ -958,8 +958,7 @@ export default function SketchSelectionView({
 
                 <AiSourceOption
                   aiEnabled={aiEnabled}
-                  onSecretTap={registerSecretTap}
-                  onChoose={() => handleAiButtonClick(() => handleSourceChoice('ai'))}
+                  onClick={() => handleAiButtonClick(() => handleSourceChoice('ai'))}
                 />
               </div>
             </motion.div>
