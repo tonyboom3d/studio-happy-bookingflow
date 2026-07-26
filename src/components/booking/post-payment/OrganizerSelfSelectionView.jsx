@@ -6,7 +6,6 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import SketchCatalogSheet from './SketchCatalogSheet';
 import AISketchModal from './AISketchModal';
-import AiSourceOption from './AiSourceOption';
 import EnlargeableSketchImage from './EnlargeableSketchImage';
 import { getSelectionDisplaySize, selectionWants90Upgrade } from '@/lib/utils';
 import { useAiFeatureEnabled } from '@/hooks/useAiFeatureEnabled';
@@ -58,8 +57,6 @@ function mapSelectionToSketch(s) {
       aiOriginalImage: s.aiOriginalImage || null,
       aiColors: s.aiColors || null,
       aiTaskId: s.aiTaskId || null,
-      frameShape: s.frameShape || null,
-      aiCroppedImage: s.aiCroppedImage || null,
     } : {}),
   };
 }
@@ -437,8 +434,6 @@ export default function OrganizerSelfSelectionView({
             aiOriginalImage: sketch.aiOriginalImage || null,
             aiColors: sketch.aiColors || null,
             aiTaskId: sketch.aiTaskId || null,
-            frameShape: sketch.frameShape || null,
-            aiCroppedImage: sketch.aiCroppedImage || null,
             pendingMediaUpload: sketch.pendingMediaUpload || false,
           }],
         };
@@ -704,8 +699,6 @@ export default function OrganizerSelfSelectionView({
               aiOriginalImage,
               aiColors,
               aiTaskId,
-              frameShape: sketch.frameShape || null,
-              aiCroppedImage: sketch.aiCroppedImage || null,
             } : {}),
           };
           await onSelectSketch(selData);
@@ -1256,10 +1249,32 @@ export default function OrganizerSelfSelectionView({
                   </div>
                 </button>
 
-                <AiSourceOption
-                  aiEnabled={aiEnabled}
+                <button
+                  type="button"
                   onClick={() => handleAiButtonClick(() => chooseSource('ai'))}
-                />
+                  className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-right relative ${
+                    aiEnabled
+                      ? 'border-[#e8e8e8] bg-white hover:border-purple-300 hover:bg-purple-50'
+                      : 'border-[#e8e8e8] bg-gray-50 opacity-70 cursor-not-allowed'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                    aiEnabled ? 'bg-purple-100' : 'bg-gray-100'
+                  }`}>
+                    <Sparkles className={`w-5 h-5 ${aiEnabled ? 'text-purple-600' : 'text-gray-400'}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[16px] font-semibold ${aiEnabled ? 'text-[#464646]' : 'text-[#464646]/50'}`}>
+                        רוצה לתפור משהו משלי
+                      </span>
+                      {!aiEnabled && (
+                        <span className="text-[10px] font-bold bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">בקרוב</span>
+                      )}
+                    </div>
+                    <p className="text-[13px] text-[#464646]/60 mt-0.5">עיצוב מותאם אישית בעזרת AI</p>
+                  </div>
+                </button>
               </div>
             </motion.div>
           </motion.div>

@@ -10,7 +10,10 @@ export function useAiFeatureEnabled() {
       return;
     }
     const unlocked = registerAiSecretTap();
-    if (unlocked) setAiEnabled(true);
+    if (unlocked) {
+      setAiEnabled(true);
+      onChooseAi();
+    }
   }, [aiEnabled]);
 
   return { aiEnabled, handleAiButtonClick };
