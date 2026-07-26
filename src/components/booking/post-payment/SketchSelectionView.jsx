@@ -160,6 +160,8 @@ export default function SketchSelectionView({
       aiOriginalImage: sketch.aiOriginalImage,
       aiColors: sketch.aiColors,
       aiTaskId: sketch.aiTaskId,
+      frameType: sketch.frameType || null,
+      aiCroppedImage: sketch.aiCroppedImage || null,
       sketchStatus: selectionsMap[aiModalSlot]?.sketchStatus || SKETCH_STATUS.OPEN,
     };
 

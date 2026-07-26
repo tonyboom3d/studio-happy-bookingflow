@@ -271,8 +271,8 @@ export default function PostPaymentHub({
     throw new Error('שגיאה ביצירת הסקיצה. נסו שוב.');
   }, [sendAndWait, orderId]);
 
-  const handleSaveApprovedSketch = useCallback(async (originalInput, sketchUrl, colors) => {
-    const result = await sendAndWait('SAVE_APPROVED_SKETCH', { originalInput, sketchUrl, colors, orderId });
+  const handleSaveApprovedSketch = useCallback(async (originalInput, sketchUrl, colors, croppedInput) => {
+    const result = await sendAndWait('SAVE_APPROVED_SKETCH', { originalInput, sketchUrl, colors, orderId, croppedInput: croppedInput || null });
     if (result?.error) throw new Error(result.error);
     return result;
   }, [sendAndWait, orderId]);

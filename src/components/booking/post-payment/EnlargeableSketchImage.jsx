@@ -24,7 +24,8 @@ export default function EnlargeableSketchImage({
         <img
           src={src}
           alt={alt}
-          className={`w-full h-full object-contain ${imageClassName}`}
+          className={`w-full h-full object-contain bg-white ${imageClassName}`}
+          style={{ backgroundColor: '#ffffff' }}
         />
         <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/25">
           <ZoomIn className="w-4 h-4 text-white opacity-0 drop-shadow-md transition-opacity group-hover:opacity-100" />
@@ -62,7 +63,8 @@ export default function EnlargeableSketchImage({
                 <img
                   src={src}
                   alt={alt}
-                  className="mx-auto max-h-[80dvh] w-full object-contain"
+                  className="mx-auto max-h-[80dvh] w-full object-contain bg-white"
+                  style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
             </motion.div>

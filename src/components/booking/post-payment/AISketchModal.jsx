@@ -4,7 +4,21 @@ import {
   X, Upload, Loader2, Check, ChevronLeft, ChevronRight,
   RotateCcw, Image as ImageIcon, Info, AlertTriangle, MessageSquare,
   Sparkles, Star, GripHorizontal, Plus, Trash2, ZoomIn,
+  Square, Circle, Shapes, Crop as CropIcon,
 } from 'lucide-react';
+import ImageCropModal from './ImageCropModal';
+
+const FRAME_OPTIONS = [
+  { id: 'square', label: 'ריבוע', Icon: Square },
+  { id: 'circle', label: 'עיגול', Icon: Circle },
+  { id: 'custom', label: 'צורה חופשית', Icon: Shapes },
+];
+
+export const FRAME_TYPE_LABELS = {
+  square: 'ריבוע',
+  circle: 'עיגול',
+  custom: 'צורה חופשית',
+};
 
 const STEPS = ['העלאה', 'אישור', 'סקיצה'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -420,6 +434,12 @@ export default function AISketchModal({
   const [colorMode, setColorMode] = useState('auto');
   const [manualColors, setManualColors] = useState(['#000000', '#ffffff', '#ff0000']);
 
+  // Frame + crop
+  const [frameType, setFrameType] = useState('square');
+  const [croppedBase64, setCroppedBase64] = useState(null);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [showOriginalPreview, setShowOriginalPreview] = useState(false);
+
   // Result
   const [sketchUrl, setSketchUrl] = useState(null);
   const [originalMediaUrl, setOriginalMediaUrl] = useState(null);
@@ -483,6 +503,10 @@ export default function AISketchModal({
       setImageDimensions({ width: 1, height: 1 });
       setColorMode('auto');
       setManualColors(['#000000', '#ffffff', '#ff0000']);
+      setFrameType('square');
+      setCroppedBase64(null);
+      setCropOpen(false);
+      setShowOriginalPreview(false);
       setSketchUrl(null);
       setOriginalMediaUrl(null);
       setRevealPhase('hidden');
@@ -564,6 +588,8 @@ export default function AISketchModal({
       setImageBase64(base64);
       setImageDimensions(dimensions);
       setImagePreviewUrl(previewUrl);
+      setCroppedBase64(null);
+      setShowOriginalPreview(false);
       setAttempts(prev => prev + 1);
 
       setLoadingTitle('ה-AI מוודא את התמונה שלך...');
@@ -611,7 +637,9 @@ export default function AISketchModal({
     const clearProgress = animateProgress(SKETCH_PROGRESS_DURATION_MS);
 
     try {
-      const result = await onGenerateSketch(imageBase64, 'AUTO', imageDimensions);
+      // Cropped image (custom shape) becomes the focused AI input when present
+      const inputBase64 = croppedBase64 || imageBase64;
+      const result = await onGenerateSketch(inputBase64, 'AUTO', imageDimensions);
       clearProgress();
       setLoadingProgress(100);
 
@@ -639,7 +667,7 @@ export default function AISketchModal({
       setView('config');
       setStep(1);
     }
-  }, [imageBase64, imageDimensions, onGenerateSketch, animateProgress]);
+  }, [imageBase64, croppedBase64, imageDimensions, onGenerateSketch, animateProgress]);
 
   const imageAspectRatio = imageDimensions.width / imageDimensions.height;
 
@@ -655,7 +683,7 @@ export default function AISketchModal({
       if (onSaveApprovedSketch) {
         try {
           const originalInput = originalMediaUrl || imageBase64;
-          const saved = await onSaveApprovedSketch(originalInput, sketchUrl, 'AUTO');
+          const saved = await onSaveApprovedSketch(originalInput, sketchUrl, 'AUTO', croppedBase64);
           onApprove({
             source: 'ai',
             productId: null,
@@ -666,6 +694,8 @@ export default function AISketchModal({
             aiColors: saved?.colors || 'AUTO',
             aiTaskId: saved?.taskId || null,
             canvasSize: '60x60',
+            frameType,
+            aiCroppedImage: saved?.croppedUrl || null,
             pendingMediaUpload: false,
           });
           onClose();
@@ -684,6 +714,8 @@ export default function AISketchModal({
         aiColors: 'AUTO',
         aiTaskId: null,
         canvasSize: '60x60',
+        frameType,
+        aiCroppedImage: croppedBase64 || null,
         pendingMediaUpload: true,
       });
       onClose();
@@ -702,15 +734,17 @@ export default function AISketchModal({
       let aiOriginalImage = null;
       let aiColors = 'AUTO';
       let aiTaskId = null;
+      let aiCroppedImage = null;
 
       if (onSaveApprovedSketch) {
         const originalInput = originalMediaUrl || imageBase64;
         const colors = 'AUTO';
-        const saved = await onSaveApprovedSketch(originalInput, sketchUrl, colors);
+        const saved = await onSaveApprovedSketch(originalInput, sketchUrl, colors, croppedBase64);
         if (saved?.sketchUrl) finalImage = saved.sketchUrl;
         if (saved?.originalUrl) aiOriginalImage = saved.originalUrl;
         if (saved?.colors) aiColors = saved.colors;
         if (saved?.taskId) aiTaskId = saved.taskId;
+        if (saved?.croppedUrl) aiCroppedImage = saved.croppedUrl;
       }
 
       onApprove({
@@ -722,6 +756,8 @@ export default function AISketchModal({
         aiColors,
         aiTaskId,
         canvasSize: '60x60',
+        frameType,
+        aiCroppedImage,
       });
 
       clearProgress();
@@ -734,7 +770,7 @@ export default function AISketchModal({
       setView('result');
       setStep(2);
     }
-  }, [imageBase64, originalMediaUrl, sketchUrl, onApprove, onClose, onSaveApprovedSketch, animateProgress, deferSketchPersistence]);
+  }, [imageBase64, croppedBase64, frameType, originalMediaUrl, sketchUrl, onApprove, onClose, onSaveApprovedSketch, animateProgress, deferSketchPersistence]);
 
   const handleRetrySubmit = useCallback(async () => {
     if (!retryReason) return;
@@ -950,24 +986,89 @@ export default function AISketchModal({
                   {/* Image preview */}
                   <div className="w-full md:w-1/2 flex flex-col items-center">
                     <div
-                      className="w-full rounded-xl overflow-hidden shadow-sm border border-[#e8e8e8] bg-white flex items-center justify-center mx-auto"
+                      className="relative w-full rounded-xl overflow-hidden shadow-sm border border-[#e8e8e8] bg-white flex items-center justify-center mx-auto"
                       style={getImageFrameStyle(imageAspectRatio, 240)}
                     >
                       {imagePreviewUrl && (
-                        <img src={imagePreviewUrl} alt="Preview" className="w-full h-full object-contain" />
+                        <img
+                          src={(croppedBase64 && !showOriginalPreview) ? croppedBase64 : imagePreviewUrl}
+                          alt="Preview"
+                          className="w-full h-full object-contain bg-white"
+                        />
+                      )}
+                      {croppedBase64 && (
+                        <span className="absolute top-2 right-2 bg-[#5E2F88] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                          {showOriginalPreview ? 'תמונה מקורית' : 'תמונה חתוכה'}
+                        </span>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="mt-3 text-[13px] font-semibold text-[#464646]/60 hover:text-[#5E2F88] transition-colors flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-[#e8e8e8] shadow-sm hover:border-[#5E2F88]/30"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" /> החלפת תמונה
-                    </button>
+                    <div className="mt-3 flex flex-wrap justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-[13px] font-semibold text-[#464646]/60 hover:text-[#5E2F88] transition-colors flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-[#e8e8e8] shadow-sm hover:border-[#5E2F88]/30"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" /> החלפת תמונה
+                      </button>
+                      {croppedBase64 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setShowOriginalPreview((v) => !v)}
+                            className="text-[13px] font-semibold text-[#464646]/60 hover:text-[#5E2F88] transition-colors flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-[#e8e8e8] shadow-sm hover:border-[#5E2F88]/30"
+                          >
+                            <ImageIcon className="w-3.5 h-3.5" />
+                            {showOriginalPreview ? 'הצגת החיתוך' : 'הצגת המקור'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setCroppedBase64(null); setShowOriginalPreview(false); }}
+                            className="text-[13px] font-semibold text-red-500/80 hover:text-red-600 transition-colors flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-red-200 shadow-sm"
+                          >
+                            <X className="w-3.5 h-3.5" /> ביטול החיתוך
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Controls */}
                   <div className="w-full md:w-1/2 space-y-3.5">
+                    {/* Frame selection */}
+                    <div>
+                      <h3 className="text-[13px] font-bold text-[#464646] mb-2">בחירת מסגרת לשטיח:</h3>
+                      <div className="grid grid-cols-3 gap-2">
+                        {FRAME_OPTIONS.map(({ id, label, Icon }) => (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => {
+                              setFrameType(id);
+                              if (id === 'custom') setCropOpen(true);
+                            }}
+                            className={`flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-xl border-2 transition-all ${
+                              frameType === id
+                                ? 'border-[#5E2F88] bg-[#f5f0fa] text-[#5E2F88]'
+                                : 'border-[#e8e8e8] bg-white text-[#464646]/60 hover:border-[#5E2F88]/30'
+                            }`}
+                          >
+                            <Icon className="w-5 h-5" />
+                            <span className="text-[12px] font-semibold">{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                      {frameType === 'custom' && (
+                        <button
+                          type="button"
+                          onClick={() => setCropOpen(true)}
+                          className="mt-2 w-full text-[13px] font-semibold text-[#5E2F88] flex items-center justify-center gap-1.5 bg-white px-3 py-2 rounded-lg border border-[#5E2F88]/30 shadow-sm hover:bg-[#f5f0fa] transition-colors"
+                        >
+                          <CropIcon className="w-3.5 h-3.5" />
+                          {croppedBase64 ? 'חיתוך מחדש' : 'חיתוך התמונה'}
+                        </button>
+                      )}
+                    </div>
+
                     <div className="bg-blue-50 text-blue-800 p-2.5 rounded-xl text-[13px] border border-blue-100 flex items-start gap-2">
                       <Info className="w-4 h-4 mt-0.5 opacity-70 shrink-0" />
                       <span>המערכת תהפוך את התמונה לסקיצת קווים בשחור-לבן, תסיר את הרקע ותפשט את הפרטים.</span>
@@ -1227,6 +1328,18 @@ export default function AISketchModal({
           </motion.div>
         </motion.div>
       )}
+
+      {/* Crop modal (custom shape frame) */}
+      <ImageCropModal
+        isOpen={cropOpen}
+        imageUrl={imagePreviewUrl}
+        onCancel={() => setCropOpen(false)}
+        onConfirm={(base64) => {
+          setCroppedBase64(base64);
+          setShowOriginalPreview(false);
+          setCropOpen(false);
+        }}
+      />
 
       {/* Blocked (rate limit) modal */}
       {blockedOpen && (

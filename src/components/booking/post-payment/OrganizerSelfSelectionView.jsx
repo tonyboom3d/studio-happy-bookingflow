@@ -57,6 +57,8 @@ function mapSelectionToSketch(s) {
       aiOriginalImage: s.aiOriginalImage || null,
       aiColors: s.aiColors || null,
       aiTaskId: s.aiTaskId || null,
+      frameType: s.frameType || null,
+      aiCroppedImage: s.aiCroppedImage || null,
     } : {}),
   };
 }
@@ -434,6 +436,8 @@ export default function OrganizerSelfSelectionView({
             aiOriginalImage: sketch.aiOriginalImage || null,
             aiColors: sketch.aiColors || null,
             aiTaskId: sketch.aiTaskId || null,
+            frameType: sketch.frameType || null,
+            aiCroppedImage: sketch.aiCroppedImage || null,
             pendingMediaUpload: sketch.pendingMediaUpload || false,
           }],
         };
@@ -669,18 +673,21 @@ export default function OrganizerSelfSelectionView({
           let aiOriginalImage = sketch.aiOriginalImage;
           let aiTaskId = sketch.aiTaskId;
           let aiColors = sketch.aiColors;
+          let aiCroppedImage = sketch.aiCroppedImage || null;
 
           if (sketch.source === 'ai' && sketch.pendingMediaUpload && onSaveApprovedSketch) {
             const saved = await onSaveApprovedSketch(
               sketch.aiOriginalImage || image,
               sketch.image,
               sketch.aiColors || 'AUTO',
+              aiCroppedImage,
             );
             if (saved?.sketchUrl) image = saved.sketchUrl;
             if (saved?.wixFileUrl) wixFileUrl = saved.wixFileUrl;
             if (saved?.originalUrl) aiOriginalImage = saved.originalUrl;
             if (saved?.taskId) aiTaskId = saved.taskId;
             if (saved?.colors) aiColors = saved.colors;
+            if (saved?.croppedUrl) aiCroppedImage = saved.croppedUrl;
           }
 
           const selData = {
@@ -699,6 +706,8 @@ export default function OrganizerSelfSelectionView({
               aiOriginalImage,
               aiColors,
               aiTaskId,
+              frameType: sketch.frameType || null,
+              aiCroppedImage,
             } : {}),
           };
           await onSelectSketch(selData);
