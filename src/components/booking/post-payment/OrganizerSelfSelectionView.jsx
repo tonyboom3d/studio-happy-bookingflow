@@ -57,6 +57,8 @@ function mapSelectionToSketch(s) {
       aiOriginalImage: s.aiOriginalImage || null,
       aiColors: s.aiColors || null,
       aiTaskId: s.aiTaskId || null,
+      frameShape: s.frameShape || null,
+      aiCroppedImage: s.aiCroppedImage || null,
     } : {}),
   };
 }
@@ -434,6 +436,8 @@ export default function OrganizerSelfSelectionView({
             aiOriginalImage: sketch.aiOriginalImage || null,
             aiColors: sketch.aiColors || null,
             aiTaskId: sketch.aiTaskId || null,
+            frameShape: sketch.frameShape || null,
+            aiCroppedImage: sketch.aiCroppedImage || null,
             pendingMediaUpload: sketch.pendingMediaUpload || false,
           }],
         };
@@ -699,6 +703,8 @@ export default function OrganizerSelfSelectionView({
               aiOriginalImage,
               aiColors,
               aiTaskId,
+              frameShape: sketch.frameShape || null,
+              aiCroppedImage: sketch.aiCroppedImage || null,
             } : {}),
           };
           await onSelectSketch(selData);
