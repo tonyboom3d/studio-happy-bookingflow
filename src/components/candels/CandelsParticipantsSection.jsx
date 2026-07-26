@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { getSlotLocalDate, getSlotTimeRange } from '@/lib/slotTime';
-import { validateFirstOrderMinimum } from '@/lib/firstOrderMinimum';
+import { validateFirstOrderMinimum, FIRST_ORDER_MIN_TICKETS_MESSAGE } from '@/lib/firstOrderMinimum';
 
 // Candles workshop ("סדנת נרות") participants step.
 // Minimum age is 4. Every child (ages 4-10) books as its own parent+child
@@ -109,7 +109,7 @@ export default function CandelsParticipantsSection({
     }
     const firstOrderError = validateFirstOrderMinimum(totalCandles, selectedSlot);
     if (firstOrderError) {
-      setValidationError(firstOrderError);
+      setValidationError(FIRST_ORDER_MIN_TICKETS_MESSAGE);
       return;
     }
     setValidationError(null);
@@ -308,6 +308,20 @@ export default function CandelsParticipantsSection({
         </div>
       )}
 
+      {/* הודעת מינימום להזמנה ראשונה במועד */}
+      {validationError === FIRST_ORDER_MIN_TICKETS_MESSAGE && (
+        <motion.div
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -5 }}
+          className="w-full max-w-md mb-3 rounded-lg border border-amber-300 bg-amber-50 p-2.5"
+        >
+          <p className="text-xs text-amber-900 text-center leading-relaxed">
+            {FIRST_ORDER_MIN_TICKETS_MESSAGE}
+          </p>
+        </motion.div>
+      )}
+
       {/* כפתור המשך + שגיאת ולידציה */}
       {!isGroupTooLarge && (
         <div className="flex flex-col items-center gap-2">
@@ -319,12 +333,12 @@ export default function CandelsParticipantsSection({
           </Button>
 
           <AnimatePresence>
-            {validationError && (
+            {validationError && validationError !== FIRST_ORDER_MIN_TICKETS_MESSAGE && (
               <motion.p
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -5 }}
-                className="text-xs text-red-600 text-center max-w-md leading-relaxed"
+                className="text-xs text-red-600 text-center max-w-[300px]"
               >
                 {validationError}
               </motion.p>

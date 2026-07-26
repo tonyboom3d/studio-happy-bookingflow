@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Minus, Plus, Users, Baby, MessageCircle, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { validateFirstOrderMinimum } from '@/lib/firstOrderMinimum';
+import { validateFirstOrderMinimum, FIRST_ORDER_MIN_TICKETS_MESSAGE } from '@/lib/firstOrderMinimum';
 
 export default function ParticipantsSection({
   adults,
@@ -75,7 +75,7 @@ export default function ParticipantsSection({
     }
     const firstOrderError = validateFirstOrderMinimum(adults, selectedSlot);
     if (firstOrderError) {
-      setValidationError(firstOrderError);
+      setValidationError(FIRST_ORDER_MIN_TICKETS_MESSAGE);
       return;
     }
     setValidationError(null);
@@ -226,6 +226,20 @@ export default function ParticipantsSection({
         </div>
       )}
 
+      {/* הודעת מינימום להזמנה ראשונה במועד */}
+      {validationError === FIRST_ORDER_MIN_TICKETS_MESSAGE && (
+        <motion.div
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -5 }}
+          className="w-full max-w-md mb-3 rounded-lg border border-amber-300 bg-amber-50 p-2.5"
+        >
+          <p className="text-xs text-amber-900 text-center leading-relaxed">
+            {FIRST_ORDER_MIN_TICKETS_MESSAGE}
+          </p>
+        </motion.div>
+      )}
+
       {/* כפתור המשך + שגיאת ולידציה */}
       {!isGroupTooLarge && (
         <div className="flex flex-col items-center gap-2">
@@ -237,12 +251,12 @@ export default function ParticipantsSection({
           </Button>
 
           <AnimatePresence>
-            {validationError && (
+            {validationError && validationError !== FIRST_ORDER_MIN_TICKETS_MESSAGE && (
               <motion.p
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -5 }}
-                className="text-xs text-red-600 text-center max-w-md leading-relaxed"
+                className="text-xs text-red-600 text-center max-w-[300px]"
               >
                 {validationError}
               </motion.p>
