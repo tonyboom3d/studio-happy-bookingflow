@@ -1,19 +1,11 @@
-import { useState, useCallback } from 'react';
-import { isAiFeatureEnabled, registerAiSecretTap } from '@/lib/utils';
+import { useCallback } from 'react';
+import { isAiFeatureEnabled } from '@/lib/utils';
 
 export function useAiFeatureEnabled() {
-  const [aiEnabled, setAiEnabled] = useState(() => isAiFeatureEnabled());
+  const aiEnabled = isAiFeatureEnabled();
 
   const handleAiButtonClick = useCallback((onChooseAi) => {
-    if (aiEnabled) {
-      onChooseAi();
-      return;
-    }
-    const unlocked = registerAiSecretTap();
-    if (unlocked) {
-      setAiEnabled(true);
-      onChooseAi();
-    }
+    if (aiEnabled) onChooseAi();
   }, [aiEnabled]);
 
   return { aiEnabled, handleAiButtonClick };

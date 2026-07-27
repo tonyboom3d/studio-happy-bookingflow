@@ -8,10 +8,6 @@ export function cn(...inputs) {
 
 export const isIframe = window.self !== window.top;
 
-const AI_SECRET_UNLOCK_KEY = 'studio_happy_ai_secret_unlock';
-const AI_SECRET_TAP_KEY = 'studio_happy_ai_secret_taps';
-const AI_SECRET_TAP_TARGET = 10;
-
 /** True when URL contains test=true (search or hash query, e.g. #/order?test=true). */
 export function isAiTestModeEnabled() {
   if (typeof window === 'undefined') return false;
@@ -23,32 +19,8 @@ export function isAiTestModeEnabled() {
   return false;
 }
 
-export function isAiSecretUnlocked() {
-  if (typeof window === 'undefined') return false;
-  try {
-    return sessionStorage.getItem(AI_SECRET_UNLOCK_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
-/** Register a secret tap; returns true once unlocked (10 taps). */
-export function registerAiSecretTap() {
-  if (typeof window === 'undefined') return false;
-  if (isAiTestModeEnabled() || isAiSecretUnlocked()) return true;
-  try {
-    const taps = parseInt(sessionStorage.getItem(AI_SECRET_TAP_KEY) || '0', 10) + 1;
-    sessionStorage.setItem(AI_SECRET_TAP_KEY, String(taps));
-    if (taps >= AI_SECRET_TAP_TARGET) {
-      sessionStorage.setItem(AI_SECRET_UNLOCK_KEY, '1');
-      return true;
-    }
-  } catch {}
-  return false;
-}
-
 export function isAiFeatureEnabled() {
-  return isAiTestModeEnabled() || isAiSecretUnlocked();
+  return isAiTestModeEnabled();
 }
 
 const CATALOG_CACHE_KEY = 'studio_happy_catalog_v1';

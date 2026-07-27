@@ -1260,11 +1260,13 @@ export default function OrganizerSelfSelectionView({
 
                 <button
                   type="button"
+                  disabled={!aiEnabled}
+                  aria-disabled={!aiEnabled}
                   onClick={() => handleAiButtonClick(() => chooseSource('ai'))}
                   className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-right relative ${
                     aiEnabled
                       ? 'border-[#e8e8e8] bg-white hover:border-purple-300 hover:bg-purple-50'
-                      : 'border-[#e8e8e8] bg-gray-50 opacity-70 cursor-not-allowed'
+                      : 'border-[#e8e8e8] bg-gray-50 opacity-70 cursor-not-allowed pointer-events-none'
                   }`}
                 >
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
