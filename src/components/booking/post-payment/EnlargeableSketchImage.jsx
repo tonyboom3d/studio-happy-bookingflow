@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZoomIn, X } from 'lucide-react';
 
@@ -32,45 +33,48 @@ export default function EnlargeableSketchImage({
         </span>
       </button>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4"
-            onClick={() => setOpen(false)}
-          >
+      {createPortal(
+        <AnimatePresence>
+          {open && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-2xl"
-              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4"
+              onClick={() => setOpen(false)}
             >
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="absolute -top-2 -left-2 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                aria-label="סגור"
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-2xl"
+                onClick={(e) => e.stopPropagation()}
               >
-                <X className="h-5 w-5" />
-              </button>
-              {title && (
-                <p className="mb-2 text-center text-sm font-semibold text-white">{title}</p>
-              )}
-              <div className="overflow-hidden rounded-xl bg-white p-3 shadow-2xl sm:p-5">
-                <img
-                  src={src}
-                  alt={alt}
-                  className="mx-auto max-h-[80dvh] w-full object-contain bg-white"
-                  style={{ backgroundColor: '#ffffff' }}
-                />
-              </div>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="absolute -top-2 -left-2 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                  aria-label="סגור"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+                {title && (
+                  <p className="mb-2 text-center text-sm font-semibold text-white">{title}</p>
+                )}
+                <div className="overflow-hidden rounded-xl bg-white p-3 shadow-2xl sm:p-5">
+                  <img
+                    src={src}
+                    alt={alt}
+                    className="mx-auto max-h-[80dvh] w-full object-contain bg-white"
+                    style={{ backgroundColor: '#ffffff' }}
+                  />
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 }
