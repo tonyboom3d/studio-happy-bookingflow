@@ -310,22 +310,36 @@ function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1, hintTrigger = 
   return (
     <div
       ref={containerRef}
-      className="relative w-full rounded-2xl shadow-xl border-4 border-white select-none overflow-hidden touch-none bg-white mx-auto"
+      className="relative w-full rounded-2xl shadow-xl border-4 border-white select-none overflow-hidden touch-none bg-white mx-auto isolate"
       style={frameStyle}
       onMouseDown={startDrag}
       onTouchStart={startDrag}
     >
-      <img
-        src={originalUrl}
-        alt="Original"
-        draggable={false}
-        className="absolute inset-0 z-0 w-full h-full object-contain bg-white"
-      />
+      {/* Solid white base — sketch transparent pixels must never reveal the photo layer */}
+      <div className="absolute inset-0 z-0 bg-white" aria-hidden />
+
+      {/* Original / cropped input — left side only */}
       <div
-        className="absolute inset-0 z-10"
+        className="absolute inset-0 z-[5] bg-white"
+        style={{
+          clipPath: `polygon(0 0, ${pct}% 0, ${pct}% 100%, 0 100%)`,
+          transition: hinting ? 'clip-path 0.7s ease-in-out' : 'none',
+        }}
+      >
+        <img
+          src={originalUrl}
+          alt="Original"
+          draggable={false}
+          className="absolute inset-0 z-0 h-full w-full object-contain bg-white"
+          style={{ backgroundColor: '#ffffff' }}
+        />
+      </div>
+
+      {/* Sketch — right side only, always on white (never stacked over the photo) */}
+      <div
+        className="absolute inset-0 z-10 bg-white"
         style={{
           clipPath: `polygon(${pct}% 0, 100% 0, 100% 100%, ${pct}% 100%)`,
-          backgroundColor: '#ffffff',
           transition: hinting ? 'clip-path 0.7s ease-in-out' : 'none',
         }}
       >
@@ -333,7 +347,7 @@ function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1, hintTrigger = 
           src={sketchUrl}
           alt="Sketch"
           draggable={false}
-          className="h-full w-full object-contain"
+          className="absolute inset-0 h-full w-full object-contain bg-white"
           style={{ backgroundColor: '#ffffff' }}
         />
       </div>
@@ -389,12 +403,14 @@ function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1, hintTrigger = 
                 {lightbox === 'sketch' ? 'הסקיצה' : 'התמונה המקורית'}
               </p>
               <div className="overflow-hidden rounded-xl bg-white p-3 shadow-2xl sm:p-5">
-                <img
-                  src={lightbox === 'sketch' ? sketchUrl : originalUrl}
-                  alt={lightbox === 'sketch' ? 'Sketch' : 'Original'}
-                  className="mx-auto max-h-[80dvh] w-full object-contain bg-white"
-                  style={lightbox === 'sketch' ? { backgroundColor: '#ffffff' } : undefined}
-                />
+                <div className="mx-auto max-h-[80dvh] w-full bg-white" style={{ backgroundColor: '#ffffff' }}>
+                  <img
+                    src={lightbox === 'sketch' ? sketchUrl : originalUrl}
+                    alt={lightbox === 'sketch' ? 'Sketch' : 'Original'}
+                    className="mx-auto max-h-[80dvh] w-full object-contain bg-white"
+                    style={{ backgroundColor: '#ffffff' }}
+                  />
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -670,6 +686,9 @@ export default function AISketchModal({
   }, [imageBase64, croppedBase64, imageDimensions, onGenerateSketch, animateProgress]);
 
   const imageAspectRatio = imageDimensions.width / imageDimensions.height;
+
+  // Compare slider "מקור" = cropped input when user cropped, else uploaded preview
+  const compareOriginalUrl = croppedBase64 || originalMediaUrl || imagePreviewUrl;
 
   const handleApprove = useCallback(async () => {
     setError(null);
@@ -1114,7 +1133,7 @@ export default function AISketchModal({
                 {/* Compare slider */}
                 <div className="relative w-full max-w-md mx-auto">
                   <CompareSlider
-                    originalUrl={imagePreviewUrl}
+                    originalUrl={compareOriginalUrl}
                     sketchUrl={sketchUrl}
                     aspectRatio={imageAspectRatio}
                     hintTrigger={hintTrigger}
