@@ -957,13 +957,11 @@ export default function SketchSelectionView({
 
                 <button
                   type="button"
-                  disabled={!aiEnabled}
-                  aria-disabled={!aiEnabled}
                   onClick={() => handleAiButtonClick(() => handleSourceChoice('ai'))}
                   className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-right ${
                     aiEnabled
                       ? 'border-[#e8e8e8] bg-white hover:border-purple-300 hover:bg-purple-50'
-                      : 'border-[#e8e8e8] bg-gray-50 opacity-70 cursor-not-allowed pointer-events-none'
+                      : 'border-[#e8e8e8] bg-gray-50 opacity-70 cursor-not-allowed'
                   }`}
                 >
                   
