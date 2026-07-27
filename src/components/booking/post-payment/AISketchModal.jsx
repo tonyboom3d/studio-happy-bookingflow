@@ -316,12 +316,20 @@ function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1, hintTrigger = 
       onMouseDown={startDrag}
       onTouchStart={startDrag}
     >
-      {/* Solid white base — sketch transparent pixels must never reveal the photo layer */}
-      <div className="absolute inset-0 z-0 bg-white" aria-hidden />
+      {/* Sketch is the white-backed base; transparent pixels never reveal the source photo. */}
+      <div className="absolute inset-0 z-0 bg-white">
+        <img
+          src={sketchUrl}
+          alt="Sketch"
+          draggable={false}
+          className="absolute inset-0 h-full w-full object-contain bg-white"
+          style={{ backgroundColor: '#ffffff' }}
+        />
+      </div>
 
-      {/* Original / cropped input — left side only */}
+      {/* Original / cropped input — left side only, layered above the sketch. */}
       <div
-        className="absolute inset-0 z-[5] bg-white"
+        className="absolute inset-0 z-10 bg-white"
         style={{
           clipPath: `polygon(0 0, ${pct}% 0, ${pct}% 100%, 0 100%)`,
           transition: hinting ? 'clip-path 0.7s ease-in-out' : 'none',
@@ -332,23 +340,6 @@ function CompareSlider({ originalUrl, sketchUrl, aspectRatio = 1, hintTrigger = 
           alt="Original"
           draggable={false}
           className="absolute inset-0 z-0 h-full w-full object-contain bg-white"
-          style={{ backgroundColor: '#ffffff' }}
-        />
-      </div>
-
-      {/* Sketch — right side only, always on white (never stacked over the photo) */}
-      <div
-        className="absolute inset-0 z-10 bg-white"
-        style={{
-          clipPath: `polygon(${pct}% 0, 100% 0, 100% 100%, ${pct}% 100%)`,
-          transition: hinting ? 'clip-path 0.7s ease-in-out' : 'none',
-        }}
-      >
-        <img
-          src={sketchUrl}
-          alt="Sketch"
-          draggable={false}
-          className="absolute inset-0 h-full w-full object-contain bg-white"
           style={{ backgroundColor: '#ffffff' }}
         />
       </div>
