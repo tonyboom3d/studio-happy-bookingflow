@@ -470,7 +470,7 @@ export default function AISketchModal({
       setErrorCountdown(0);
       return undefined;
     }
-    setErrorCountdown(6);
+    setErrorCountdown(8);
     const iv = setInterval(() => {
       setErrorCountdown((prev) => {
         if (prev <= 1) {
@@ -840,8 +840,6 @@ export default function AISketchModal({
 
   if (!isOpen) return null;
 
-  const handleBackdropClick = isBlockingClose ? undefined : onClose;
-
   return (
     <AnimatePresence>
       <motion.div
@@ -849,7 +847,6 @@ export default function AISketchModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3"
-        onClick={handleBackdropClick}
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.92, y: 24 }}
@@ -858,15 +855,15 @@ export default function AISketchModal({
           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
           className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92dvh] overflow-y-auto relative"
           dir="rtl"
-          onClick={(e) => e.stopPropagation()}
         >
-          {/* Close + Feedback buttons */}
-          <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
+          {/* Close (top-right) + Feedback (top-left) */}
+          <div className="absolute top-3 right-3 z-20">
             {!isBlockingClose && (
               <button
                 type="button"
                 onClick={onClose}
                 className="w-8 h-8 rounded-full bg-[#f5f5f5] flex items-center justify-center text-[#464646] hover:bg-[#e8e8e8] transition-colors"
+                aria-label="סגור"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -876,7 +873,7 @@ export default function AISketchModal({
           <button
             type="button"
             onClick={() => setFeedbackOpen(true)}
-            className="absolute top-3 right-3 z-20 bg-[#f5f0fa] text-[#5E2F88] px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 text-[12px] font-bold hover:bg-[#ebe0f5] transition-colors ring-1 ring-[#5E2F88]/15"
+            className="absolute top-3 left-3 z-20 bg-[#f5f0fa] text-[#5E2F88] px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 text-[12px] font-bold hover:bg-[#ebe0f5] transition-colors ring-1 ring-[#5E2F88]/15"
           >
             <MessageSquare className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">פידבק</span>
