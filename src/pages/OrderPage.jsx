@@ -150,7 +150,7 @@ export default function OrderPage() {
 
   const handleSendMessage = useCallback((type, data, callback) => {
     if (callback) {
-      const longRunning = type === 'GENERATE_SKETCH' || type === 'VALIDATE_IMAGE';
+      const longRunning = type === 'GENERATE_SKETCH' || type === 'VALIDATE_IMAGE' || type === 'SAVE_APPROVED_SKETCH';
       const timeoutMs = longRunning ? 120000 : 30000;
       sendWithCallback(type, data, callback, timeoutMs);
     } else {
