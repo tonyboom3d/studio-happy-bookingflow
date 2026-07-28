@@ -462,8 +462,9 @@ export default function AISketchModal({
   // Error
   const [error, setError] = useState(null);
   const [errorCountdown, setErrorCountdown] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const isBlockingClose = view === 'loading';
+  const isBlockingClose = view === 'loading' || isSaving;
 
   useEffect(() => {
     if (!error) {
@@ -523,6 +524,7 @@ export default function AISketchModal({
       setRevealPhase('hidden');
       setHintTrigger(0);
       setError(null);
+      setIsSaving(false);
       setAttempts(0);
       setRetryReason('');
       setRetryText('');
@@ -687,104 +689,39 @@ export default function AISketchModal({
 
   const handleApprove = useCallback(async () => {
     setError(null);
-
-    if (deferSketchPersistence) {
-      // The SketchSelections row itself stays deferred until confirmReview,
-      // but upload the media to Wix Media right now instead of holding only
-      // the in-memory base64/data URL for the whole review session — a tab
-      // crash/refresh before confirming otherwise loses the generated image
-      // with no way to recover it.
-      if (onSaveApprovedSketch) {
-        try {
-          const originalInput = originalMediaUrl || imageBase64;
-          const saved = await onSaveApprovedSketch(originalInput, sketchUrl, 'AUTO', croppedBase64);
-          onApprove({
-            source: 'ai',
-            productId: null,
-            title: 'עיצוב מותאם אישית (AI)',
-            image: saved?.sketchUrl || sketchUrl,
-            wixFileUrl: saved?.wixFileUrl || null,
-            aiOriginalImage: saved?.originalUrl || originalMediaUrl || imageBase64,
-            aiColors: saved?.colors || 'AUTO',
-            aiTaskId: saved?.taskId || null,
-            canvasSize: '60x60',
-            frameType,
-            aiCroppedImage: saved?.croppedUrl || null,
-            pendingMediaUpload: false,
-          });
-          onClose();
-          return;
-        } catch (err) {
-          console.error('[AISketchModal] immediate media upload failed, deferring to confirmReview:', err);
-          // Fall through — keep the in-memory draft so confirmReview retries the upload.
-        }
-      }
-      onApprove({
-        source: 'ai',
-        productId: null,
-        title: 'עיצוב מותאם אישית (AI)',
-        image: sketchUrl,
-        aiOriginalImage: originalMediaUrl || imageBase64,
-        aiColors: 'AUTO',
-        aiTaskId: null,
-        canvasSize: '60x60',
-        frameType,
-        aiCroppedImage: croppedBase64 || null,
-        pendingMediaUpload: true,
-      });
-      onClose();
-      return;
-    }
-
-    setView('loading');
-    setStep(2);
-    setLoadingTitle('שומר את הסקיצה...');
-    setLoadingSubs(LOADING_SUBTITLES_SAVE);
-    setLoadingProgress(0);
-    const clearProgress = animateProgress(5000);
+    if (isSaving) return;
+    setIsSaving(true);
 
     try {
-      let finalImage = sketchUrl;
-      let aiOriginalImage = null;
-      let aiColors = 'AUTO';
-      let aiTaskId = null;
-      let aiCroppedImage = null;
-
-      if (onSaveApprovedSketch) {
-        const originalInput = originalMediaUrl || imageBase64;
-        const colors = 'AUTO';
-        const saved = await onSaveApprovedSketch(originalInput, sketchUrl, colors, croppedBase64);
-        if (saved?.sketchUrl) finalImage = saved.sketchUrl;
-        if (saved?.originalUrl) aiOriginalImage = saved.originalUrl;
-        if (saved?.colors) aiColors = saved.colors;
-        if (saved?.taskId) aiTaskId = saved.taskId;
-        if (saved?.croppedUrl) aiCroppedImage = saved.croppedUrl;
+      if (!onSaveApprovedSketch) {
+        throw new Error('שגיאה בשמירת הסקיצה. נסו שוב.');
       }
+
+      const originalInput = originalMediaUrl || imageBase64;
+      const saved = await onSaveApprovedSketch(originalInput, sketchUrl, 'AUTO', croppedBase64);
 
       onApprove({
         source: 'ai',
         productId: null,
         title: 'עיצוב מותאם אישית (AI)',
-        image: finalImage,
-        aiOriginalImage,
-        aiColors,
-        aiTaskId,
+        image: saved?.sketchUrl || sketchUrl,
+        wixFileUrl: saved?.wixFileUrl || null,
+        aiOriginalImage: saved?.originalUrl || originalMediaUrl || imageBase64,
+        aiColors: saved?.colors || 'AUTO',
+        aiTaskId: saved?.taskId || null,
         canvasSize: '60x60',
         frameType,
-        aiCroppedImage,
+        aiCroppedImage: saved?.croppedUrl || null,
+        pendingMediaUpload: false,
       });
-
-      clearProgress();
-      setLoadingProgress(100);
       onClose();
     } catch (err) {
-      clearProgress();
       console.error('[AISketchModal] save approved sketch failed:', err);
       setError('שגיאה בשמירת הסקיצה. נסו שוב.');
-      setView('result');
-      setStep(2);
+    } finally {
+      setIsSaving(false);
     }
-  }, [imageBase64, croppedBase64, frameType, originalMediaUrl, sketchUrl, onApprove, onClose, onSaveApprovedSketch, animateProgress, deferSketchPersistence]);
+  }, [imageBase64, croppedBase64, frameType, originalMediaUrl, sketchUrl, onApprove, onClose, onSaveApprovedSketch, isSaving]);
 
   const handleRetrySubmit = useCallback(async () => {
     if (!retryReason) return;
@@ -1148,21 +1085,25 @@ export default function AISketchModal({
                   <button
                     type="button"
                     onClick={handleApprove}
-                    className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-5 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 flex-1 min-w-[140px]"
+                    disabled={isSaving}
+                    className={`bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-5 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 flex-1 min-w-[140px] ${isSaving ? 'opacity-80 cursor-wait' : ''}`}
                   >
-                    <Check className="w-4 h-4" /> {deferSketchPersistence ? 'אישור והמשך' : 'אישור ושמירה'}
+                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    {isSaving ? 'שומר...' : (deferSketchPersistence ? 'אישור והמשך' : 'אישור ושמירה')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setRetryOpen(true)}
-                    className="bg-white border-2 border-[#e8e8e8] hover:border-[#464646]/30 text-[#464646] font-bold py-3 px-5 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 flex-1 min-w-[140px]"
+                    disabled={isSaving}
+                    className="bg-white border-2 border-[#e8e8e8] hover:border-[#464646]/30 text-[#464646] font-bold py-3 px-5 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 flex-1 min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <RotateCcw className="w-4 h-4" /> ניסיון נוסף
                   </button>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="bg-[#f5f5f5] hover:bg-[#e8e8e8] text-[#464646] font-bold py-3 px-5 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 flex-1 min-w-[140px]"
+                    disabled={isSaving}
+                    className="bg-[#f5f5f5] hover:bg-[#e8e8e8] text-[#464646] font-bold py-3 px-5 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 flex-1 min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ImageIcon className="w-4 h-4" /> החלפת תמונה
                   </button>

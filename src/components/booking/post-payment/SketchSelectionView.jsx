@@ -153,7 +153,11 @@ export default function SketchSelectionView({
     const selection = {
       rugIndex: aiModalSlot,
       productId: null,
-      productSnapshot: { title: sketch.title, image: sketch.image },
+      productSnapshot: {
+        title: sketch.title,
+        image: sketch.image,
+        ...(sketch.wixFileUrl ? { wixFileUrl: sketch.wixFileUrl } : {}),
+      },
       canvasSize: sketch.canvasSize || '60x60',
       title: sketch.title,
       source: 'ai',

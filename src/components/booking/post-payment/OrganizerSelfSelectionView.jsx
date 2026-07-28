@@ -429,6 +429,7 @@ export default function OrganizerSelfSelectionView({
             productId: null,
             title: sketch.title || 'עיצוב מותאם אישית (AI)',
             image: sketch.image || null,
+            wixFileUrl: sketch.wixFileUrl || null,
             size: sketch.canvasSize || '60x60',
             source: 'ai',
             rugIndex,
