@@ -63,7 +63,6 @@ const LOADING_SUBTITLES_GENERATE = [
   'מכין קובץ סופי...',
 ];
 
-const MOBILE_KEEP_OPEN_HINT = 'אל תסגרו את החלונית עד לסיום התהליך';
 const AI_RATE_LIMIT_MESSAGE = 'הגעתם למגבלת הניסיונות. אנא המתינו כ-30 דקות לפני שתוכלו לנסות שוב.';
 const SKETCH_PROGRESS_DURATION_MS = 40000;
 const RESULT_BUFFER_MS = 5000;
@@ -75,17 +74,6 @@ function isRateLimitResponse(result) {
   const text = result.reason || result.message || '';
   return text.includes('מגבלת') && text.includes('ניסיונות');
 }
-
-function isMobileDevice() {
-  if (typeof navigator === 'undefined') return false;
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-}
-
-const LOADING_SUBTITLES_SAVE = [
-  'מעלה את התמונות לשרת...',
-  'שומר את הסקיצה...',
-  'מכין לקישור להזמנה...',
-];
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -154,10 +142,9 @@ function Stepper({ step }) {
   );
 }
 
-function LoadingView({ title, subtitles, progress, showMobileKeepOpenHint = false }) {
+function LoadingView({ title, subtitles, progress }) {
   const [subIdx, setSubIdx] = useState(0);
   const [fade, setFade] = useState(true);
-  const showMobileHint = showMobileKeepOpenHint && isMobileDevice();
 
   useEffect(() => {
     const iv = setInterval(() => {
@@ -180,12 +167,6 @@ function LoadingView({ title, subtitles, progress, showMobileKeepOpenHint = fals
       <p className={`text-sm text-[#464646]/70 h-5 transition-opacity duration-250 ${fade ? 'opacity-100' : 'opacity-0'}`}>
         {subtitles[subIdx]}
       </p>
-      {showMobileHint && (
-        <div className="mt-4 w-full max-w-sm bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-800 text-center flex-1">{MOBILE_KEEP_OPEN_HINT}</p>
-        </div>
-      )}
       <div className="w-full max-w-[240px] bg-[#e8e8e8] rounded-full h-2 mt-5">
         <div
           className="bg-[#5E2F88] h-2 rounded-full transition-all duration-300"
@@ -453,6 +434,7 @@ export default function AISketchModal({
 
   // Result
   const [sketchUrl, setSketchUrl] = useState(null);
+  const [sketchWixFileUrl, setSketchWixFileUrl] = useState(null);
   const [originalMediaUrl, setOriginalMediaUrl] = useState(null);
 
   // Post-generation reveal sequence: 'hidden' (buffer) -> 'stars' -> 'done'
@@ -520,6 +502,7 @@ export default function AISketchModal({
       setCropOpen(false);
       setShowOriginalPreview(false);
       setSketchUrl(null);
+      setSketchWixFileUrl(null);
       setOriginalMediaUrl(null);
       setRevealPhase('hidden');
       setHintTrigger(0);
@@ -661,6 +644,7 @@ export default function AISketchModal({
       }
 
       setSketchUrl(result.sketchUrl);
+      setSketchWixFileUrl(result.sketchWixFileUrl || null);
       if (result.originalUrl) setOriginalMediaUrl(result.originalUrl);
 
       setTimeout(() => {
@@ -698,7 +682,8 @@ export default function AISketchModal({
       }
 
       const originalInput = originalMediaUrl || imageBase64;
-      const saved = await onSaveApprovedSketch(originalInput, sketchUrl, 'AUTO', croppedBase64);
+      const sketchInputForSave = sketchWixFileUrl || sketchUrl;
+      const saved = await onSaveApprovedSketch(originalInput, sketchInputForSave, 'AUTO', croppedBase64);
 
       onApprove({
         source: 'ai',
@@ -721,7 +706,7 @@ export default function AISketchModal({
     } finally {
       setIsSaving(false);
     }
-  }, [imageBase64, croppedBase64, frameType, originalMediaUrl, sketchUrl, onApprove, onClose, onSaveApprovedSketch, isSaving]);
+  }, [imageBase64, croppedBase64, frameType, originalMediaUrl, sketchUrl, sketchWixFileUrl, onApprove, onClose, onSaveApprovedSketch, isSaving]);
 
   const handleRetrySubmit = useCallback(async () => {
     if (!retryReason) return;
@@ -910,7 +895,6 @@ export default function AISketchModal({
                   title={loadingTitle}
                   subtitles={loadingSubs}
                   progress={loadingProgress}
-                  showMobileKeepOpenHint
                 />
               </motion.div>
             )}

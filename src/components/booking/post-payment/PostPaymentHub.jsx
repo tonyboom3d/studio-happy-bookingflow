@@ -257,6 +257,7 @@ export default function PostPaymentHub({
       if (status?.status === 'done') {
         return {
           sketchUrl: status.sketchUrl,
+          sketchWixFileUrl: status.sketchWixFileUrl || null,
           originalUrl: status.originalUrl,
           taskId: status.taskId,
         };
