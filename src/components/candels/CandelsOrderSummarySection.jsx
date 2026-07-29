@@ -82,7 +82,7 @@ export default function CandelsOrderSummarySection({
           <div className="flex justify-between gap-3">
             <span className="flex items-center gap-1.5">
               <Baby className="w-4 h-4" />
-              {extraChildren} × תוספת ילד על הורה וילד
+              {extraChildren} × תוספת ילד
             </span>
             <span className="font-medium tabular-nums">₪{extraChildren * extraChildUnitPrice}</span>
           </div>

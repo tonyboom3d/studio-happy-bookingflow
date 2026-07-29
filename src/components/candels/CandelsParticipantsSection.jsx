@@ -71,7 +71,7 @@ export default function CandelsParticipantsSection({
 
   const handleContinue = () => {
     if (childrenNeedAdult) {
-      setValidationError(`יש להוסיף ${missingAdults} ${missingAdults === 1 ? 'מבוגר מלווה' : 'מבוגרים מלווים'} — כל מבוגר יכול ללוות עד ${MAX_CHILDREN_PER_ADULT} ילדים בגילאי 4-10 (כרטיס הורה + ילד לכל ילד)`);
+      setValidationError(`יש להוסיף ${missingAdults} ${missingAdults === 1 ? 'מבוגר מלווה' : 'מבוגרים מלווים'} — כל מבוגר יכול ללוות עד ${MAX_CHILDREN_PER_ADULT} ילדים בגילאי 4-10`);
       return;
     }
     if (spotsExceeded) {
@@ -220,7 +220,7 @@ export default function CandelsParticipantsSection({
                 <div className="flex justify-between gap-3">
                   <span className="flex items-center gap-1.5">
                     <Baby className="w-3.5 h-3.5" />
-                    {extraChildren} × תוספת ילד על הורה וילד
+                    {extraChildren} × תוספת ילד
                   </span>
                   <span className="font-medium tabular-nums">₪{extraChildren * extraChildUnitPrice}</span>
                 </div>
