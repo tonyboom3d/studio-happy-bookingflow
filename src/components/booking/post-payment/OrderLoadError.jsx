@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, MessageCircle } from 'lucide-react';
+import { AlertTriangle, MessageCircle, RefreshCw } from 'lucide-react';
 
 const SUPPORT_WHATSAPP = 'https://api.whatsapp.com/send?phone=972522272270';
 
@@ -26,16 +26,25 @@ export default function OrderLoadError() {
         אל דאגה — פרטי ההזמנה המלאים נשלחו אליך בוואטסאפ.
       </p>
 
-      <p className="text-sm text-[#464646]/75 mb-3">צריכים עזרה? אנחנו כאן בשבילכם:</p>
-      <a
-        href={SUPPORT_WHATSAPP}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5b] text-white font-medium py-2.5 px-5 rounded-xl text-sm transition-colors shadow-sm"
-      >
-        <MessageCircle className="w-4 h-4" />
-        פנייה לשירות הלקוחות
-      </a>
+      <div className="flex flex-col sm:flex-row items-center gap-3 mb-3">
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="inline-flex items-center justify-center gap-2 bg-[#5E2F88] hover:bg-[#4a2570] text-white font-medium py-2.5 px-5 rounded-xl text-sm transition-colors shadow-sm"
+        >
+          <RefreshCw className="w-4 h-4" />
+          נסו לרענן את הדף
+        </button>
+        <a
+          href={SUPPORT_WHATSAPP}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5b] text-white font-medium py-2.5 px-5 rounded-xl text-sm transition-colors shadow-sm"
+        >
+          <MessageCircle className="w-4 h-4" />
+          פנייה לשירות הלקוחות
+        </a>
+      </div>
     </motion.div>
   );
 }

@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { LinkIcon, Mail, MessageCircle } from 'lucide-react';
+import { LinkIcon, Mail, MessageCircle, RefreshCw } from 'lucide-react';
+
+const SUPPORT_WHATSAPP = 'https://api.whatsapp.com/send?phone=972522272270';
 
 export default function InvalidLinkMessage() {
   return (
@@ -23,7 +25,7 @@ export default function InvalidLinkMessage() {
         אם הזמנת סדנה, נשלח לך קישור עם סיכום ההזמנה ובחירת הסקיצות דרך:
       </p>
 
-      <div className="flex gap-4 text-sm text-[#464646]/70">
+      <div className="flex gap-4 text-sm text-[#464646]/70 mb-6">
         <div className="flex items-center gap-1.5">
           <Mail className="w-4 h-4 text-[#5E2F88]" />
           <span>אימייל</span>
@@ -32,6 +34,26 @@ export default function InvalidLinkMessage() {
           <MessageCircle className="w-4 h-4 text-[#25D366]" />
           <span>וואטסאפ</span>
         </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="inline-flex items-center justify-center gap-2 bg-[#5E2F88] hover:bg-[#4a2570] text-white font-medium py-2.5 px-5 rounded-xl text-sm transition-colors shadow-sm"
+        >
+          <RefreshCw className="w-4 h-4" />
+          נסו לרענן את הדף
+        </button>
+        <a
+          href={SUPPORT_WHATSAPP}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5b] text-white font-medium py-2.5 px-5 rounded-xl text-sm transition-colors shadow-sm"
+        >
+          <MessageCircle className="w-4 h-4" />
+          פנייה לשירות הלקוחות
+        </a>
       </div>
 
       <p className="text-xs text-[#464646]/50 mt-6 text-center max-w-xs">
