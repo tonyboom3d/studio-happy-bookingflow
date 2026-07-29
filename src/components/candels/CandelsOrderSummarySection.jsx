@@ -13,6 +13,7 @@ export default function CandelsOrderSummarySection({
   children,
   soloAdults,
   parentChildPairs,
+  extraChildren = 0,
   selectedSlot,
   servicePricing,
   selectedCups = [],
@@ -35,6 +36,7 @@ export default function CandelsOrderSummarySection({
   const pricing = servicePricing?.[selectedSlot?.serviceId];
   const soloUnitPrice = pricing?.solo || 0;
   const parentChildUnitPrice = pricing?.parentChild || soloUnitPrice;
+  const extraChildUnitPrice = pricing?.extraChild || parentChildUnitPrice;
 
   return (
     <div className="flex flex-col py-3 px-1 space-y-3" dir="rtl">
@@ -74,6 +76,15 @@ export default function CandelsOrderSummarySection({
               {parentChildPairs} × הורה + ילד
             </span>
             <span className="font-medium tabular-nums">₪{parentChildPairs * parentChildUnitPrice}</span>
+          </div>
+        )}
+        {extraChildren > 0 && (
+          <div className="flex justify-between gap-3">
+            <span className="flex items-center gap-1.5">
+              <Baby className="w-4 h-4" />
+              {extraChildren} × תוספת ילד על הורה וילד
+            </span>
+            <span className="font-medium tabular-nums">₪{extraChildren * extraChildUnitPrice}</span>
           </div>
         )}
         {selectedCups.length > 0 && (

@@ -9,6 +9,7 @@ import CupSelectionSection from '@/components/candels/CupSelectionSection';
 import CandelsOrderSummarySection from '@/components/candels/CandelsOrderSummarySection';
 import { submitBooking, subscribeToWix, notifyProgress, isWixEditorOrPreview } from '@/api/wixBridge';
 import { addLog } from '@/components/VersionLogger';
+import { computeCandlesCounts, computeCandlesPrice } from '@/lib/candlesPricing';
 
 // Candles workshop ("סדנת נרות") booking flow — same 4-step accordion shape
 // as Tufting's WorkshopBooking, with a cup-selection step instead of the
@@ -134,24 +135,23 @@ export default function CandelsBooking() {
     setPrevActiveSection(activeSection);
   }, [activeSection, prevActiveSection]);
 
-  // חישוב מספר יחידות (נרות): כל ילד = כרטיס הורה+ילד (נר אחד),
-  // מבוגר אחד יכול ללוות עד 4 ילדים. מבוגר שלא מלווה ילדים = כרטיס יחיד (נר אחד).
-  const accompanyingAdults = Math.min(adults, Math.ceil(children / 4));
-  const parentChildPairs = children;
-  const soloAdults = adults - accompanyingAdults;
-  const totalCups = soloAdults + children; // כוס אחת לכל נר (כרטיס יחיד או הורה+ילד)
+  // חישוב מספר יחידות (נרות): הילד הראשון תחת כל מבוגר מלווה = כרטיס הורה+ילד
+  // (נר אחד), כל ילד נוסף תחת אותו מבוגר = "תוספת ילד". מבוגר אחד יכול ללוות
+  // עד 4 ילדים. מבוגר שלא מלווה ילדים = כרטיס יחיד (נר אחד).
+  const { soloAdults, parentChildPairs, extraChildren, totalCandles: totalCups } = useMemo(
+    () => computeCandlesCounts({ adults, children }),
+    [adults, children]
+  );
 
   // מחיר כרטיסים
-  const ticketPrice = useMemo(() => {
-    if (!selectedSlot || !servicePricing) return 0;
-    const pricing = servicePricing[selectedSlot.serviceId];
-    if (!pricing) return 0;
-
-    const pricePerAdult = pricing.solo || 0;
-    const parentChildPrice = pricing.parentChild || pricePerAdult;
-
-    return (soloAdults * pricePerAdult) + (parentChildPairs * parentChildPrice);
-  }, [selectedSlot, servicePricing, soloAdults, parentChildPairs]);
+  const slotPricing = useMemo(
+    () => servicePricing?.[selectedSlot?.serviceId] || null,
+    [selectedSlot, servicePricing]
+  );
+  const ticketPrice = useMemo(
+    () => computeCandlesPrice(slotPricing, { soloAdults, parentChildPairs, extraChildren }).totalPrice,
+    [slotPricing, soloAdults, parentChildPairs, extraChildren]
+  );
 
   // מחיר תוספת כוסות
   const cupsExtraTotal = useMemo(() => {
@@ -437,6 +437,7 @@ export default function CandelsBooking() {
                     children={children}
                     soloAdults={soloAdults}
                     parentChildPairs={parentChildPairs}
+                    extraChildren={extraChildren}
                     selectedSlot={selectedSlot}
                     servicePricing={servicePricing}
                     selectedCups={cupCart}
