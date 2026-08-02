@@ -123,6 +123,15 @@ function getImageDimensionsFromFile(file) {
   });
 }
 
+function getImageDimensionsFromUrl(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => resolve({ width: 1, height: 1 });
+    img.src = src;
+  });
+}
+
 function getImageFrameStyle(aspectRatio, maxHeight = 360) {
   const ratio = aspectRatio && aspectRatio > 0 ? aspectRatio : 1;
   return {
@@ -135,27 +144,27 @@ function getImageFrameStyle(aspectRatio, maxHeight = 360) {
 function Stepper({ step }) {
   const pct = step === 0 ? 0 : step === 1 ? 50 : 100;
   return (
-    <div className="px-6 pt-4 pb-1">
-      <div className="flex items-center justify-between relative max-w-xs mx-auto">
-        <div className="absolute right-0 top-4 -translate-y-1/2 w-full h-1.5 bg-[#e8e8e8] -z-10 rounded-full" />
+    <div className="px-4 pt-2.5 pb-0.5 md:px-6 md:pt-3">
+      <div className="flex items-center justify-between relative max-w-[260px] mx-auto">
+        <div className="absolute right-0 top-3 -translate-y-1/2 w-full h-1 bg-[#e8e8e8] -z-10 rounded-full" />
         <div
-          className="absolute right-0 top-4 -translate-y-1/2 h-1.5 bg-[#5E2F88] -z-10 rounded-full transition-all duration-500"
+          className="absolute right-0 top-3 -translate-y-1/2 h-1 bg-[#5E2F88] -z-10 rounded-full transition-all duration-500"
           style={{ width: `${pct}%` }}
         />
         {STEPS.map((label, i) => (
-          <div key={i} className="flex flex-col items-center relative bg-white px-2">
+          <div key={i} className="flex flex-col items-center relative bg-white px-1.5">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-md transition-colors z-10 ${
+              className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[11px] shadow transition-colors z-10 ${
                 i < step
                   ? 'bg-[#5E2F88] text-white'
                   : i === step
-                  ? 'bg-[#5E2F88] text-white ring-4 ring-[#f5f0fa]'
+                  ? 'bg-[#5E2F88] text-white ring-[3px] ring-[#f5f0fa]'
                   : 'bg-[#e8e8e8] text-[#464646]/50'
               }`}
             >
-              {i < step ? <Check className="w-4 h-4" /> : i + 1}
+              {i < step ? <Check className="w-3 h-3" /> : i + 1}
             </div>
-            <span className={`text-xs mt-1.5 ${
+            <span className={`text-[10px] mt-1 ${
               i <= step ? 'text-[#5E2F88] font-bold' : 'text-[#464646]/50'
             }`}>{label}</span>
           </div>
@@ -455,7 +464,8 @@ export default function AISketchModal({
   const [frameType, setFrameType] = useState('square');
   const [croppedBase64, setCroppedBase64] = useState(null);
   const [cropOpen, setCropOpen] = useState(false);
-  const [showOriginalPreview, setShowOriginalPreview] = useState(false);
+  // true while the post-upload (mandatory) crop is pending — confirm triggers AI validation
+  const [pendingInitialCrop, setPendingInitialCrop] = useState(false);
 
   // Result
   const [sketchUrl, setSketchUrl] = useState(null);
@@ -589,7 +599,7 @@ export default function AISketchModal({
       setFrameType('square');
       setCroppedBase64(null);
       setCropOpen(false);
-      setShowOriginalPreview(false);
+      setPendingInitialCrop(false);
       setSketchUrl(null);
       setSketchWixFileUrl(null);
       setOriginalMediaUrl(null);
@@ -637,6 +647,8 @@ export default function AISketchModal({
     return () => { clearTimeout(tStars); clearTimeout(tDone); };
   }, [view, sketchUrl]);
 
+  // Step A: file selected — read it locally and open the crop UI immediately.
+  // No AI call happens until the user confirms their crop.
   const handleFileUpload = useCallback(async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -655,9 +667,33 @@ export default function AISketchModal({
     }
 
     setError(null);
+    try {
+      const [base64, dimensions] = await Promise.all([
+        fileToBase64(file),
+        getImageDimensionsFromFile(file),
+      ]);
+      const previewUrl = URL.createObjectURL(file);
+
+      setImageFile(file);
+      setImageBase64(base64);
+      setImageDimensions(dimensions);
+      setImagePreviewUrl(previewUrl);
+      setCroppedBase64(null);
+      setPendingInitialCrop(true);
+      setCropOpen(true);
+    } catch (err) {
+      setError('שגיאה בקריאת הקובץ. נסו שוב.');
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [termsAccepted]);
+
+  // Step B: crop confirmed — the cropped image is what gets sent to the AI.
+  const runValidation = useCallback(async (inputBase64) => {
+    setError(null);
     setView('loading');
     setStep(1);
-    setLoadingTitle('מעלה ובודק את התמונה...');
+    setLoadingTitle('ה-AI מוודא את התמונה שלך...');
     setLoadingSubs(LOADING_SUBTITLES_VALIDATE);
     const clearProgress = animateProgress(8000);
 
@@ -677,21 +713,7 @@ export default function AISketchModal({
         } catch (_) { /* proceed if check fails */ }
       }
 
-      const [base64, dimensions] = await Promise.all([
-        fileToBase64(file),
-        getImageDimensionsFromFile(file),
-      ]);
-      const previewUrl = URL.createObjectURL(file);
-
-      setImageFile(file);
-      setImageBase64(base64);
-      setImageDimensions(dimensions);
-      setImagePreviewUrl(previewUrl);
-      setCroppedBase64(null);
-      setShowOriginalPreview(false);
-
-      setLoadingTitle('ה-AI מוודא את התמונה שלך...');
-      const result = await onValidateImage(base64);
+      const result = await onValidateImage(inputBase64);
       clearProgress();
       setLoadingProgress(100);
 
@@ -724,9 +746,32 @@ export default function AISketchModal({
       setView('intro');
       setStep(0);
     }
+  }, [onValidateImage, onCheckRateLimit, animateProgress, applyRateLimitState]);
 
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [onValidateImage, onCheckRateLimit, animateProgress, applyRateLimitState, termsAccepted]);
+  const handleCropConfirm = useCallback(async (base64) => {
+    setCroppedBase64(base64);
+    setCropOpen(false);
+    const dims = await getImageDimensionsFromUrl(base64);
+    setImageDimensions(dims);
+
+    if (pendingInitialCrop) {
+      setPendingInitialCrop(false);
+      runValidation(base64);
+    }
+  }, [pendingInitialCrop, runValidation]);
+
+  const handleCropCancel = useCallback(() => {
+    setCropOpen(false);
+    if (pendingInitialCrop) {
+      // Abort the whole upload — back to intro with no image
+      setPendingInitialCrop(false);
+      setImageFile(null);
+      setImageBase64(null);
+      setImagePreviewUrl(null);
+      setImageDimensions({ width: 1, height: 1 });
+      setCroppedBase64(null);
+    }
+  }, [pendingInitialCrop]);
 
   const handleStartConversion = useCallback(async () => {
     if (onCheckRateLimit) {
@@ -923,9 +968,9 @@ export default function AISketchModal({
           )}
 
           {/* Header */}
-          <div className="bg-[#f5f0fa] pt-12 pb-5 px-6 text-center border-b border-[#5E2F88]/10">
-            <h1 className="text-xl md:text-2xl font-bold text-[#581E83] mb-1">עיצוב מותאם אישית בעזרת AI</h1>
-            <p className="text-sm text-[#5E2F88]/80 font-medium tabular-nums">
+          <div className="bg-[#f5f0fa] pt-9 pb-2.5 px-4 md:pt-10 md:pb-3 text-center border-b border-[#5E2F88]/10">
+            <h1 className="text-base md:text-xl font-bold text-[#581E83]">עיצוב מותאם אישית בעזרת AI</h1>
+            <p className="text-[11px] md:text-xs text-[#5E2F88]/70 font-medium tabular-nums mt-0.5">
               ניסיון {Math.min(attemptsUsed, attemptsLimit)} מתוך {attemptsLimit}
             </p>
           </div>
@@ -965,49 +1010,49 @@ export default function AISketchModal({
           </AnimatePresence>
 
           {/* Content area */}
-          <div className="p-5 md:p-6 min-h-[350px]">
+          <div className="p-3.5 md:p-6 min-h-[280px]">
 
             {/* ---- VIEW: INTRO ---- */}
             {view === 'intro' && (
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-5"
+                className="space-y-3 md:space-y-4"
               >
                 {/* Steps explanation */}
-                <div className="bg-[#fafafa] rounded-xl p-4 space-y-3.5 border border-[#e8e8e8]">
+                <div className="bg-[#fafafa] rounded-xl p-3 space-y-2.5 border border-[#e8e8e8]">
                   {[
-                    { n: 1, title: 'מעלים תמונה', desc: 'בחרו תמונה ברורה, באיכות טובה, שאינה עמוסה בפרטים קטנים או צלליות מורכבות.' },
-                    { n: 2, title: 'ה-AI שלנו בודק', desc: 'המערכת תוודא שהתמונה מתאימה לתפירה בטאפטינג ותתאים אותה.' },
-                    { n: 3, title: 'המרה לסקיצה', desc: 'מאשרים את התמונה ומקבלים סקיצה בשחור-לבן מוכנה לתפירה!' },
+                    { n: 1, title: 'מעלים תמונה וחותכים', desc: 'בחרו תמונה ברורה וסמנו את האזור המדויק שיהפוך לסקיצה.' },
+                    { n: 2, title: 'ה-AI שלנו בודק', desc: 'המערכת תוודא שהתמונה מתאימה לתפירה בטאפטינג.' },
+                    { n: 3, title: 'המרה לסקיצה', desc: 'מאשרים ומקבלים סקיצה בשחור-לבן מוכנה לתפירה!' },
                   ].map(({ n, title, desc }) => (
-                    <div key={n} className="flex items-start gap-3">
-                      <div className="bg-[#f5f0fa] text-[#5E2F88] rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">{n}</div>
-                      <div>
-                        <h3 className="font-bold text-[#464646] text-[14px]">{title}</h3>
-                        <p className="text-[13px] text-[#464646]/60 mt-0.5">{desc}</p>
+                    <div key={n} className="flex items-start gap-2.5">
+                      <div className="bg-[#f5f0fa] text-[#5E2F88] rounded-full w-6 h-6 flex items-center justify-center font-bold text-[12px] shrink-0">{n}</div>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-[#464646] text-[13px] leading-tight">{title}</h3>
+                        <p className="text-[12px] text-[#464646]/60 mt-0.5 leading-snug">{desc}</p>
                       </div>
                     </div>
                   ))}
                   <button
                     type="button"
                     onClick={() => setExamplesOpen(true)}
-                    className="text-[#5E2F88] text-[13px] font-semibold hover:underline flex items-center gap-1 mr-10"
+                    className="text-[#5E2F88] text-[12px] font-semibold hover:underline flex items-center gap-1 mr-8"
                   >
                     <ImageIcon className="w-3.5 h-3.5" /> צפו בדוגמאות לתמונות טובות
                   </button>
                 </div>
 
                 {/* AI terms acceptance */}
-                <label className={`flex items-start gap-3 rounded-xl border p-4 transition-colors ${termsAccepted ? 'border-[#5E2F88]/30 bg-[#faf7fd]' : 'border-[#e8e8e8] bg-white'}`}>
+                <label className={`flex items-start gap-2.5 rounded-xl border p-3 transition-colors ${termsAccepted ? 'border-[#5E2F88]/30 bg-[#faf7fd]' : 'border-[#e8e8e8] bg-white'}`}>
                   <input
                     type="checkbox"
                     checked={termsAccepted}
                     disabled={termsSaving || termsPersisted}
                     onChange={(e) => handleTermsChange(e.target.checked)}
-                    className="mt-1 h-4 w-4 shrink-0 accent-[#5E2F88] disabled:opacity-60"
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[#5E2F88] disabled:opacity-60"
                   />
-                  <span className="text-[13px] text-[#464646] leading-relaxed">
+                  <span className="text-[12px] text-[#464646] leading-relaxed">
                     אני מאשר/ת שקראתי והסכמתי ל
                     <button
                       type="button"
@@ -1031,15 +1076,15 @@ export default function AISketchModal({
                   type="button"
                   onClick={() => termsAccepted && fileInputRef.current?.click()}
                   disabled={!termsAccepted || termsSaving}
-                  className={`w-full border-2 border-dashed rounded-2xl p-8 text-center transition-colors group ${
+                  className={`w-full border-2 border-dashed rounded-2xl p-5 md:p-7 text-center transition-colors group ${
                     termsAccepted && !termsSaving
                       ? 'border-[#5E2F88]/40 hover:bg-[#f5f0fa] cursor-pointer'
                       : 'border-[#e8e8e8] bg-[#fafafa] cursor-not-allowed opacity-60'
                   }`}
                 >
-                  <Upload className={`w-10 h-10 mx-auto mb-2 transition-transform ${termsAccepted ? 'text-[#5E2F88] group-hover:scale-110' : 'text-[#464646]/30'}`} />
-                  <h3 className="text-[15px] font-bold text-[#464646]">לחצו כאן להעלאת תמונה</h3>
-                  <p className="text-[13px] text-[#464646]/50 mt-1">
+                  <Upload className={`w-8 h-8 md:w-10 md:h-10 mx-auto mb-1.5 transition-transform ${termsAccepted ? 'text-[#5E2F88] group-hover:scale-110' : 'text-[#464646]/30'}`} />
+                  <h3 className="text-[14px] font-bold text-[#464646]">לחצו כאן להעלאת תמונה</h3>
+                  <p className="text-[12px] text-[#464646]/50 mt-0.5">
                     {termsAccepted ? 'JPG, PNG, WEBP (עד 5MB)' : 'יש לאשר את תנאי השימוש כדי להמשיך'}
                   </p>
                 </button>
@@ -1062,112 +1107,82 @@ export default function AISketchModal({
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-5"
+                className="space-y-3 md:space-y-4"
               >
-                <div className="text-center mb-2">
-                  <div className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-3 py-1 rounded-full text-[12px] font-bold mb-2">
+                {/* Single compact approval line (no duplicate headers) */}
+                <div className="flex items-center justify-center gap-2 text-center">
+                  <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-[12px] font-bold">
                     <Check className="w-3.5 h-3.5" /> התמונה אושרה!
-                  </div>
-                  <h2 className="text-xl font-bold text-[#581E83]">אישור והמרה</h2>
-                  <p className="text-[#464646]/60 text-sm">הסקיצה תיווצר בשחור-לבן, מוכנה לתפירה</p>
+                  </span>
+                  <span className="text-[12px] text-[#464646]/60">הסקיצה תיווצר בשחור-לבן</span>
                 </div>
 
-                <div className="flex flex-col md:flex-row gap-5 items-start">
-                  {/* Image preview */}
+                <div className="flex flex-col md:flex-row gap-3 md:gap-5 items-start">
+                  {/* Image preview (the cropped input that goes to the AI) */}
                   <div className="w-full md:w-1/2 flex flex-col items-center">
                     <div
                       className="relative w-full rounded-xl overflow-hidden shadow-sm border border-[#e8e8e8] bg-white flex items-center justify-center mx-auto"
-                      style={getImageFrameStyle(imageAspectRatio, 240)}
+                      style={getImageFrameStyle(imageAspectRatio, 200)}
                     >
-                      {imagePreviewUrl && (
+                      {(croppedBase64 || imagePreviewUrl) && (
                         <img
-                          src={(croppedBase64 && !showOriginalPreview) ? croppedBase64 : imagePreviewUrl}
+                          src={croppedBase64 || imagePreviewUrl}
                           alt="Preview"
                           className="w-full h-full object-contain bg-white"
                         />
                       )}
-                      {croppedBase64 && (
-                        <span className="absolute top-2 right-2 bg-[#5E2F88] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                          {showOriginalPreview ? 'תמונה מקורית' : 'תמונה חתוכה'}
-                        </span>
-                      )}
                     </div>
-                    <div className="mt-3 flex flex-wrap justify-center gap-2">
+                    <div className="mt-2 flex flex-wrap justify-center gap-2">
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="text-[13px] font-semibold text-[#464646]/60 hover:text-[#5E2F88] transition-colors flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-[#e8e8e8] shadow-sm hover:border-[#5E2F88]/30"
+                        className="text-[12px] font-semibold text-[#464646]/60 hover:text-[#5E2F88] transition-colors flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-[#e8e8e8] shadow-sm hover:border-[#5E2F88]/30"
                       >
                         <RotateCcw className="w-3.5 h-3.5" /> החלפת תמונה
                       </button>
-                      {croppedBase64 && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setShowOriginalPreview((v) => !v)}
-                            className="text-[13px] font-semibold text-[#464646]/60 hover:text-[#5E2F88] transition-colors flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-[#e8e8e8] shadow-sm hover:border-[#5E2F88]/30"
-                          >
-                            <ImageIcon className="w-3.5 h-3.5" />
-                            {showOriginalPreview ? 'הצגת החיתוך' : 'הצגת המקור'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setCroppedBase64(null); setShowOriginalPreview(false); }}
-                            className="text-[13px] font-semibold text-red-500/80 hover:text-red-600 transition-colors flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-red-200 shadow-sm"
-                          >
-                            <X className="w-3.5 h-3.5" /> ביטול החיתוך
-                          </button>
-                        </>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setCropOpen(true)}
+                        className="text-[12px] font-semibold text-[#5E2F88] hover:text-[#581E83] transition-colors flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-[#5E2F88]/30 shadow-sm hover:bg-[#f5f0fa]"
+                      >
+                        <CropIcon className="w-3.5 h-3.5" /> חיתוך מחדש
+                      </button>
                     </div>
                   </div>
 
                   {/* Controls */}
-                  <div className="w-full md:w-1/2 space-y-3.5">
+                  <div className="w-full md:w-1/2 space-y-3">
                     {/* Frame selection */}
                     <div>
-                      <h3 className="text-[13px] font-bold text-[#464646] mb-2">בחירת מסגרת לשטיח:</h3>
+                      <h3 className="text-[12px] font-bold text-[#464646] mb-1.5">בחירת מסגרת לשטיח:</h3>
                       <div className="grid grid-cols-3 gap-2">
                         {FRAME_OPTIONS.map(({ id, label, Icon }) => (
                           <button
                             key={id}
                             type="button"
-                            onClick={() => {
-                              setFrameType(id);
-                              if (id === 'custom') setCropOpen(true);
-                            }}
-                            className={`flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-xl border-2 transition-all ${
+                            onClick={() => setFrameType(id)}
+                            className={`flex flex-col items-center gap-1 py-2 px-2 rounded-xl border-2 transition-all ${
                               frameType === id
                                 ? 'border-[#5E2F88] bg-[#f5f0fa] text-[#5E2F88]'
                                 : 'border-[#e8e8e8] bg-white text-[#464646]/60 hover:border-[#5E2F88]/30'
                             }`}
                           >
                             <Icon className="w-5 h-5" />
-                            <span className="text-[12px] font-semibold">{label}</span>
+                            <span className="text-[11px] font-semibold">{label}</span>
                           </button>
                         ))}
                       </div>
-                      {frameType === 'custom' && (
-                        <button
-                          type="button"
-                          onClick={() => setCropOpen(true)}
-                          className="mt-2 w-full text-[13px] font-semibold text-[#5E2F88] flex items-center justify-center gap-1.5 bg-white px-3 py-2 rounded-lg border border-[#5E2F88]/30 shadow-sm hover:bg-[#f5f0fa] transition-colors"
-                        >
-                          <CropIcon className="w-3.5 h-3.5" />
-                          {croppedBase64 ? 'חיתוך מחדש' : 'חיתוך התמונה'}
-                        </button>
-                      )}
                     </div>
 
-                    <div className="bg-blue-50 text-blue-800 p-2.5 rounded-xl text-[13px] border border-blue-100 flex items-start gap-2">
-                      <Info className="w-4 h-4 mt-0.5 opacity-70 shrink-0" />
+                    <div className="bg-blue-50 text-blue-800 p-2 rounded-xl text-[12px] border border-blue-100 flex items-start gap-2">
+                      <Info className="w-3.5 h-3.5 mt-0.5 opacity-70 shrink-0" />
                       <span>המערכת תהפוך את התמונה לסקיצת קווים בשחור-לבן, תסיר את הרקע ותפשט את הפרטים.</span>
                     </div>
 
                     <button
                       type="button"
                       onClick={handleStartConversion}
-                      className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:scale-[1.02] transition-all flex justify-center items-center gap-2"
+                      className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-md hover:scale-[1.02] transition-all flex justify-center items-center gap-2"
                     >
                       <span>יצירת סקיצה</span>
                       <ChevronLeft className="w-4 h-4" />
@@ -1182,7 +1197,7 @@ export default function AISketchModal({
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-center space-y-5"
+                className="text-center space-y-3 md:space-y-4"
               >
                 <div className="relative">
                   <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 flex gap-1 pointer-events-none">
@@ -1197,8 +1212,8 @@ export default function AISketchModal({
                       </motion.span>
                     ))}
                   </div>
-                  <h2 className="text-xl font-bold text-[#581E83] mb-1">הסקיצה שלך מוכנה!</h2>
-                  <p className="text-[#464646]/60 text-sm">ככה בערך יראה השטיח שלכם. מוכנים להתחיל לתפור?</p>
+                  <h2 className="text-lg md:text-xl font-bold text-[#581E83]">הסקיצה שלך מוכנה!</h2>
+                  <p className="text-[#464646]/60 text-[12px] md:text-sm">ככה בערך יראה השטיח שלכם. מוכנים להתחיל לתפור?</p>
                 </div>
 
                 {/* Compare slider */}
@@ -1223,12 +1238,12 @@ export default function AISketchModal({
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
                   <button
                     type="button"
                     onClick={handleApprove}
                     disabled={isSaving}
-                    className={`bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-5 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 flex-1 min-w-[140px] ${isSaving ? 'opacity-80 cursor-wait' : ''}`}
+                    className={`bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 flex-1 min-w-[130px] text-[14px] ${isSaving ? 'opacity-80 cursor-wait' : ''}`}
                   >
                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                     {isSaving ? 'שומר...' : (deferSketchPersistence ? 'אישור והמשך' : 'אישור ושמירה')}
@@ -1237,7 +1252,7 @@ export default function AISketchModal({
                     type="button"
                     onClick={() => setRetryOpen(true)}
                     disabled={isSaving}
-                    className="bg-white border-2 border-[#e8e8e8] hover:border-[#464646]/30 text-[#464646] font-bold py-3 px-5 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 flex-1 min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-white border-2 border-[#e8e8e8] hover:border-[#464646]/30 text-[#464646] font-bold py-2.5 px-4 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 flex-1 min-w-[130px] text-[14px] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <RotateCcw className="w-4 h-4" /> ניסיון נוסף
                   </button>
@@ -1245,7 +1260,7 @@ export default function AISketchModal({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isSaving}
-                    className="bg-[#f5f5f5] hover:bg-[#e8e8e8] text-[#464646] font-bold py-3 px-5 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 flex-1 min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-[#f5f5f5] hover:bg-[#e8e8e8] text-[#464646] font-bold py-2.5 px-4 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 flex-1 min-w-[130px] text-[14px] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ImageIcon className="w-4 h-4" /> החלפת תמונה
                   </button>
@@ -1466,16 +1481,12 @@ export default function AISketchModal({
         </motion.div>
       )}
 
-      {/* Crop modal (custom shape frame) */}
+      {/* Crop modal — opens right after upload (mandatory) and for re-crops */}
       <ImageCropModal
         isOpen={cropOpen}
         imageUrl={imagePreviewUrl}
-        onCancel={() => setCropOpen(false)}
-        onConfirm={(base64) => {
-          setCroppedBase64(base64);
-          setShowOriginalPreview(false);
-          setCropOpen(false);
-        }}
+        onCancel={handleCropCancel}
+        onConfirm={handleCropConfirm}
       />
 
       {/* Blocked (rate limit) modal */}
