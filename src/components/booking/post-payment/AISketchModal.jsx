@@ -132,6 +132,14 @@ function getImageDimensionsFromUrl(src) {
   });
 }
 
+function friendlyAiTransportError(err) {
+  const msg = String(err?.message || err || '');
+  if (/\b413\b|Payload Too Large|too large|entity too large/i.test(msg)) {
+    return 'התמונה גדולה מדי לשליחה לשרת. נסו לחתוך אזור קטן יותר או להעלות תמונה באיכות נמוכה יותר.';
+  }
+  return msg || null;
+}
+
 function getImageFrameStyle(aspectRatio, maxHeight = 360) {
   const ratio = aspectRatio && aspectRatio > 0 ? aspectRatio : 1;
   return {
@@ -439,7 +447,6 @@ export default function AISketchModal({
   onCheckRateLimit,
   onGetAITermsStatus,
   onAcceptAITerms,
-  deferSketchPersistence = false,
 }) {
   // View: 'intro' | 'loading' | 'config' | 'result'
   const [view, setView] = useState('intro');
@@ -736,7 +743,8 @@ export default function AISketchModal({
       }, 400);
     } catch (err) {
       clearProgress();
-      const msg = err?.message || '';
+      const friendly = friendlyAiTransportError(err);
+      const msg = friendly || err?.message || '';
       if (msg.includes('מגבלת') && msg.includes('ניסיונות')) {
         setBlockedMessage(msg);
         setBlockedOpen(true);
@@ -749,8 +757,8 @@ export default function AISketchModal({
   }, [onValidateImage, onCheckRateLimit, animateProgress, applyRateLimitState]);
 
   const handleCropConfirm = useCallback(async (base64) => {
-    setCroppedBase64(base64);
     setCropOpen(false);
+    setCroppedBase64(base64);
     const dims = await getImageDimensionsFromUrl(base64);
     setImageDimensions(dims);
 
@@ -791,18 +799,17 @@ export default function AISketchModal({
 
     try {
       // Cropped image (custom shape) becomes the focused AI input when present
-      const inputBase64 = croppedBase64 || imageBase64;
-      const result = await onGenerateSketch(inputBase64, 'AUTO', imageDimensions);
+      const rawInput = croppedBase64 || imageBase64;
+      const result = await onGenerateSketch(rawInput, 'AUTO', imageDimensions);
       clearProgress();
       setLoadingProgress(100);
 
       if (!result?.sketchUrl) {
-        throw new Error('לא התקבלה סקיצה מהשרת');
+        throw new Error('לא התקבלה סקיצה מהשרת (תגובה חסרה). נסו שוב, ואם הבעיה חוזרת פנו לתמיכה.');
       }
 
       setSketchUrl(result.sketchUrl);
-      setSketchWixFileUrl(result.sketchWixFileUrl || null);
-      if (result.originalUrl) setOriginalMediaUrl(result.originalUrl);
+      setSketchWixFileUrl(null);
       await refreshAttempts();
 
       setTimeout(() => {
@@ -812,12 +819,13 @@ export default function AISketchModal({
     } catch (err) {
       clearProgress();
       console.error('[AISketchModal] generateSketch failed:', err);
-      const msg = err?.message || '';
+      const friendly = friendlyAiTransportError(err);
+      const msg = friendly || err?.message || '';
       if (msg.includes('מגבלת') && msg.includes('ניסיונות')) {
         setBlockedMessage(msg);
         setBlockedOpen(true);
       } else {
-        setError('שגיאה ביצירת הסקיצה. נסו שוב.');
+        setError(msg || 'אירעה שגיאה טכנית ביצירת הסקיצה. נסו שוב, ואם הבעיה חוזרת פנו לתמיכה.');
       }
       setView('config');
       setStep(1);
@@ -836,12 +844,11 @@ export default function AISketchModal({
 
     try {
       if (!onSaveApprovedSketch) {
-        throw new Error('שגיאה בשמירת הסקיצה. נסו שוב.');
+        throw new Error('לא ניתן לשמור את הסקיצה כרגע (שגיאת הגדרות מערכת). אנא פנו לתמיכה.');
       }
 
-      const originalInput = originalMediaUrl || imageBase64;
-      const sketchInputForSave = sketchWixFileUrl || sketchUrl;
-      const saved = await onSaveApprovedSketch(originalInput, sketchInputForSave, 'AUTO', croppedBase64);
+      // Send only the sketch URL — no base64 payloads (avoids Wix timeout / 413).
+      const saved = await onSaveApprovedSketch(null, sketchUrl, 'AUTO', null);
 
       onApprove({
         source: 'ai',
@@ -849,22 +856,22 @@ export default function AISketchModal({
         title: 'עיצוב מותאם אישית (AI)',
         image: saved?.sketchUrl || sketchUrl,
         wixFileUrl: saved?.wixFileUrl || null,
-        aiOriginalImage: saved?.originalUrl || originalMediaUrl || imageBase64,
+        aiOriginalImage: null,
         aiColors: saved?.colors || 'AUTO',
         aiTaskId: saved?.taskId || null,
         canvasSize: '60x60',
         frameType,
-        aiCroppedImage: saved?.croppedUrl || null,
+        aiCroppedImage: null,
         pendingMediaUpload: false,
       });
       onClose();
     } catch (err) {
       console.error('[AISketchModal] save approved sketch failed:', err);
-      setError('שגיאה בשמירת הסקיצה. נסו שוב.');
+      setError(err?.message || 'אירעה שגיאה טכנית בשמירת הסקיצה. נסו שוב, ואם הבעיה חוזרת פנו לתמיכה.');
     } finally {
       setIsSaving(false);
     }
-  }, [imageBase64, croppedBase64, frameType, originalMediaUrl, sketchUrl, sketchWixFileUrl, onApprove, onClose, onSaveApprovedSketch, isSaving]);
+  }, [frameType, sketchUrl, onApprove, onClose, onSaveApprovedSketch, isSaving]);
 
   const handleRetrySubmit = useCallback(async () => {
     if (!retryReason) return;
@@ -944,15 +951,15 @@ export default function AISketchModal({
           dir="rtl"
         >
           {/* Close (top-right) + Feedback (top-left) */}
-          <div className="absolute top-3 right-3 z-20">
+          <div className="absolute top-2 right-2 z-20">
             {!isBlockingClose && (
               <button
                 type="button"
                 onClick={onClose}
-                className="w-8 h-8 rounded-full bg-[#f5f5f5] flex items-center justify-center text-[#464646] hover:bg-[#e8e8e8] transition-colors"
+                className="w-7 h-7 rounded-full bg-[#f5f5f5] flex items-center justify-center text-[#464646] hover:bg-[#e8e8e8] transition-colors"
                 aria-label="סגור"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -960,7 +967,7 @@ export default function AISketchModal({
           <button
             type="button"
             onClick={() => setFeedbackOpen(true)}
-            className="absolute top-3 left-3 z-20 bg-[#f5f0fa] text-[#5E2F88] px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 text-[12px] font-bold hover:bg-[#ebe0f5] transition-colors ring-1 ring-[#5E2F88]/15"
+            className="absolute top-2 left-2 z-20 bg-[#f5f0fa] text-[#5E2F88] px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1.5 text-[11px] font-bold hover:bg-[#ebe0f5] transition-colors ring-1 ring-[#5E2F88]/15"
           >
             <MessageSquare className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">פידבק</span>
@@ -968,8 +975,8 @@ export default function AISketchModal({
           )}
 
           {/* Header */}
-          <div className="bg-[#f5f0fa] pt-9 pb-2.5 px-4 md:pt-10 md:pb-3 text-center border-b border-[#5E2F88]/10">
-            <h1 className="text-base md:text-xl font-bold text-[#581E83]">עיצוב מותאם אישית בעזרת AI</h1>
+          <div className="bg-[#f5f0fa] pt-8 pb-1.5 px-4 md:pt-9 md:pb-2 text-center border-b border-[#5E2F88]/10">
+            <h1 className="text-[15px] md:text-lg font-bold text-[#581E83]">עיצוב מותאם אישית בעזרת AI</h1>
             <p className="text-[11px] md:text-xs text-[#5E2F88]/70 font-medium tabular-nums mt-0.5">
               ניסיון {Math.min(attemptsUsed, attemptsLimit)} מתוך {attemptsLimit}
             </p>
@@ -1238,32 +1245,34 @@ export default function AISketchModal({
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <div className="flex flex-col gap-2">
                   <button
                     type="button"
                     onClick={handleApprove}
                     disabled={isSaving}
-                    className={`bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 flex-1 min-w-[130px] text-[14px] ${isSaving ? 'opacity-80 cursor-wait' : ''}`}
+                    className={`w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 text-[14px] ${isSaving ? 'opacity-80 cursor-wait' : ''}`}
                   >
                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    {isSaving ? 'שומר...' : (deferSketchPersistence ? 'אישור והמשך' : 'אישור ושמירה')}
+                    {isSaving ? 'שומר...' : 'אישור ושמירה'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setRetryOpen(true)}
-                    disabled={isSaving}
-                    className="bg-white border-2 border-[#e8e8e8] hover:border-[#464646]/30 text-[#464646] font-bold py-2.5 px-4 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 flex-1 min-w-[130px] text-[14px] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <RotateCcw className="w-4 h-4" /> ניסיון נוסף
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isSaving}
-                    className="bg-[#f5f5f5] hover:bg-[#e8e8e8] text-[#464646] font-bold py-2.5 px-4 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 flex-1 min-w-[130px] text-[14px] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ImageIcon className="w-4 h-4" /> החלפת תמונה
-                  </button>
+                  <div className="flex flex-row gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRetryOpen(true)}
+                      disabled={isSaving}
+                      className="bg-white border-2 border-[#e8e8e8] hover:border-[#464646]/30 text-[#464646] font-bold py-2.5 px-4 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 flex-1 text-[14px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <RotateCcw className="w-4 h-4" /> ניסיון נוסף
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isSaving}
+                      className="bg-[#f5f5f5] hover:bg-[#e8e8e8] text-[#464646] font-bold py-2.5 px-4 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 flex-1 text-[14px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ImageIcon className="w-4 h-4" /> החלפת תמונה
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}

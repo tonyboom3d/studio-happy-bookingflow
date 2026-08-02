@@ -234,13 +234,11 @@ export default function PostPaymentHub({
     });
     if (start?.error) {
       console.error('[PostPaymentHub] GENERATE_SKETCH start error:', start.error);
-      const rateLimitMsg = 'הגעתם למגבלת הניסיונות';
-      if (start.error?.includes(rateLimitMsg)) throw new Error(start.error);
-      throw new Error('שגיאה ביצירת הסקיצה. נסו שוב.');
+      throw new Error(start.error);
     }
     if (!start?.jobId) {
       console.error('[PostPaymentHub] GENERATE_SKETCH missing jobId:', start);
-      throw new Error('שגיאה ביצירת הסקיצה. נסו שוב.');
+      throw new Error('שגיאה ביצירת הסקיצה: השרת לא החזיר מזהה עבודה. נסו שוב.');
     }
 
     const jobId = start.jobId;
@@ -252,7 +250,7 @@ export default function PostPaymentHub({
       const status = await sendAndWait('GET_SKETCH_JOB', { jobId });
       if (status?.error) {
         console.error('[PostPaymentHub] GET_SKETCH_JOB error:', status.error);
-        throw new Error('שגיאה ביצירת הסקיצה. נסו שוב.');
+        throw new Error(status.error);
       }
       if (status?.status === 'done') {
         return {
@@ -264,12 +262,12 @@ export default function PostPaymentHub({
       }
       if (status?.status === 'failed') {
         console.error('[PostPaymentHub] Sketch job failed:', jobId);
-        throw new Error('שגיאה ביצירת הסקיצה. נסו שוב.');
+        throw new Error(status.error || 'אירעה שגיאה טכנית ביצירת הסקיצה. נסו שוב, ואם הבעיה חוזרת פנו לתמיכה.');
       }
     }
 
     console.error('[PostPaymentHub] Sketch job timed out:', jobId);
-    throw new Error('שגיאה ביצירת הסקיצה. נסו שוב.');
+    throw new Error('יצירת הסקיצה ארכה זמן רב מדי (מעל דקה). ייתכן שהשרת עמוס — נסו שוב בעוד מספר דקות.');
   }, [sendAndWait, orderId]);
 
   const handleSaveApprovedSketch = useCallback(async (originalInput, sketchUrl, colors, croppedInput) => {

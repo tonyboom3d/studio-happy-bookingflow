@@ -1660,7 +1660,6 @@ export default function OrganizerSelfSelectionView({
         onCheckRateLimit={onCheckRateLimit}
         onGetAITermsStatus={onGetAITermsStatus}
         onAcceptAITerms={onAcceptAITerms}
-        deferSketchPersistence
       />
     </div>
   );
