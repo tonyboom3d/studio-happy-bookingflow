@@ -36,6 +36,8 @@ export default function SketchSelectionView({
   onSaveApprovedSketch,
   onSubmitFeedback,
   onCheckRateLimit,
+  onGetAITermsStatus,
+  onAcceptAITerms,
   onVerifySketchForEdit,
   session90 = null,
 }) {
@@ -1001,6 +1003,8 @@ export default function SketchSelectionView({
         onSaveApprovedSketch={onSaveApprovedSketch}
         onSubmitFeedback={onSubmitFeedback}
         onCheckRateLimit={onCheckRateLimit}
+        onGetAITermsStatus={onGetAITermsStatus}
+        onAcceptAITerms={onAcceptAITerms}
       />
     </div>
   );

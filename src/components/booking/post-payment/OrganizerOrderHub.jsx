@@ -80,6 +80,8 @@ export default function OrganizerOrderHub({
   onSaveApprovedSketch,
   onSubmitFeedback,
   onCheckRateLimit,
+  onGetAITermsStatus,
+  onAcceptAITerms,
   onVerifySketchForEdit,
   onCheckGroupDeletable,
   session90,
@@ -754,6 +756,8 @@ export default function OrganizerOrderHub({
           onSaveApprovedSketch={onSaveApprovedSketch}
           onSubmitFeedback={onSubmitFeedback}
           onCheckRateLimit={onCheckRateLimit}
+          onGetAITermsStatus={onGetAITermsStatus}
+          onAcceptAITerms={onAcceptAITerms}
           onCreateGroup={onCreateGroup}
           onUpdateParticipant={onUpdateParticipant}
           onDeleteOrganizerGroup={onDeleteOrganizerGroup}

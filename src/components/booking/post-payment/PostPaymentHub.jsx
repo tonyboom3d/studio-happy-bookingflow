@@ -288,6 +288,19 @@ export default function PostPaymentHub({
     return result;
   }, [sendAndWait, orderId]);
 
+  const handleGetAITermsStatus = useCallback(async () => {
+    const result = await sendAndWait('GET_AI_TERMS_STATUS', { orderId });
+    if (result?.error) throw new Error(result.error);
+    return result;
+  }, [sendAndWait, orderId]);
+
+  const handleAcceptAITerms = useCallback(async () => {
+    const result = await sendAndWait('ACCEPT_AI_TERMS', { orderId });
+    if (result?.error) throw new Error(result.error);
+    setLocalOrder((prev) => (prev ? { ...prev, aiTermsAccepted: true } : prev));
+    return result;
+  }, [sendAndWait, orderId]);
+
   const handleChooseMode = useCallback(async (mode) => {
     // Groups are now created explicitly by the organizer (no auto-generation).
     setLocalOrder(prev => ({ ...prev, selectionMode: mode }));
@@ -864,6 +877,8 @@ export default function PostPaymentHub({
           onSaveApprovedSketch={handleSaveApprovedSketch}
           onSubmitFeedback={handleSubmitFeedback}
           onCheckRateLimit={handleCheckRateLimit}
+          onGetAITermsStatus={handleGetAITermsStatus}
+          onAcceptAITerms={handleAcceptAITerms}
           onVerifySketchForEdit={handleVerifySketchForEdit}
           onCheckGroupDeletable={handleCheckGroupDeletable}
           session90={session90}
@@ -1041,6 +1056,8 @@ export default function PostPaymentHub({
           onSaveApprovedSketch={handleSaveApprovedSketch}
           onSubmitFeedback={handleSubmitFeedback}
           onCheckRateLimit={handleCheckRateLimit}
+          onGetAITermsStatus={handleGetAITermsStatus}
+          onAcceptAITerms={handleAcceptAITerms}
           onVerifySketchForEdit={(rugIndex) => handleVerifySketchForEdit(rugIndex, verifiedParticipant._id)}
           session90={session90}
         />

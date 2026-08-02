@@ -102,6 +102,8 @@ export default function OrganizerSelfSelectionView({
   onSaveApprovedSketch,
   onSubmitFeedback,
   onCheckRateLimit,
+  onGetAITermsStatus,
+  onAcceptAITerms,
   onCreateGroup,
   onUpdateParticipant,
   onDeleteOrganizerGroup,
@@ -1656,6 +1658,8 @@ export default function OrganizerSelfSelectionView({
         onSaveApprovedSketch={onSaveApprovedSketch}
         onSubmitFeedback={onSubmitFeedback}
         onCheckRateLimit={onCheckRateLimit}
+        onGetAITermsStatus={onGetAITermsStatus}
+        onAcceptAITerms={onAcceptAITerms}
         deferSketchPersistence
       />
     </div>

@@ -23,7 +23,7 @@ export const FRAME_TYPE_LABELS = {
 
 const STEPS = ['העלאה', 'אישור', 'סקיצה'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_ATTEMPTS = 7;
+const MAX_ATTEMPTS = 10;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const ALLOWED_IMAGE_EXT = /\.(jpe?g|png|webp)$/i;
 
@@ -67,6 +67,29 @@ const AI_RATE_LIMIT_MESSAGE = 'הגעתם למגבלת הניסיונות. אנ�
 const SKETCH_PROGRESS_DURATION_MS = 40000;
 const RESULT_BUFFER_MS = 5000;
 const STARS_DURATION_MS = 2500;
+
+const AI_TERMS_SECTIONS = [
+  {
+    title: 'תנאי שימוש – שירות יצירת סקיצות אוטומטי לסדנאות',
+    body: 'ברוכים הבאים לשירות הסקציות האוטומטי שלנו. השימוש במערכת, לרבות העלאת תמונות והפקת סקיצות באמצעות בינה מלאכותית (AI) לצורך הכנת העבודות בסדנאות, כפוף לתנאים המפורטים להלן. עצם השימוש במערכת והעלאת תמונה מהווים הסכמה מלאה לתנאים אלו.',
+  },
+  {
+    title: '1. אחריות בלעדית של המשתמש על התוכן',
+    body: 'המשתמש מצהיר ומתחייב כי כל תמונה או קובץ חזותי המועלים על ידיו למערכת נמצאים בבעלותו הבלעדית, או שניתנה לו הרשאה מפורשת וחוקית כדין מבעל הזכויות לעשות בהם שימוש, ליצור מהם יצירות נגזרות (כגון סקיצות לעבודה) ולהשתמש בהם במסגרת הסדנא.\nחלה אסור מוחלט להעלות תמונות המוגנות בזכויות יוצרים של צדדים שלישיים ללא אישור (לרבות דמויות מסחריות, יצירות אמנות של אחרים, לוגואים מסחריים, צילומים מקצועיים מוגנים וכדומה).',
+  },
+  {
+    title: '2. אופי פעילות המערכת (עיבוד אוטומטי)',
+    body: 'המערכת מבצעת עיבוד טכנולוגי ואוטומטי לחלוטין של התמונה המועלית לצורך הפקת סקיצה אמנותית בלבד.\nהעסק אינו בודק, עורך, מאמת או מפקח מראש על זכויות היוצרים בתמונות המועלות על ידי המשתמשים, והאחריות הבלעדית והמלאה בגין כל הפרה של זכויות יוצרים, קניין רוחני או חוק אחר חלה על המשתמש בלבד.',
+  },
+  {
+    title: '3. שיפוי והסרת אחריות',
+    body: 'המשתמש מתחייב לשפות ולפצות את העסק, מנהליו, עובדיו ומי מטעמו, בגין כל נזק, הפסד, תשלום, הוצאה או תביעה (לרבות שכר טרחת עורך דין והוצאות משפט) שיגרמו עקב הפרת תנאים אלו, או עקב טענה או דרישה של צד שלישי כלשהו בגין הפרת זכויות יוצרים או זכויות קניין רוחני הקשורות לתמונה שהעלה המשתמש.',
+  },
+  {
+    title: '4. זכות העסק לסירוב ולביטול',
+    body: 'העסק שומר לעצמו את הזכות המלאה (אך אינו מחויב) לסרב לקבל, לעבד או לאשר עבודה על סקיצה המעוררת חשש להפרת זכויות יוצרים או שאינה עומדת ברוח המותג והחוק, גם לאחר שהועלתה למערכת או במהלך הסדנא עצמה.',
+  },
+];
 
 function isRateLimitResponse(result) {
   if (!result) return false;
@@ -405,6 +428,8 @@ export default function AISketchModal({
   onSaveApprovedSketch,
   onSubmitFeedback,
   onCheckRateLimit,
+  onGetAITermsStatus,
+  onAcceptAITerms,
   deferSketchPersistence = false,
 }) {
   // View: 'intro' | 'loading' | 'config' | 'result'
@@ -469,6 +494,7 @@ export default function AISketchModal({
 
   // Sub-modals
   const [examplesOpen, setExamplesOpen] = useState(false);
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
   const [retryOpen, setRetryOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [blockedOpen, setBlockedOpen] = useState(false);
@@ -481,8 +507,71 @@ export default function AISketchModal({
   // Feedback form
   const [feedbackText, setFeedbackText] = useState('');
 
-  // Attempts
-  const [attempts, setAttempts] = useState(0);
+  // AI terms
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsPersisted, setTermsPersisted] = useState(false);
+  const [termsSaving, setTermsSaving] = useState(false);
+
+  // Attempts (synced from server)
+  const [attemptsUsed, setAttemptsUsed] = useState(0);
+  const [attemptsLimit, setAttemptsLimit] = useState(MAX_ATTEMPTS);
+
+  const applyRateLimitState = useCallback((rl) => {
+    if (!rl) return;
+    if (typeof rl.attempts === 'number') setAttemptsUsed(rl.attempts);
+    if (typeof rl.limit === 'number') setAttemptsLimit(rl.limit);
+  }, []);
+
+  const refreshAttempts = useCallback(async () => {
+    if (!onCheckRateLimit) return null;
+    try {
+      const rl = await onCheckRateLimit();
+      applyRateLimitState(rl);
+      return rl;
+    } catch (_) {
+      return null;
+    }
+  }, [onCheckRateLimit, applyRateLimitState]);
+
+  const loadTermsStatus = useCallback(async () => {
+    if (!onGetAITermsStatus) return;
+    try {
+      const status = await onGetAITermsStatus();
+      const accepted = !!status?.accepted;
+      setTermsAccepted(accepted);
+      setTermsPersisted(accepted);
+    } catch (_) {
+      setTermsAccepted(false);
+      setTermsPersisted(false);
+    }
+  }, [onGetAITermsStatus]);
+
+  const handleTermsChange = useCallback(async (checked) => {
+    if (!checked) {
+      if (!termsPersisted) setTermsAccepted(false);
+      return;
+    }
+    if (termsPersisted || termsAccepted) {
+      setTermsAccepted(true);
+      return;
+    }
+    if (!onAcceptAITerms) {
+      setTermsAccepted(true);
+      return;
+    }
+    setTermsSaving(true);
+    setError(null);
+    try {
+      await onAcceptAITerms();
+      setTermsAccepted(true);
+      setTermsPersisted(true);
+    } catch (err) {
+      setTermsAccepted(false);
+      setError(err?.message || 'שגיאה בשמירת אישור התנאים. נסו שוב.');
+    } finally {
+      setTermsSaving(false);
+    }
+  }, [onAcceptAITerms, termsAccepted, termsPersisted]);
 
   const fileInputRef = useRef(null);
 
@@ -508,12 +597,19 @@ export default function AISketchModal({
       setHintTrigger(0);
       setError(null);
       setIsSaving(false);
-      setAttempts(0);
+      setAttemptsUsed(0);
+      setAttemptsLimit(MAX_ATTEMPTS);
+      setTermsAccepted(false);
+      setTermsPersisted(false);
+      setTermsSaving(false);
+      setTermsModalOpen(false);
       setRetryReason('');
       setRetryText('');
       setFeedbackText('');
+      refreshAttempts();
+      loadTermsStatus();
     }
-  }, [isOpen]);
+  }, [isOpen, refreshAttempts, loadTermsStatus]);
 
   const animateProgress = useCallback((durationMs = 4000) => {
     setLoadingProgress(0);
@@ -545,6 +641,12 @@ export default function AISketchModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!termsAccepted) {
+      setError('יש לאשר את תנאי השימוש לפני העלאת תמונה.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     const validationError = validateImageFile(file);
     if (validationError) {
       setError(validationError);
@@ -563,6 +665,7 @@ export default function AISketchModal({
       if (onCheckRateLimit) {
         try {
           const rl = await onCheckRateLimit();
+          applyRateLimitState(rl);
           if (!rl?.isAllowed) {
             clearProgress();
             setView('intro');
@@ -586,7 +689,6 @@ export default function AISketchModal({
       setImagePreviewUrl(previewUrl);
       setCroppedBase64(null);
       setShowOriginalPreview(false);
-      setAttempts(prev => prev + 1);
 
       setLoadingTitle('ה-AI מוודא את התמונה שלך...');
       const result = await onValidateImage(base64);
@@ -595,6 +697,7 @@ export default function AISketchModal({
 
       if (!result?.isValid) {
         if (isRateLimitResponse(result)) {
+          applyRateLimitState(result);
           setBlockedMessage(result.reason || AI_RATE_LIMIT_MESSAGE);
           setBlockedOpen(true);
         } else {
@@ -623,9 +726,18 @@ export default function AISketchModal({
     }
 
     if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [onValidateImage, onCheckRateLimit, animateProgress]);
+  }, [onValidateImage, onCheckRateLimit, animateProgress, applyRateLimitState, termsAccepted]);
 
   const handleStartConversion = useCallback(async () => {
+    if (onCheckRateLimit) {
+      const rl = await refreshAttempts();
+      if (rl && rl.isAllowed === false) {
+        setBlockedMessage(rl.reason || AI_RATE_LIMIT_MESSAGE);
+        setBlockedOpen(true);
+        return;
+      }
+    }
+
     setView('loading');
     setStep(2);
     setLoadingTitle('הופך לסקיצה...');
@@ -646,6 +758,7 @@ export default function AISketchModal({
       setSketchUrl(result.sketchUrl);
       setSketchWixFileUrl(result.sketchWixFileUrl || null);
       if (result.originalUrl) setOriginalMediaUrl(result.originalUrl);
+      await refreshAttempts();
 
       setTimeout(() => {
         setView('result');
@@ -664,7 +777,7 @@ export default function AISketchModal({
       setView('config');
       setStep(1);
     }
-  }, [imageBase64, croppedBase64, imageDimensions, onGenerateSketch, animateProgress]);
+  }, [imageBase64, croppedBase64, imageDimensions, onGenerateSketch, animateProgress, onCheckRateLimit, refreshAttempts]);
 
   const imageAspectRatio = imageDimensions.width / imageDimensions.height;
 
@@ -714,7 +827,15 @@ export default function AISketchModal({
     const reasonText = retryReason === 'other' ? retryText.trim() : retryReason;
     if (retryReason === 'other' && !reasonText) return;
 
-    if (attempts >= MAX_ATTEMPTS) {
+    if (onCheckRateLimit) {
+      const rl = await refreshAttempts();
+      if (rl && rl.isAllowed === false) {
+        setRetryOpen(false);
+        setBlockedMessage(rl.reason || AI_RATE_LIMIT_MESSAGE);
+        setBlockedOpen(true);
+        return;
+      }
+    } else if (attemptsUsed >= attemptsLimit) {
       setRetryOpen(false);
       setBlockedMessage(AI_RATE_LIMIT_MESSAGE);
       setBlockedOpen(true);
@@ -728,9 +849,8 @@ export default function AISketchModal({
     setRetryOpen(false);
     setRetryReason('');
     setRetryText('');
-    setAttempts(prev => prev + 1);
     handleStartConversion();
-  }, [retryReason, retryText, attempts, onSubmitFeedback, handleStartConversion]);
+  }, [retryReason, retryText, attemptsUsed, attemptsLimit, onSubmitFeedback, handleStartConversion, onCheckRateLimit, refreshAttempts]);
 
   const handleFeedbackSubmit = useCallback(async () => {
     if (!feedbackText.trim()) return;
@@ -805,6 +925,9 @@ export default function AISketchModal({
           {/* Header */}
           <div className="bg-[#f5f0fa] pt-12 pb-5 px-6 text-center border-b border-[#5E2F88]/10">
             <h1 className="text-xl md:text-2xl font-bold text-[#581E83] mb-1">עיצוב מותאם אישית בעזרת AI</h1>
+            <p className="text-sm text-[#5E2F88]/80 font-medium tabular-nums">
+              ניסיון {Math.min(attemptsUsed, attemptsLimit)} מתוך {attemptsLimit}
+            </p>
           </div>
 
           {/* Stepper */}
@@ -875,15 +998,50 @@ export default function AISketchModal({
                   </button>
                 </div>
 
+                {/* AI terms acceptance */}
+                <label className={`flex items-start gap-3 rounded-xl border p-4 transition-colors ${termsAccepted ? 'border-[#5E2F88]/30 bg-[#faf7fd]' : 'border-[#e8e8e8] bg-white'}`}>
+                  <input
+                    type="checkbox"
+                    checked={termsAccepted}
+                    disabled={termsSaving || termsPersisted}
+                    onChange={(e) => handleTermsChange(e.target.checked)}
+                    className="mt-1 h-4 w-4 shrink-0 accent-[#5E2F88] disabled:opacity-60"
+                  />
+                  <span className="text-[13px] text-[#464646] leading-relaxed">
+                    אני מאשר/ת שקראתי והסכמתי ל
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); setTermsModalOpen(true); }}
+                      className="text-[#5E2F88] font-semibold underline underline-offset-2 hover:text-[#581E83] mx-0.5"
+                    >
+                      תנאי השימוש
+                    </button>
+                    ב AI ליצירת סקיצות
+                    {termsSaving && (
+                      <span className="inline-flex items-center gap-1 text-[#5E2F88] mr-2">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        שומר...
+                      </span>
+                    )}
+                  </span>
+                </label>
+
                 {/* Upload area */}
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-[#5E2F88]/40 rounded-2xl p-8 text-center hover:bg-[#f5f0fa] transition-colors cursor-pointer group"
+                  onClick={() => termsAccepted && fileInputRef.current?.click()}
+                  disabled={!termsAccepted || termsSaving}
+                  className={`w-full border-2 border-dashed rounded-2xl p-8 text-center transition-colors group ${
+                    termsAccepted && !termsSaving
+                      ? 'border-[#5E2F88]/40 hover:bg-[#f5f0fa] cursor-pointer'
+                      : 'border-[#e8e8e8] bg-[#fafafa] cursor-not-allowed opacity-60'
+                  }`}
                 >
-                  <Upload className="w-10 h-10 text-[#5E2F88] mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                  <Upload className={`w-10 h-10 mx-auto mb-2 transition-transform ${termsAccepted ? 'text-[#5E2F88] group-hover:scale-110' : 'text-[#464646]/30'}`} />
                   <h3 className="text-[15px] font-bold text-[#464646]">לחצו כאן להעלאת תמונה</h3>
-                  <p className="text-[13px] text-[#464646]/50 mt-1">JPG, PNG, WEBP (עד 5MB)</p>
+                  <p className="text-[13px] text-[#464646]/50 mt-1">
+                    {termsAccepted ? 'JPG, PNG, WEBP (עד 5MB)' : 'יש לאשר את תנאי השימוש כדי להמשיך'}
+                  </p>
                 </button>
               </motion.div>
             )}
@@ -1098,8 +1256,6 @@ export default function AISketchModal({
         </motion.div>
       </motion.div>
 
-      {/* ====== SUB-MODALS ====== */}
-
       {/* Examples modal */}
       {examplesOpen && (
         <motion.div
@@ -1161,6 +1317,51 @@ export default function AISketchModal({
                   </div>
                 </div>
               </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* AI terms modal */}
+      {termsModalOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setTermsModalOpen(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl w-full max-w-lg max-h-[85dvh] overflow-hidden shadow-2xl flex flex-col"
+            dir="rtl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b flex justify-between items-center bg-[#fafafa] shrink-0">
+              <h3 className="font-bold text-[15px] text-[#581E83]">תנאי שימוש – שירות AI</h3>
+              <button type="button" onClick={() => setTermsModalOpen(false)} className="text-[#464646]/50 hover:text-[#464646]">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto space-y-4 text-[13px] text-[#464646]/80 leading-relaxed">
+              {AI_TERMS_SECTIONS.map((section) => (
+                <div key={section.title}>
+                  <h4 className="font-bold text-[#581E83] text-[14px] mb-1.5">{section.title}</h4>
+                  {section.body.split('\n').map((paragraph) => (
+                    <p key={paragraph} className="mb-2">{paragraph}</p>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="p-4 border-t bg-[#fafafa] shrink-0">
+              <button
+                type="button"
+                onClick={() => setTermsModalOpen(false)}
+                className="w-full bg-[#5E2F88] hover:bg-[#581E83] text-white font-bold py-2.5 rounded-xl transition-colors"
+              >
+                סגירה
+              </button>
             </div>
           </motion.div>
         </motion.div>
