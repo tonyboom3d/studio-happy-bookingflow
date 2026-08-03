@@ -1244,6 +1244,10 @@ export default function AISketchModal({
                   {revealPhase === 'stars' && <StarsBurst />}
                 </div>
 
+                <p className="text-[11px] md:text-xs text-[#464646]/60 leading-relaxed px-1">
+                  אנו עושים את מירב המאמצים כדי להגיע לדיוק מקסימלי, אך ייתכנו הבדלים טבעיים בין סקיצת ה-AI לבין התוצר הסופי.
+                </p>
+
                 {/* Action buttons */}
                 <div className="flex flex-col gap-2">
                   <button
