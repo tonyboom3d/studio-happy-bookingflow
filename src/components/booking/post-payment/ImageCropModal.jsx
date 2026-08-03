@@ -5,20 +5,45 @@ import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
 const MAX_OUTPUT_DIMENSION = 2048;
+const MIN_OUTPUT_DIMENSION = 600;
+// Wix web methods hard-cap the request payload at ~512KB. Budget well under
+// that (data-URL string length ≈ bytes sent, since base64 chars need no
+// JSON escaping) so VALIDATE_IMAGE / GENERATE_SKETCH calls never 413.
+const TARGET_MAX_DATAURL_LENGTH = 430 * 1024;
+const JPEG_QUALITY_STEPS = [0.85, 0.75, 0.65, 0.55, 0.45];
 
-function getCroppedBase64(imageEl, crop) {
-  const scaleX = imageEl.naturalWidth / imageEl.width;
-  const scaleY = imageEl.naturalHeight / imageEl.height;
+/**
+ * Renders via `renderFn(width, height)` and re-encodes as JPEG, stepping
+ * down quality then dimensions until the payload fits TARGET_MAX_DATAURL_LENGTH
+ * (or the size/quality floor is hit — that result is returned regardless).
+ */
+function encodeCanvasWithBudget(renderFn, initialWidth, initialHeight) {
+  let width = initialWidth;
+  let height = initialHeight;
 
-  let outWidth = Math.round(crop.width * scaleX);
-  let outHeight = Math.round(crop.height * scaleY);
-  if (outWidth < 1 || outHeight < 1) return null;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const canvas = renderFn(width, height);
+    const atSizeFloor = width <= MIN_OUTPUT_DIMENSION || height <= MIN_OUTPUT_DIMENSION;
 
-  // Cap output size so the base64 payload stays postMessage-friendly
-  const scaleDown = Math.min(1, MAX_OUTPUT_DIMENSION / Math.max(outWidth, outHeight));
-  outWidth = Math.round(outWidth * scaleDown);
-  outHeight = Math.round(outHeight * scaleDown);
+    for (let qi = 0; qi < JPEG_QUALITY_STEPS.length; qi++) {
+      const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY_STEPS[qi]);
+      const isLastOption = atSizeFloor && qi === JPEG_QUALITY_STEPS.length - 1;
+      if (dataUrl.length <= TARGET_MAX_DATAURL_LENGTH || isLastOption) {
+        return dataUrl;
+      }
+    }
 
+    const scale = Math.max(
+      MIN_OUTPUT_DIMENSION / Math.max(width, height),
+      0.75,
+    );
+    width = Math.max(MIN_OUTPUT_DIMENSION, Math.round(width * scale));
+    height = Math.max(MIN_OUTPUT_DIMENSION, Math.round(height * scale));
+  }
+  return renderFn(MIN_OUTPUT_DIMENSION, MIN_OUTPUT_DIMENSION).toDataURL('image/jpeg', 0.4);
+}
+
+function renderRectCanvas(imageEl, crop, scaleX, scaleY, outWidth, outHeight) {
   const canvas = document.createElement('canvas');
   canvas.width = outWidth;
   canvas.height = outHeight;
@@ -36,7 +61,54 @@ function getCroppedBase64(imageEl, crop) {
     outWidth,
     outHeight,
   );
-  return canvas.toDataURL('image/png');
+  return canvas;
+}
+
+function getCroppedBase64(imageEl, crop) {
+  const scaleX = imageEl.naturalWidth / imageEl.width;
+  const scaleY = imageEl.naturalHeight / imageEl.height;
+
+  let outWidth = Math.round(crop.width * scaleX);
+  let outHeight = Math.round(crop.height * scaleY);
+  if (outWidth < 1 || outHeight < 1) return null;
+
+  // Cap output size so the base64 payload stays postMessage/webMethod-friendly
+  const scaleDown = Math.min(1, MAX_OUTPUT_DIMENSION / Math.max(outWidth, outHeight));
+  outWidth = Math.round(outWidth * scaleDown);
+  outHeight = Math.round(outHeight * scaleDown);
+
+  return encodeCanvasWithBudget(
+    (w, h) => renderRectCanvas(imageEl, crop, scaleX, scaleY, w, h),
+    outWidth,
+    outHeight,
+  );
+}
+
+function renderFreeShapeCanvas(imageEl, natural, minX, minY, cropW, cropH, outWidth, outHeight) {
+  const canvas = document.createElement('canvas');
+  canvas.width = outWidth;
+  canvas.height = outHeight;
+  const ctx = canvas.getContext('2d');
+
+  // White background everywhere (outside the drawn shape stays white)
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, outWidth, outHeight);
+
+  const scaleDown = outWidth / cropW;
+  ctx.save();
+  ctx.beginPath();
+  natural.forEach((p, i) => {
+    const x = (p.x - minX) * scaleDown;
+    const y = (p.y - minY) * scaleDown;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.clip();
+  ctx.drawImage(imageEl, minX, minY, cropW, cropH, 0, 0, outWidth, outHeight);
+  ctx.restore();
+
+  return canvas;
 }
 
 function getFreeShapeCroppedBase64(imageEl, points) {
@@ -66,29 +138,11 @@ function getFreeShapeCroppedBase64(imageEl, points) {
   const outWidth = Math.round(cropW * scaleDown);
   const outHeight = Math.round(cropH * scaleDown);
 
-  const canvas = document.createElement('canvas');
-  canvas.width = outWidth;
-  canvas.height = outHeight;
-  const ctx = canvas.getContext('2d');
-
-  // White background everywhere (outside the drawn shape stays white)
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, outWidth, outHeight);
-
-  ctx.save();
-  ctx.beginPath();
-  natural.forEach((p, i) => {
-    const x = (p.x - minX) * scaleDown;
-    const y = (p.y - minY) * scaleDown;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.closePath();
-  ctx.clip();
-  ctx.drawImage(imageEl, minX, minY, cropW, cropH, 0, 0, outWidth, outHeight);
-  ctx.restore();
-
-  return canvas.toDataURL('image/png');
+  return encodeCanvasWithBudget(
+    (w, h) => renderFreeShapeCanvas(imageEl, natural, minX, minY, cropW, cropH, w, h),
+    outWidth,
+    outHeight,
+  );
 }
 
 /**

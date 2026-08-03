@@ -22,14 +22,14 @@ export const FRAME_TYPE_LABELS = {
 };
 
 const STEPS = ['העלאה', 'אישור', 'סקיצה'];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB — the cropped image is compressed before it's ever sent to the server
 const MAX_ATTEMPTS = 10;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const ALLOWED_IMAGE_EXT = /\.(jpe?g|png|webp)$/i;
 
 function validateImageFile(file) {
   if (!file) return 'לא נבחר קובץ';
-  if (file.size > MAX_FILE_SIZE) return 'הקובץ גדול מדי. גודל מקסימלי: 5MB';
+  if (file.size > MAX_FILE_SIZE) return 'הקובץ גדול מדי. גודל מקסימלי: 10MB';
 
   const extOk = ALLOWED_IMAGE_EXT.test(file.name || '');
   const typeOk = ALLOWED_IMAGE_TYPES.has(file.type) || (!file.type && extOk);
@@ -1092,7 +1092,7 @@ export default function AISketchModal({
                   <Upload className={`w-8 h-8 md:w-10 md:h-10 mx-auto mb-1.5 transition-transform ${termsAccepted ? 'text-[#5E2F88] group-hover:scale-110' : 'text-[#464646]/30'}`} />
                   <h3 className="text-[14px] font-bold text-[#464646]">לחצו כאן להעלאת תמונה</h3>
                   <p className="text-[12px] text-[#464646]/50 mt-0.5">
-                    {termsAccepted ? 'JPG, PNG, WEBP (עד 5MB)' : 'יש לאשר את תנאי השימוש כדי להמשיך'}
+                    {termsAccepted ? 'JPG, PNG, WEBP (עד 10MB)' : 'יש לאשר את תנאי השימוש כדי להמשיך'}
                   </p>
                 </button>
               </motion.div>
